@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
-import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
+import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { workspaceStore } from './workspace.store.js'
 
@@ -12,20 +12,20 @@ const defaultCollections = [
   { id: 'calendar-sport', workspaceId: 'space-family', name: 'Спорт', color: '#fb923c', visible: true },
 ]
 
-const { state: collections } = useLocalStorage(STORAGE_KEY, defaultCollections)
+const repository = new SyncedCollectionRepository(STORAGE_KEY, defaultCollections, 'calendar_collections')
+const collections = repository.items
 const activeCollections = computed(() => collections.value.filter(
   (calendar) => calendar.workspaceId === workspaceStore.activeWorkspaceId.value
 ))
 const visibleCollectionIds = computed(() => activeCollections.value.filter((calendar) => calendar.visible).map((calendar) => calendar.id))
 
-function ensureWorkspaceCollections() {
-  const workspaceId = workspaceStore.activeWorkspaceId.value
+async function ensureWorkspaceCollections() {
+  const workspaceId = workspaceStore.activeWorkspace.value?.id
   if (!workspaceId || activeCollections.value.length) return
-  collections.value = [
-    ...collections.value,
-    { id: generateId(), workspaceId, name: 'Основной', color: '#60a5fa', visible: true },
-    { id: generateId(), workspaceId, name: 'Личное', color: '#f472b6', visible: true },
-  ]
+  await Promise.all([
+    repository.createAndWait({ id: generateId(), workspaceId, name: 'Основной', color: '#60a5fa', visible: true }),
+    repository.createAndWait({ id: generateId(), workspaceId, name: 'Личное', color: '#f472b6', visible: true }),
+  ])
 }
 
 function addCollection(name, color = '#60a5fa') {
@@ -33,19 +33,17 @@ function addCollection(name, color = '#60a5fa') {
   if (!title) return null
   const calendar = {
     id: generateId(),
-    workspaceId: workspaceStore.activeWorkspaceId.value,
+    workspaceId: workspaceStore.activeWorkspace.value?.id,
     name: title,
     color,
     visible: true,
   }
-  collections.value = [...collections.value, calendar]
+  repository.create(calendar)
   return calendar
 }
 
 function updateCollection(id, updates) {
-  collections.value = collections.value.map((calendar) => (
-    calendar.id === id ? { ...calendar, ...updates } : calendar
-  ))
+  repository.update(id, updates)
 }
 
 function toggleCollection(id) {
@@ -55,7 +53,7 @@ function toggleCollection(id) {
 
 function removeCollection(id) {
   if (activeCollections.value.length <= 1) return false
-  collections.value = collections.value.filter((calendar) => calendar.id !== id)
+  repository.delete(id)
   return true
 }
 
@@ -73,4 +71,5 @@ export const calendarCollectionStore = {
   toggleCollection,
   removeCollection,
   getCollection,
+  loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
 }

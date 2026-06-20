@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
-import { LocalCollectionRepository } from '../repositories/LocalCollectionRepository.js'
+import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { DateHelper } from '../utils/date/dateHelper.js'
 import { authStore } from './auth.store.js'
@@ -24,8 +24,8 @@ const defaultExercises = [
   createDefaultExercise('sp-sun-rest', 0, 'Восстановление', '1 сессия', '15 мин', 'Дыхание, прогулка, растяжка', 1),
 ]
 
-const exerciseRepository = new LocalCollectionRepository(EXERCISES_KEY, defaultExercises)
-const completionRepository = new LocalCollectionRepository(COMPLETIONS_KEY, [])
+const exerciseRepository = new SyncedCollectionRepository(EXERCISES_KEY, defaultExercises, 'sport_exercises')
+const completionRepository = new SyncedCollectionRepository(COMPLETIONS_KEY, [], 'sport_completions')
 
 const exercises = computed(() => exerciseRepository.items.value.filter((exercise) => exercise.workspaceId === workspaceStore.activeWorkspaceId.value))
 const completions = computed(() => completionRepository.items.value.filter((completion) => completion.workspaceId === workspaceStore.activeWorkspaceId.value))
@@ -63,7 +63,7 @@ function isExerciseDone(exerciseId, dateKey, userId = authStore.currentUserId.va
 function toggleExercise(exerciseId, dateKey, userId = authStore.currentUserId.value) {
   if (!userId) return { ok: false, message: 'Сначала войди в аккаунт' }
   const existing = completionRepository.items.value.find((completion) => (
-    completion.workspaceId === workspaceStore.activeWorkspaceId.value
+    completion.workspaceId === workspaceStore.activeWorkspace.value?.id
     && completion.exerciseId === exerciseId
     && completion.date === dateKey
     && completion.userId === userId
@@ -76,7 +76,7 @@ function toggleExercise(exerciseId, dateKey, userId = authStore.currentUserId.va
 
   const completion = {
     id: generateId(),
-    workspaceId: workspaceStore.activeWorkspaceId.value,
+    workspaceId: workspaceStore.activeWorkspace.value?.id,
     exerciseId,
     date: dateKey,
     userId,
@@ -93,7 +93,7 @@ function addExercise(data) {
 
   const exercise = {
     id: generateId(),
-    workspaceId: workspaceStore.activeWorkspaceId.value,
+    workspaceId: workspaceStore.activeWorkspace.value?.id,
     weekday: Number(data.weekday ?? new Date().getDay()),
     title,
     sets: String(data.sets || '').trim() || '1 подход',
@@ -288,6 +288,10 @@ export const sportStore = {
   deleteExercise,
   addExercisesBulk,
   importExercisesFromJson,
+  loadWorkspace: (workspaceId) => Promise.all([
+    exerciseRepository.loadWorkspace(workspaceId),
+    completionRepository.loadWorkspace(workspaceId),
+  ]),
 }
 
 export { defaultExercises }

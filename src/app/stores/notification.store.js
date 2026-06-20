@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
-import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
+import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { authStore } from './auth.store.js'
 import { workspaceStore } from './workspace.store.js'
@@ -8,7 +8,32 @@ import { workspaceStore } from './workspace.store.js'
 const STORAGE_KEY = `${APP_CONFIG.storageKey}:notifications`
 const MAX_USER_NOTIFICATIONS = 60
 
-const { state: notifications } = useLocalStorage(STORAGE_KEY, [])
+const repository = new SyncedCollectionRepository(STORAGE_KEY, [], 'notifications', {
+  toRow: (item) => {
+    const {
+      id, workspaceId, userId, readAt, createdAt, updatedAt, ...payload
+    } = item
+    return {
+      id,
+      workspace_id: workspaceId,
+      user_id: userId,
+      payload,
+      read_at: readAt,
+      created_at: createdAt,
+      updated_at: updatedAt,
+    }
+  },
+  fromRow: (row) => ({
+    id: row.id,
+    workspaceId: row.workspace_id,
+    userId: row.user_id,
+    ...(row.payload || {}),
+    readAt: row.read_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }),
+})
+const notifications = repository.items
 
 const currentUserNotifications = computed(() => {
   const userId = authStore.currentUserId.value
@@ -35,13 +60,11 @@ function notifyEventChange(action, event, previousEvent = null) {
   const message = getEventNotificationMessage(action, event, previousEvent, actor)
   const severity = getSeverity(action, event)
 
-  let nextNotifications = [...notifications.value]
-
   recipients.forEach((userId) => {
     const dedupeKey = `${event.workspaceId}:${userId}:event:${event.id}`
-    const existingIndex = nextNotifications.findIndex((notification) => notification.dedupeKey === dedupeKey)
+    const existing = notifications.value.find((notification) => notification.dedupeKey === dedupeKey)
     const payload = {
-      id: existingIndex >= 0 ? nextNotifications[existingIndex].id : generateId(),
+      id: existing?.id || generateId(),
       dedupeKey,
       userId,
       workspaceId: event.workspaceId,
@@ -56,19 +79,13 @@ function notifyEventChange(action, event, previousEvent = null) {
       action,
       severity,
       readAt: null,
-      createdAt: existingIndex >= 0 ? nextNotifications[existingIndex].createdAt : now,
+      createdAt: existing?.createdAt || now,
       updatedAt: now,
-      updateCount: existingIndex >= 0 ? Number(nextNotifications[existingIndex].updateCount || 1) + 1 : 1,
+      updateCount: existing ? Number(existing.updateCount || 1) + 1 : 1,
     }
-
-    if (existingIndex >= 0) {
-      nextNotifications.splice(existingIndex, 1, payload)
-    } else {
-      nextNotifications.unshift(payload)
-    }
+    if (existing) repository.update(existing.id, payload)
+    else repository.create(payload)
   })
-
-  notifications.value = trimNotifications(nextNotifications)
 }
 
 function resolveRecipients(event, actorId) {
@@ -122,45 +139,29 @@ function getSeverity(action, event) {
 
 function markAsRead(id) {
   const now = new Date().toISOString()
-  notifications.value = notifications.value.map((notification) => (
-    notification.id === id ? { ...notification, readAt: notification.readAt || now } : notification
-  ))
+  const notification = repository.findById(id)
+  if (notification) repository.update(id, { readAt: notification.readAt || now })
 }
 
 function markAllAsRead() {
   const userId = authStore.currentUserId.value
   const workspaceId = workspaceStore.activeWorkspaceId.value
   const now = new Date().toISOString()
-  notifications.value = notifications.value.map((notification) => (
-    notification.userId === userId && notification.workspaceId === workspaceId
-      ? { ...notification, readAt: notification.readAt || now }
-      : notification
-  ))
+  notifications.value
+    .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId)
+    .forEach((notification) => repository.update(notification.id, { readAt: notification.readAt || now }))
 }
 
 function removeNotification(id) {
-  notifications.value = notifications.value.filter((notification) => notification.id !== id)
+  repository.delete(id)
 }
 
 function clearCurrentWorkspaceNotifications() {
   const userId = authStore.currentUserId.value
   const workspaceId = workspaceStore.activeWorkspaceId.value
-  notifications.value = notifications.value.filter((notification) => (
-    notification.userId !== userId || notification.workspaceId !== workspaceId
-  ))
-}
-
-function trimNotifications(items) {
-  const byUserWorkspace = new Map()
-  const sorted = [...items].sort((first, second) => new Date(second.updatedAt) - new Date(first.updatedAt))
-
-  return sorted.filter((notification) => {
-    const key = `${notification.workspaceId}:${notification.userId}`
-    const count = byUserWorkspace.get(key) || 0
-    if (count >= MAX_USER_NOTIFICATIONS) return false
-    byUserWorkspace.set(key, count + 1)
-    return true
-  })
+  notifications.value
+    .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId)
+    .forEach((notification) => repository.delete(notification.id))
 }
 
 function formatDate(dateKey) {
@@ -192,4 +193,5 @@ export const notificationStore = {
   markAllAsRead,
   removeNotification,
   clearCurrentWorkspaceNotifications,
+  loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
 }

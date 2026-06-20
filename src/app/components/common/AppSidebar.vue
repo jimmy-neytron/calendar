@@ -17,6 +17,8 @@
 const items = [
   { name: 'calendar', label: 'Календарь', icon: '📅' },
   { name: 'sport', label: 'Спорт', icon: '🏋️' },
+  { name: 'ideas', label: 'Идеи', icon: '✦' },
+  { name: 'birthdays', label: 'Дни рождения', icon: '♡' },
   { name: 'analytics', label: 'Аналитика', icon: '▥' },
   { name: 'workspace', label: 'Команда', icon: '◇' },
   { name: 'settings', label: 'Настройки', icon: '⚙️' },
@@ -82,6 +84,7 @@ const items = [
     bottom: 12px;
     top: auto;
     width: auto;
+    max-width: calc(100vw - 20px);
     height: 54px;
     flex-direction: row;
     padding: 6px;
@@ -91,6 +94,12 @@ const items = [
     backdrop-filter: blur(16px);
     box-shadow: var(--shadow-md);
     transform: translateX(-50%);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .app-sidebar::-webkit-scrollbar {
+    display: none;
   }
 
   .app-sidebar__item {

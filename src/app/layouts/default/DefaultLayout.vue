@@ -15,6 +15,11 @@
       @toggle-calendar-view="toggleCalendarView"
     />
 
+    <div v-if="workspaceStore.error.value" class="backend-error">
+      <strong>Supabase не смог загрузить пространство</strong>
+      <span>{{ workspaceStore.error.value }}</span>
+    </div>
+
     <div class="default-layout__body">
       <AppSidebar />
       <AppContainer>
@@ -44,7 +49,10 @@
     <CommandPalette
       v-model="isCommandPaletteOpen"
       :commands="commands"
+      :smart-suggestion="smartSuggestion"
       @run="runCommand"
+      @query-change="paletteQuery = $event"
+      @smart-create="createSmartEvent"
     />
 
     <div class="toast-stack">
@@ -83,6 +91,8 @@ import { workspaceStore } from '../../stores/workspace.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
+import { parseSmartEvent } from '../../services/smartEventParser.js'
+import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -90,13 +100,18 @@ const activePageRef = ref(null)
 const createToken = ref(0)
 const calendarViewMode = ref('month')
 const isCommandPaletteOpen = ref(false)
-const { notifications, dismiss } = useNotification()
+const paletteQuery = ref('')
+const { notifications, dismiss, notify } = useNotification()
 const { runDailyAutoBackup } = useAutoBackup()
 const { start: startLocalReminders, stop: stopLocalReminders } = useLocalReminders()
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const isAuthRoute = computed(() => route.name === 'login')
+const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
+  members: workspaceStore.activeWorkspaceMembers.value,
+  calendars: calendarCollectionStore.activeCollections.value,
+}))
 const commands = computed(() => [
   { id: 'new-event', label: 'Новое событие', description: 'Открыть быстрое создание', icon: '＋', shortcut: 'N', action: openEventDrawer },
   { id: 'today', label: 'Перейти к сегодня', description: 'Вернуть календарь к текущей дате', icon: '◎', shortcut: 'T', action: goCalendarToday },
@@ -104,6 +119,8 @@ const commands = computed(() => [
   { id: 'week', label: 'Режим недели', description: 'Показать неделю', icon: '▤', shortcut: 'W', action: () => setCalendarMode('week') },
   { id: 'day', label: 'Режим дня', description: 'Показать расписание дня', icon: '◫', shortcut: 'D', action: () => setCalendarMode('day') },
   { id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) },
+  { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
+  { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
   { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
   { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
   ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
@@ -152,6 +169,18 @@ function runCommand(command) {
   command.action?.()
 }
 
+async function createSmartEvent(eventData) {
+  if (!eventData) return
+  const { preview, ...data } = eventData
+  const result = calendarStore.addEvent(data)
+  if (!result.ok) {
+    notify(Object.values(result.errors || {})[0] || 'Не удалось создать событие', 'danger')
+    return
+  }
+  notify(`Событие «${data.title}» создано`, 'success')
+  if (route.name !== 'calendar') await router.push({ name: 'calendar' })
+}
+
 function runNotificationAction(notification) {
   notification.action?.()
   dismiss(notification.id)
@@ -182,14 +211,20 @@ function handleGlobalKeydown(event) {
   if (key === 'd') setCalendarMode('day')
 }
 
+function handleBackendSyncError(event) {
+  notify(`Ошибка синхронизации: ${event.detail?.message || 'проверь подключение к Supabase'}`, 'danger')
+}
+
 onMounted(() => {
   runDailyAutoBackup()
   startLocalReminders()
   document.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('backend-sync-error', handleBackendSyncError)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('backend-sync-error', handleBackendSyncError)
   stopLocalReminders()
 })
 </script>
@@ -202,6 +237,23 @@ onBeforeUnmount(() => {
 .default-layout__body {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+
+.backend-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 14px 0;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 7%, var(--card-solid));
+}
+
+.backend-error span {
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 
 .toast-stack {

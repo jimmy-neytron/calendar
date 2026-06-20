@@ -1,234 +1,207 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { workspacesApi } from '../api/supabase/workspaces.api.js'
 import { APP_CONFIG } from '../config/app.config.js'
 import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
-import { generateId, generateShortId } from '../utils/helpers/idGenerator.js'
+import { generateShortId } from '../utils/helpers/idGenerator.js'
 import { authStore } from './auth.store.js'
 
-const WORKSPACES_KEY = `${APP_CONFIG.storageKey}:workspaces`
-const INVITES_KEY = `${APP_CONFIG.storageKey}:workspace-invites`
-const ACTIVE_WORKSPACE_KEY = `${APP_CONFIG.storageKey}:active-workspace`
+const { state: activeWorkspaceId } = useLocalStorage(`${APP_CONFIG.storageKey}:active-workspace`, null)
+const workspaces = ref([])
+const invites = ref([])
+const loading = ref(false)
+const initializedForUserId = ref(null)
+const error = ref('')
 
-const now = new Date().toISOString()
+const currentUserSpaces = computed(() => workspaces.value)
+const activeWorkspace = computed(() => (
+  workspaces.value.find((workspace) => workspace.id === activeWorkspaceId.value)
+  || workspaces.value[0]
+  || null
+))
+const activeWorkspaceMembers = computed(() => activeWorkspace.value?.members || [])
+const activeWorkspaceInvites = computed(() => invites.value.filter(
+  (invite) => invite.workspaceId === activeWorkspace.value?.id && invite.status === 'active'
+))
 
-const defaultWorkspaces = [
-  {
-    id: 'space-family',
-    name: 'Семья',
-    ownerId: 'u-anna',
-    memberIds: ['u-anna', 'u-ilya', 'u-miya'],
-    roles: { 'u-anna': 'owner', 'u-ilya': 'admin', 'u-miya': 'member' },
-    createdAt: now,
-    updatedAt: now,
-  },
-]
-
-const { state: workspaces } = useLocalStorage(WORKSPACES_KEY, defaultWorkspaces)
-const { state: invites } = useLocalStorage(INVITES_KEY, [])
-const { state: activeWorkspaceId } = useLocalStorage(ACTIVE_WORKSPACE_KEY, defaultWorkspaces[0].id)
-
-const currentUserSpaces = computed(() => {
-  const userId = authStore.currentUserId.value
-  if (!userId) return []
-  return workspaces.value.filter((workspace) => workspace.memberIds.includes(userId))
-})
-
-const activeWorkspace = computed(() => {
-  const userSpaces = currentUserSpaces.value
-  const selected = userSpaces.find((workspace) => workspace.id === activeWorkspaceId.value)
-  return selected || userSpaces[0] || null
-})
-
-const activeWorkspaceMembers = computed(() => {
-  if (!activeWorkspace.value) return []
-  return activeWorkspace.value.memberIds
-    .map((userId) => authStore.getUser(userId))
-    .filter(Boolean)
-    .map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      color: user.color || '#ffffff',
-      role: activeWorkspace.value.roles?.[user.id] || (activeWorkspace.value.ownerId === user.id ? 'owner' : 'member'),
-    }))
-})
-
-const activeWorkspaceInvites = computed(() => {
-  if (!activeWorkspace.value) return []
-  return invites.value.filter((invite) => invite.workspaceId === activeWorkspace.value.id && invite.status === 'active')
-})
-
-function ensureActiveWorkspace() {
-  if (activeWorkspace.value) return activeWorkspace.value
-  if (currentUserSpaces.value[0]) {
-    activeWorkspaceId.value = currentUserSpaces.value[0].id
-    return currentUserSpaces.value[0]
+function mapWorkspace(row) {
+  const members = (row.members || []).map((membership) => {
+    const profile = membership.profile || {}
+    return {
+      id: membership.user_id,
+      name: profile.name || profile.email || 'Пользователь',
+      email: profile.email || '',
+      avatar: profile.avatar || (profile.name || '?').slice(0, 1).toUpperCase(),
+      color: profile.color || '#60a5fa',
+      role: membership.role,
+    }
+  })
+  authStore.mergeUsers(members)
+  return {
+    id: row.id,
+    name: row.name,
+    ownerId: row.owner_id,
+    memberIds: members.map((member) => member.id),
+    roles: Object.fromEntries(members.map((member) => [member.id, member.role])),
+    members,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   }
-  if (!authStore.currentUser.value) return null
-  return createWorkspace('Моё пространство').workspace
 }
 
-function switchWorkspace(workspaceId) {
-  const allowed = currentUserSpaces.value.some((workspace) => workspace.id === workspaceId)
-  if (!allowed) return false
+function mapInvite(row) {
+  return {
+    id: row.id,
+    code: row.code,
+    workspaceId: row.workspace_id,
+    workspaceName: workspaces.value.find((item) => item.id === row.workspace_id)?.name || '',
+    invitedEmail: row.invited_email,
+    createdBy: row.created_by,
+    acceptedBy: row.accepted_by,
+    status: row.status,
+    createdAt: row.created_at,
+    acceptedAt: row.accepted_at,
+  }
+}
+
+async function initialize(force = false) {
+  const userId = authStore.currentUserId.value
+  if (!userId) {
+    workspaces.value = []
+    invites.value = []
+    initializedForUserId.value = null
+    return
+  }
+  if (!force && initializedForUserId.value === userId) return
+
+  loading.value = true
+  try {
+    const { data, error: loadError } = await workspacesApi.list()
+    if (loadError) {
+      error.value = loadError.message
+      initializedForUserId.value = userId
+      return
+    }
+    workspaces.value = (data || []).map(mapWorkspace)
+    initializedForUserId.value = userId
+    error.value = ''
+    const activeWorkspaceExists = workspaces.value.some(
+      (workspace) => workspace.id === activeWorkspaceId.value
+    )
+    if (!activeWorkspaceExists) {
+      activeWorkspaceId.value = workspaces.value[0]?.id || null
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadInvites() {
+  if (!activeWorkspace.value || !['owner', 'admin'].includes(getCurrentUserRole())) {
+    invites.value = []
+    return
+  }
+  const { data } = await workspacesApi.listInvites(activeWorkspace.value.id)
+  invites.value = (data || []).map(mapInvite)
+}
+
+async function ensureActiveWorkspace() {
+  await initialize()
+  if (error.value) return null
+  if (!activeWorkspace.value && authStore.currentUser.value) {
+    const { error: ensureError } = await workspacesApi.ensure('Моё пространство')
+    if (ensureError) {
+      error.value = ensureError.message
+      return null
+    }
+    initializedForUserId.value = null
+    await initialize(true)
+  }
+  activeWorkspaceId.value = activeWorkspace.value?.id || null
+  await loadInvites()
+  return activeWorkspace.value
+}
+
+async function switchWorkspace(workspaceId) {
+  if (!workspaces.value.some((workspace) => workspace.id === workspaceId)) return false
   activeWorkspaceId.value = workspaceId
+  await loadInvites()
+  const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
+  await loadWorkspaceData(workspaceId)
   return true
 }
 
-function createWorkspace(name) {
+async function createWorkspace(name) {
   const title = String(name || '').trim()
-  if (!authStore.currentUser.value) return { ok: false, message: 'Сначала войди в аккаунт' }
   if (!title) return { ok: false, message: 'Укажи название пространства' }
-
-  const workspace = {
-    id: generateId(),
-    name: title,
-    ownerId: authStore.currentUser.value.id,
-    memberIds: [authStore.currentUser.value.id],
-    roles: { [authStore.currentUser.value.id]: 'owner' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  workspaces.value = [...workspaces.value, workspace]
-  activeWorkspaceId.value = workspace.id
-  return { ok: true, workspace }
+  const { data, error: createError } = await workspacesApi.create(title)
+  if (createError) return { ok: false, message: createError.message }
+  await initialize(true)
+  activeWorkspaceId.value = data
+  const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
+  await loadWorkspaceData(data)
+  return { ok: true, workspace: activeWorkspace.value }
 }
 
-function updateWorkspace(workspaceId, updates) {
-  const currentUserId = authStore.currentUserId.value
-  workspaces.value = workspaces.value.map((workspace) => {
-    if (workspace.id !== workspaceId || workspace.ownerId !== currentUserId) return workspace
-    return {
-      ...workspace,
-      ...updates,
-      name: updates.name?.trim?.() || workspace.name,
-      updatedAt: new Date().toISOString(),
-    }
-  })
+async function updateWorkspace(workspaceId, updates) {
+  const { error: updateError } = await workspacesApi.update(workspaceId, { name: String(updates.name || '').trim() })
+  if (updateError) return { ok: false, message: updateError.message }
+  await initialize(true)
+  return { ok: true }
 }
 
-function createInvite(workspaceId, email = '') {
-  const workspace = workspaces.value.find((item) => item.id === workspaceId)
-  if (!workspace) return { ok: false, message: 'Пространство не найдено' }
-  if (!workspace.memberIds.includes(authStore.currentUserId.value)) return { ok: false, message: 'Нет доступа к пространству' }
-
-  const invite = {
-    id: generateId(),
+async function createInvite(workspaceId, email = '') {
+  const payload = {
     code: generateShortId().toUpperCase(),
-    workspaceId,
-    workspaceName: workspace.name,
-    invitedEmail: String(email || '').trim().toLowerCase(),
-    createdBy: authStore.currentUserId.value,
-    status: 'active',
-    createdAt: new Date().toISOString(),
+    workspace_id: workspaceId,
+    invited_email: String(email || '').trim().toLowerCase(),
+    created_by: authStore.currentUserId.value,
   }
-
+  const { data, error: inviteError } = await workspacesApi.createInvite(payload)
+  if (inviteError) return { ok: false, message: inviteError.message }
+  const invite = mapInvite(data)
   invites.value = [invite, ...invites.value]
   return { ok: true, invite }
 }
 
-function acceptInvite(code) {
-  const inviteCode = String(code || '').trim().toUpperCase()
-  const invite = invites.value.find((item) => item.code === inviteCode && item.status === 'active')
-  const user = authStore.currentUser.value
-  if (!user) return { ok: false, message: 'Сначала войди в аккаунт' }
-  if (!invite) return { ok: false, message: 'Код приглашения не найден или уже использован' }
-  if (invite.invitedEmail && invite.invitedEmail !== user.email) {
-    return { ok: false, message: 'Этот код создан для другого email' }
-  }
-
-  workspaces.value = workspaces.value.map((workspace) => {
-    if (workspace.id !== invite.workspaceId) return workspace
-    if (workspace.memberIds.includes(user.id)) return workspace
-    return {
-      ...workspace,
-      memberIds: [...workspace.memberIds, user.id],
-      roles: { ...(workspace.roles || {}), [user.id]: 'member' },
-      updatedAt: new Date().toISOString(),
-    }
-  })
-
-  activeWorkspaceId.value = invite.workspaceId
-  invites.value = invites.value.map((item) => (
-    item.id === invite.id
-      ? { ...item, status: 'accepted', acceptedBy: user.id, acceptedAt: new Date().toISOString() }
-      : item
-  ))
-
-  return { ok: true, workspaceId: invite.workspaceId }
+async function acceptInvite(code) {
+  const { data, error: acceptError } = await workspacesApi.acceptInvite(String(code || '').trim())
+  if (acceptError) return { ok: false, message: acceptError.message }
+  await initialize(true)
+  await switchWorkspace(data)
+  return { ok: true, workspaceId: data }
 }
 
-function removeMember(workspaceId, userId) {
-  const currentUserId = authStore.currentUserId.value
-  workspaces.value = workspaces.value.map((workspace) => {
-    if (workspace.id !== workspaceId) return workspace
-    if (workspace.ownerId !== currentUserId && userId !== currentUserId) return workspace
-    if (workspace.ownerId === userId) return workspace
-    return {
-      ...workspace,
-      memberIds: workspace.memberIds.filter((id) => id !== userId),
-      roles: Object.fromEntries(Object.entries(workspace.roles || {}).filter(([id]) => id !== userId)),
-      updatedAt: new Date().toISOString(),
-    }
-  })
+async function removeMember(workspaceId, userId) {
+  const { error: removeError } = await workspacesApi.removeMember(workspaceId, userId)
+  if (removeError) return { ok: false, message: removeError.message }
+  await initialize(true)
+  return { ok: true }
 }
 
-
-function updateMemberRole(workspaceId, userId, role) {
-  const currentUserId = authStore.currentUserId.value
-  const workspace = workspaces.value.find((item) => item.id === workspaceId)
-  if (!workspace || workspace.ownerId !== currentUserId || workspace.ownerId === userId) return false
-  const allowedRoles = new Set(['admin', 'member', 'viewer'])
-  if (!allowedRoles.has(role)) return false
-
-  workspaces.value = workspaces.value.map((item) => {
-    if (item.id !== workspaceId) return item
-    return {
-      ...item,
-      roles: { ...(item.roles || {}), [userId]: role },
-      updatedAt: new Date().toISOString(),
-    }
-  })
+async function updateMemberRole(workspaceId, userId, role) {
+  const { error: roleError } = await workspacesApi.updateMemberRole(workspaceId, userId, role)
+  if (roleError) return false
+  await initialize(true)
   return true
 }
 
 function getCurrentUserRole() {
-  const workspace = activeWorkspace.value
-  const userId = authStore.currentUserId.value
-  if (!workspace || !userId) return 'viewer'
-  if (workspace.ownerId === userId) return 'owner'
-  return workspace.roles?.[userId] || 'member'
+  if (!activeWorkspace.value) return 'viewer'
+  return activeWorkspace.value.roles[authStore.currentUserId.value] || 'viewer'
 }
 
-function deleteWorkspace(workspaceId) {
-  const currentUserId = authStore.currentUserId.value
-  const workspace = workspaces.value.find((item) => item.id === workspaceId)
-  if (!workspace || workspace.ownerId !== currentUserId) return false
-  workspaces.value = workspaces.value.filter((item) => item.id !== workspaceId)
-  invites.value = invites.value.filter((invite) => invite.workspaceId !== workspaceId)
-  if (activeWorkspaceId.value === workspaceId) {
-    activeWorkspaceId.value = currentUserSpaces.value[0]?.id || null
-  }
+async function deleteWorkspace(workspaceId) {
+  const { error: removeError } = await workspacesApi.remove(workspaceId)
+  if (removeError) return false
+  await initialize(true)
+  activeWorkspaceId.value = workspaces.value[0]?.id || null
   return true
 }
 
 export const workspaceStore = {
-  workspaces,
-  invites,
-  activeWorkspaceId,
-  currentUserSpaces,
-  activeWorkspace,
-  activeWorkspaceMembers,
-  activeWorkspaceInvites,
-  ensureActiveWorkspace,
-  switchWorkspace,
-  createWorkspace,
-  updateWorkspace,
-  createInvite,
-  acceptInvite,
-  removeMember,
-  deleteWorkspace,
-  updateMemberRole,
-  getCurrentUserRole,
+  workspaces, invites, activeWorkspaceId, currentUserSpaces, activeWorkspace,
+  activeWorkspaceMembers, activeWorkspaceInvites, loading, error,
+  initialize, ensureActiveWorkspace, switchWorkspace, createWorkspace,
+  updateWorkspace, createInvite, acceptInvite, removeMember,
+  deleteWorkspace, updateMemberRole, getCurrentUserRole,
 }

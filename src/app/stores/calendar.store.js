@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
-import { LocalCollectionRepository } from '../repositories/LocalCollectionRepository.js'
+import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { defaultEvents } from '../utils/seed/sampleData.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { validateEvent } from '../utils/validators/calendarValidator.js'
@@ -21,7 +21,7 @@ const defaultWorkspaceEvents = defaultEvents.map((event) => ({
   reminder: event.reminder || 'none',
   repeatEndType: event.repeatUntil ? 'until' : 'never',
 }))
-const eventRepository = new LocalCollectionRepository(STORAGE_KEY, defaultWorkspaceEvents)
+const eventRepository = new SyncedCollectionRepository(STORAGE_KEY, defaultWorkspaceEvents, 'events')
 const { expandRecurringEvents } = useRecurringEvents()
 const { addActivity } = useActivityLog()
 
@@ -35,21 +35,43 @@ const todayEvents = computed(() => {
 const eventsByDate = computed(() => groupEventsByDate(sortedEvents.value))
 const upcomingReminders = computed(() => getUpcomingReminders(sortedEvents.value))
 
-const addEvent = (data) => {
+function prepareEvent(data) {
   calendarCollectionStore.ensureWorkspaceCollections()
+  const workspaceId = workspaceStore.activeWorkspace.value?.id
+  if (!workspaceId) {
+    return { ok: false, errors: { workspace: 'Пространство не загружено. Обнови страницу.' } }
+  }
   const now = new Date().toISOString()
   const event = normalizeEvent({
     ...data,
     id: generateId(),
-    workspaceId: workspaceStore.activeWorkspaceId.value,
+    workspaceId,
     createdAt: now,
     updatedAt: now,
   })
 
   const validation = validateEvent(event)
-  if (!validation.valid) return { ok: false, errors: validation.errors }
+  return validation.valid
+    ? { ok: true, event }
+    : { ok: false, errors: validation.errors }
+}
 
+const addEvent = (data) => {
+  const prepared = prepareEvent(data)
+  if (!prepared.ok) return prepared
+  const { event } = prepared
   eventRepository.create(event)
+  notificationStore.notifyEventChange('create', event)
+  addActivity('event:create', `создал(а) событие «${event.title}»`, { eventId: event.id, date: event.date })
+  return { ok: true, event }
+}
+
+const addEventAndWait = async (data) => {
+  const prepared = prepareEvent(data)
+  if (!prepared.ok) return prepared
+  const { event } = prepared
+  const persisted = await eventRepository.createAndWait(event)
+  if (!persisted.ok) return { ok: false, errors: { backend: persisted.message } }
   notificationStore.notifyEventChange('create', event)
   addActivity('event:create', `создал(а) событие «${event.title}»`, { eventId: event.id, date: event.date })
   return { ok: true, event }
@@ -68,7 +90,7 @@ const updateEvent = (id, updates) => {
     ...target,
     ...cleanUpdates,
     id: targetId,
-    workspaceId: target.workspaceId || workspaceStore.activeWorkspaceId.value,
+    workspaceId: target.workspaceId || workspaceStore.activeWorkspace.value?.id,
     title: cleanUpdates.title?.trim() ?? target.title,
     updatedAt: new Date().toISOString(),
   })
@@ -90,6 +112,17 @@ const deleteEvent = (id) => {
     notificationStore.notifyEventChange('delete', target)
     addActivity('event:delete', `удалил(а) событие «${target.title}»`, { eventId, date: target.date })
   }
+}
+
+const deleteEventAndWait = async (id) => {
+  const eventId = String(id).split('::')[0]
+  const target = eventRepository.findById(eventId)
+  const result = await eventRepository.deleteAndWait(eventId)
+  if (result.ok && target) {
+    notificationStore.notifyEventChange('delete', target)
+    addActivity('event:delete', `удалил(а) событие «${target.title}»`, { eventId, date: target.date })
+  }
+  return result
 }
 
 const moveEvent = (id, date, time = null) => {
@@ -161,14 +194,19 @@ export const calendarStore = {
   eventsByDate,
   upcomingReminders,
   addEvent,
+  addEventAndWait,
   updateEvent,
   deleteEvent,
+  deleteEventAndWait,
   moveEvent,
   resizeEvent,
   duplicateEvent,
   addComment,
   respondToEvent,
   getEventsForDate,
+  loadWorkspace: (workspaceId) => eventRepository.loadWorkspace(workspaceId),
+  syncError: eventRepository.lastError,
+  pendingSyncCount: eventRepository.pendingCount,
 }
 
 export function groupEventsByDate(items) {
@@ -183,7 +221,7 @@ function normalizeEvent(data) {
   const fallbackCalendar = calendarCollectionStore.activeCollections.value[0]
   return {
     id: data.id,
-    workspaceId: data.workspaceId || workspaceStore.activeWorkspaceId.value || 'space-family',
+    workspaceId: data.workspaceId || workspaceStore.activeWorkspace.value?.id || '',
     title: data.title?.trim() || '',
     date: data.date,
     startTime: data.allDay ? '' : data.startTime || '',

@@ -25,6 +25,8 @@ const DEFAULT_DATA = {
   [`${STORAGE_PREFIX}preferences`]: { defaultMode: 'month', weekStartsOn: 1, density: 'compact', theme: 'black', hidePastEvents: false },
   [`${STORAGE_PREFIX}activity`]: [],
   [`${STORAGE_PREFIX}notifications`]: [],
+  [`${STORAGE_PREFIX}ideas`]: [],
+  [`${STORAGE_PREFIX}birthdays`]: [],
   [`${STORAGE_PREFIX}calendar-collections`]: [
     { id: 'calendar-family', workspaceId: 'space-family', name: 'Семья', color: '#60a5fa', visible: true },
     { id: 'calendar-personal', workspaceId: 'space-family', name: 'Личное', color: '#f472b6', visible: true },

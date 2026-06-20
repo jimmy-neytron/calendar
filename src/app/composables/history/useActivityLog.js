@@ -1,12 +1,32 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../../config/app.config.js'
-import { LocalCollectionRepository } from '../../repositories/LocalCollectionRepository.js'
+import { SyncedCollectionRepository } from '../../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../../utils/helpers/idGenerator.js'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 
 const ACTIVITY_KEY = `${APP_CONFIG.storageKey}:activity`
-const repository = new LocalCollectionRepository(ACTIVITY_KEY, [])
+const repository = new SyncedCollectionRepository(ACTIVITY_KEY, [], 'activity_entries', {
+  toRow: (item) => ({
+    id: item.id,
+    workspace_id: item.workspaceId,
+    actor_id: item.userId,
+    action: item.action,
+    message: item.text,
+    metadata: { ...item.payload, userName: item.userName },
+    created_at: item.createdAt,
+  }),
+  fromRow: (row) => ({
+    id: row.id,
+    workspaceId: row.workspace_id,
+    userId: row.actor_id,
+    userName: row.metadata?.userName || 'Пользователь',
+    action: row.action,
+    text: row.message,
+    payload: row.metadata || {},
+    createdAt: row.created_at,
+  }),
+})
 
 const activity = computed(() => repository.items.value)
 const workspaceActivity = computed(() => {
@@ -33,10 +53,6 @@ function addActivity(action, text, payload = {}) {
   }
 
   repository.create(entry)
-  const activeItems = repository.items.value
-  if (activeItems.length > 250) {
-    repository.replaceAll(activeItems.slice(activeItems.length - 250))
-  }
   return entry
 }
 
@@ -45,5 +61,6 @@ export function useActivityLog() {
     activity,
     workspaceActivity,
     addActivity,
+    loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
   }
 }

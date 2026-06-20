@@ -195,38 +195,38 @@ watch(activeWorkspace, (workspace) => {
   calendarCollectionStore.ensureWorkspaceCollections()
 }, { immediate: true })
 
-function switchWorkspace(workspaceId) {
-  if (workspaceStore.switchWorkspace(workspaceId)) notify('Пространство переключено', 'success')
+async function switchWorkspace(workspaceId) {
+  if (await workspaceStore.switchWorkspace(workspaceId)) notify('Пространство переключено', 'success')
 }
 
-function saveWorkspace() {
+async function saveWorkspace() {
   if (!activeWorkspace.value) return
-  workspaceStore.updateWorkspace(activeWorkspace.value.id, { name: workspaceName.value })
-  notify('Название обновлено', 'success')
+  const result = await workspaceStore.updateWorkspace(activeWorkspace.value.id, { name: workspaceName.value })
+  notify(result.ok ? 'Название обновлено' : result.message, result.ok ? 'success' : 'danger')
 }
 
-function createWorkspace() {
-  const result = workspaceStore.createWorkspace(newWorkspaceName.value)
+async function createWorkspace() {
+  const result = await workspaceStore.createWorkspace(newWorkspaceName.value)
   if (!result.ok) return notify(result.message, 'danger')
   newWorkspaceName.value = ''
   notify('Пространство создано', 'success')
 }
 
-function changeRole(userId, role) {
+async function changeRole(userId, role) {
   if (!activeWorkspace.value) return
-  const updated = workspaceStore.updateMemberRole(activeWorkspace.value.id, userId, role)
+  const updated = await workspaceStore.updateMemberRole(activeWorkspace.value.id, userId, role)
   notify(updated ? 'Роль обновлена' : 'Не удалось изменить роль', updated ? 'success' : 'danger')
 }
 
-function removeMember(userId) {
+async function removeMember(userId) {
   if (!activeWorkspace.value) return
-  workspaceStore.removeMember(activeWorkspace.value.id, userId)
-  notify('Участник удалён', 'success')
+  const result = await workspaceStore.removeMember(activeWorkspace.value.id, userId)
+  notify(result.ok ? 'Участник удалён' : result.message, result.ok ? 'success' : 'danger')
 }
 
-function createInvite() {
+async function createInvite() {
   if (!activeWorkspace.value) return
-  const result = workspaceStore.createInvite(activeWorkspace.value.id, inviteEmail.value)
+  const result = await workspaceStore.createInvite(activeWorkspace.value.id, inviteEmail.value)
   if (!result.ok) return notify(result.message, 'danger')
   lastInviteCode.value = result.invite.code
   inviteEmail.value = ''
@@ -237,8 +237,8 @@ async function copyInvite() {
   notify('Код скопирован', 'success')
 }
 
-function acceptInvite() {
-  const result = workspaceStore.acceptInvite(joinCode.value)
+async function acceptInvite() {
+  const result = await workspaceStore.acceptInvite(joinCode.value)
   if (!result.ok) return notify(result.message, 'danger')
   joinCode.value = ''
   notify('Вы присоединились к пространству', 'success')

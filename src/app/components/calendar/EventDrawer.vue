@@ -250,7 +250,7 @@
 
           <footer class="event-drawer__footer">
             <UiButton v-if="editingEvent" variant="danger" type="button" @click="remove">Удалить</UiButton>
-            <span />
+            <UiButton v-if="editingEvent" variant="ghost" type="button" @click="exportIcs">Экспорт .ics</UiButton>
             <UiButton variant="secondary" type="button" @click="$emit('update:modelValue', false)">Отмена</UiButton>
             <UiButton type="submit">{{ editingEvent ? 'Сохранить' : 'Создать' }}</UiButton>
           </footer>
@@ -282,6 +282,7 @@ import { toDateKey } from '../../utils/formatters/dateFormatter.js'
 import { validateEvent } from '../../utils/validators/calendarValidator.js'
 import { authStore } from '../../stores/auth.store.js'
 import { generateId } from '../../utils/helpers/idGenerator.js'
+import { exportEventToIcs } from '../../services/calendarExport.service.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -358,6 +359,10 @@ const submit = () => {
 const remove = () => {
   if (!props.editingEvent) return
   emit('delete', props.editingEvent.id)
+}
+
+const exportIcs = () => {
+  if (props.editingEvent) exportEventToIcs({ ...props.editingEvent, ...form })
 }
 
 const duplicate = () => {

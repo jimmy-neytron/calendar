@@ -4,7 +4,7 @@
       <div class="login-card__brand">
         <span>✦</span>
         <div>
-          <p>Локальная версия без Supabase</p>
+          <p>Синхронизация через Supabase</p>
           <h1>Семейный календарь</h1>
         </div>
       </div>
@@ -23,25 +23,15 @@
           required
         />
         <UiInput v-model="form.email" label="Email" placeholder="anya@example.com" required />
+        <UiInput v-model="form.password" label="Пароль" type="password" placeholder="Минимум 6 символов" required />
 
         <p v-if="message" class="login-card__message" :class="{ error: hasError }">{{ message }}</p>
 
-        <UiButton icon="→">{{ mode === 'login' ? 'Войти в аккаунт' : 'Создать аккаунт' }}</UiButton>
+        <UiButton type="submit" icon="→" :loading="authStore.loading.value">
+          {{ mode === 'login' ? 'Войти в аккаунт' : 'Создать аккаунт' }}
+        </UiButton>
       </form>
 
-      <div class="login-card__demo">
-        <p>Демо-аккаунты</p>
-        <button
-          v-for="user in users"
-          :key="user.id"
-          type="button"
-          @click="quickLogin(user.email)"
-        >
-          <span :style="{ background: user.color }">{{ user.avatar }}</span>
-          {{ user.name }}
-          <small>{{ user.email }}</small>
-        </button>
-      </div>
     </section>
   </main>
 </template>
@@ -56,38 +46,44 @@ import { workspaceStore } from '../../stores/workspace.store.js'
 
 const router = useRouter()
 const route = useRoute()
-const users = authStore.users
 const mode = ref('login')
 const message = ref('')
 const hasError = ref(false)
 
 const form = reactive({
   name: '',
-  email: 'anya@example.com',
+  email: '',
+  password: '',
 })
 
-function submit() {
-  const result = mode.value === 'login'
-    ? authStore.login(form.email)
-    : authStore.register(form)
+async function submit() {
+  message.value = ''
+  hasError.value = false
+
+  let result
+  try {
+    result = mode.value === 'login'
+      ? await authStore.login(form.email, form.password)
+      : await authStore.register(form)
+  } catch (error) {
+    result = { ok: false, message: error.message || 'Не удалось связаться с сервером' }
+  }
 
   hasError.value = !result.ok
-  message.value = result.ok
+  message.value = result.needsEmailConfirmation
+    ? 'Проверь почту и подтверди регистрацию'
+    : result.ok
     ? mode.value === 'login' ? 'Вход выполнен' : 'Аккаунт создан'
     : result.message
 
-  if (!result.ok) return
-  workspaceStore.ensureActiveWorkspace()
-  router.push(route.query.redirect || { name: 'calendar' })
-}
-
-function quickLogin(email) {
-  form.email = email
-  const result = authStore.login(email)
-  if (result.ok) {
-    workspaceStore.ensureActiveWorkspace()
-    router.push({ name: 'calendar' })
+  if (!result.ok || result.needsEmailConfirmation) return
+  const workspace = await workspaceStore.ensureActiveWorkspace()
+  if (!workspace) {
+    hasError.value = true
+    message.value = workspaceStore.error.value || 'Не удалось подготовить пространство'
+    return
   }
+  router.push(route.query.redirect || { name: 'calendar' })
 }
 </script>
 

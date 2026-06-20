@@ -20,11 +20,30 @@
 
           <div class="command-palette__list">
             <button
+              v-if="smartSuggestion"
+              type="button"
+              class="command-palette__smart"
+              :class="{ active: activeIndex === 0 }"
+              @mouseenter="activeIndex = 0"
+              @click="createSmartEvent"
+            >
+              <span>✦</span>
+              <span>
+                <strong>Создать «{{ smartSuggestion.title }}»</strong>
+                <small>
+                  {{ smartSuggestion.preview.dateLabel }} · {{ smartSuggestion.preview.timeLabel }}
+                  <template v-if="smartSuggestion.preview.categoryLabel"> · {{ smartSuggestion.preview.categoryLabel }}</template>
+                  <template v-if="smartSuggestion.preview.memberLabel"> · {{ smartSuggestion.preview.memberLabel }}</template>
+                </small>
+              </span>
+              <kbd>Enter</kbd>
+            </button>
+            <button
               v-for="(command, index) in filteredCommands"
               :key="command.id"
               type="button"
-              :class="{ active: index === activeIndex }"
-              @mouseenter="activeIndex = index"
+              :class="{ active: index + smartOffset === activeIndex }"
+              @mouseenter="activeIndex = index + smartOffset"
               @click="run(command)"
             >
               <span>{{ command.icon }}</span>
@@ -34,7 +53,7 @@
               </span>
               <kbd v-if="command.shortcut">{{ command.shortcut }}</kbd>
             </button>
-            <p v-if="!filteredCommands.length">Ничего не найдено</p>
+            <p v-if="!filteredCommands.length && !smartSuggestion">Ничего не найдено</p>
           </div>
         </section>
       </div>
@@ -48,11 +67,13 @@ import { computed, nextTick, ref, watch } from 'vue'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   commands: { type: Array, default: () => [] },
+  smartSuggestion: { type: Object, default: null },
 })
-const emit = defineEmits(['update:modelValue', 'run'])
+const emit = defineEmits(['update:modelValue', 'run', 'query-change', 'smart-create'])
 const inputRef = ref(null)
 const query = ref('')
 const activeIndex = ref(0)
+const smartOffset = computed(() => props.smartSuggestion ? 1 : 0)
 const filteredCommands = computed(() => {
   const needle = query.value.trim().toLowerCase()
   if (!needle) return props.commands
@@ -69,22 +90,38 @@ watch(() => props.modelValue, async (open) => {
   inputRef.value?.focus()
 })
 
+watch(query, (value) => emit('query-change', value))
+
 watch(filteredCommands, () => {
   activeIndex.value = 0
 })
 
+watch(() => props.smartSuggestion, () => {
+  activeIndex.value = 0
+})
+
 function move(delta) {
-  if (!filteredCommands.value.length) return
-  activeIndex.value = (activeIndex.value + delta + filteredCommands.value.length) % filteredCommands.value.length
+  const count = filteredCommands.value.length + smartOffset.value
+  if (!count) return
+  activeIndex.value = (activeIndex.value + delta + count) % count
 }
 
 function runActive() {
-  const command = filteredCommands.value[activeIndex.value]
+  if (props.smartSuggestion && activeIndex.value === 0) {
+    createSmartEvent()
+    return
+  }
+  const command = filteredCommands.value[activeIndex.value - smartOffset.value]
   if (command) run(command)
 }
 
 function run(command) {
   emit('run', command)
+  close()
+}
+
+function createSmartEvent() {
+  emit('smart-create', props.smartSuggestion)
   close()
 }
 
@@ -168,6 +205,15 @@ function close() {
   border-color: var(--border-strong);
   color: var(--text-primary);
   background: var(--control-bg-hover);
+}
+
+.command-palette__smart {
+  border-color: color-mix(in srgb, var(--success) 25%, var(--border-color)) !important;
+  background: color-mix(in srgb, var(--success) 7%, transparent) !important;
+}
+
+.command-palette__smart > span:first-child {
+  color: var(--success);
 }
 
 .command-palette__list button > span:first-child {

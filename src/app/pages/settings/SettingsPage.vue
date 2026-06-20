@@ -136,7 +136,7 @@
         icon="↓"
         eyebrow="Хранилище"
         title="Резервная копия и данные"
-        description="Экспортируй данные перед переносом устройства или крупными изменениями."
+        description="Общие данные синхронизируются с Supabase, а JSON остаётся резервной копией."
         tone="warning"
       >
         <div class="storage-summary">
@@ -158,12 +158,13 @@
             </UiSelect>
           </label>
           <p :class="{ warning: isWarning }">
-            {{ isWarning ? 'Хранилище почти заполнено — рекомендуем экспортировать JSON.' : 'Данные хранятся локально только на этом устройстве.' }}
+            {{ isWarning ? 'Хранилище почти заполнено — рекомендуем экспортировать JSON.' : 'События и общие разделы синхронизируются с Supabase.' }}
           </p>
         </div>
 
         <template #actions>
           <UiButton icon="↓" @click="exportAll">Экспорт JSON</UiButton>
+          <UiButton variant="secondary" @click="migrateLocalData">Перенести старые данные в Supabase</UiButton>
           <label class="upload-button">
             <input type="file" accept="application/json" @change="handleImport" />
             Импорт JSON
@@ -193,6 +194,7 @@ import { useStorageQuota } from '../../composables/storage/useStorageQuota.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
+import { migrateLocalDataToSupabase } from '../../services/backend/localDataMigration.service.js'
 
 const router = useRouter()
 const { notify } = useNotification()
@@ -219,13 +221,13 @@ watch(currentUser, (user) => {
   accountForm.color = user?.color || '#ffffff'
 }, { immediate: true })
 
-function saveAccount() {
-  authStore.updateCurrentUser({ ...accountForm })
-  notify('Профиль обновлён', 'success')
+async function saveAccount() {
+  const result = await authStore.updateCurrentUser({ ...accountForm })
+  notify(result.ok ? 'Профиль обновлён' : result.message, result.ok ? 'success' : 'danger')
 }
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  await authStore.logout()
   router.push({ name: 'login' })
 }
 
@@ -245,6 +247,14 @@ async function toggleLocalReminders() {
   }
   const result = await enableLocalReminders()
   notify(result.message, result.ok ? 'success' : 'warning')
+}
+
+async function migrateLocalData() {
+  const result = await migrateLocalDataToSupabase()
+  notify(
+    result.ok ? `Перенесено записей: ${result.total}` : result.message,
+    result.ok ? 'success' : 'danger'
+  )
 }
 
 async function handleImport(event) {
