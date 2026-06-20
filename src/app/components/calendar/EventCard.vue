@@ -2,7 +2,7 @@
   <article
     class="event-card"
     :class="[`event-card--${event.importance || 'normal'}`]"
-    :style="{ '--event-color': accent }"
+    :style="{ '--event-color': calendarColor || accent }"
     draggable="true"
     @dragstart="handleDragStart"
     @dblclick="$emit('edit', event)"
@@ -28,6 +28,7 @@ import { computed } from 'vue'
 import { formatTimeRange } from '../../utils/formatters/dateFormatter.js'
 import { getCategoryMeta, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { IMPORTANCE_OPTIONS } from '../../utils/constants/calendarConstants.js'
+import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const props = defineProps({
   event: { type: Object, required: true },
@@ -39,9 +40,10 @@ defineEmits(['edit'])
 const accent = computed(() => getEventAccent(props.event.memberIds, props.members))
 const category = computed(() => getCategoryMeta(props.event.category))
 const importanceIcon = computed(() => IMPORTANCE_OPTIONS.find((item) => item.value === props.event.importance)?.icon || '')
+const calendarColor = computed(() => calendarCollectionStore.getCollection(props.event.calendarId)?.color || '')
 
 function handleDragStart(dragEvent) {
-  dragEvent.dataTransfer.effectAllowed = 'move'
+  dragEvent.dataTransfer.effectAllowed = 'copyMove'
   dragEvent.dataTransfer.setData('text/calendar-event-id', props.event.id)
   dragEvent.dataTransfer.setData('text/plain', props.event.id)
 }

@@ -63,6 +63,15 @@
             </label>
           </div>
 
+          <label class="event-drawer__select">
+            <span>Календарь</span>
+            <UiSelect v-model="form.calendarId">
+              <option v-for="calendar in calendars" :key="calendar.id" :value="calendar.id">
+                {{ calendar.name }}
+              </option>
+            </UiSelect>
+          </label>
+
           <div class="event-drawer__grid">
             <label class="event-drawer__select">
               <span>Важность</span>
@@ -175,6 +184,49 @@
             </div>
           </section>
 
+          <section class="event-drawer__collaboration card">
+            <div class="event-drawer__collaboration-head">
+              <div>
+                <span>Совместная работа</span>
+                <small>Ответственный, участие и комментарии</small>
+              </div>
+            </div>
+
+            <label class="event-drawer__select">
+              <span>Ответственный</span>
+              <UiSelect v-model="form.responsibleId">
+                <option value="">Не назначен</option>
+                <option v-for="member in members" :key="member.id" :value="member.id">{{ member.name }}</option>
+              </UiSelect>
+            </label>
+
+            <div v-if="editingEvent" class="event-drawer__responses">
+              <span>Моё участие</span>
+              <div>
+                <button
+                  v-for="response in RESPONSE_OPTIONS"
+                  :key="response.value"
+                  type="button"
+                  :class="{ active: form.attendeeResponses[currentUserId] === response.value }"
+                  @click="setResponse(response.value)"
+                >
+                  {{ response.label }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="editingEvent" class="event-drawer__comments">
+              <article v-for="comment in form.comments" :key="comment.id">
+                <strong>{{ comment.userName }}</strong>
+                <p>{{ comment.text }}</p>
+              </article>
+              <div>
+                <UiInput v-model="commentText" placeholder="Добавить комментарий…" @keydown.enter.prevent="addComment" />
+                <UiButton type="button" variant="secondary" @click="addComment">Отправить</UiButton>
+              </div>
+            </div>
+          </section>
+
           <section v-if="editingEvent" class="event-drawer__duplicate card">
             <span>Дублирование</span>
             <div class="event-drawer__duplicate-row">
@@ -228,12 +280,16 @@ import {
 } from '../../utils/constants/calendarConstants.js'
 import { toDateKey } from '../../utils/formatters/dateFormatter.js'
 import { validateEvent } from '../../utils/validators/calendarValidator.js'
+import { authStore } from '../../stores/auth.store.js'
+import { generateId } from '../../utils/helpers/idGenerator.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   editingEvent: { type: Object, default: null },
   selectedDateKey: { type: String, default: '' },
+  initialStartTime: { type: String, default: '' },
   members: { type: Array, default: () => [] },
+  calendars: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'duplicate'])
@@ -243,6 +299,13 @@ const errors = reactive({})
 const form = reactive(getEmptyForm())
 const duplicateMode = ref('tomorrow')
 const duplicateDatesInput = ref('')
+const commentText = ref('')
+const currentUserId = authStore.currentUserId
+const RESPONSE_OPTIONS = [
+  { value: 'accepted', label: 'Буду' },
+  { value: 'maybe', label: 'Возможно' },
+  { value: 'declined', label: 'Не смогу' },
+]
 
 watch(
   () => props.modelValue,
@@ -321,8 +384,33 @@ function applyTemplate(template) {
 function resetForm() {
   Object.keys(errors).forEach((key) => delete errors[key])
   Object.assign(form, getEmptyForm(props.selectedDateKey), props.editingEvent ? normalizeIncomingEvent(props.editingEvent) : {})
+  if (!props.editingEvent && props.initialStartTime) {
+    form.startTime = props.initialStartTime
+    form.endTime = addMinutesToTime(props.initialStartTime, 60)
+  }
   duplicateMode.value = 'tomorrow'
   duplicateDatesInput.value = ''
+  commentText.value = ''
+}
+
+function setResponse(response) {
+  form.attendeeResponses = { ...form.attendeeResponses, [currentUserId.value]: response }
+}
+
+function addComment() {
+  const text = commentText.value.trim()
+  if (!text) return
+  form.comments = [
+    ...form.comments,
+    {
+      id: generateId(),
+      userId: currentUserId.value,
+      userName: authStore.currentUser.value?.name || 'Пользователь',
+      text,
+      createdAt: new Date().toISOString(),
+    },
+  ]
+  commentText.value = ''
 }
 
 function normalizeIncomingEvent(event) {
@@ -345,6 +433,10 @@ function getEmptyForm(date = '') {
     startTime: '09:00',
     endTime: '10:00',
     memberIds: [],
+    calendarId: props.calendars[0]?.id || '',
+    responsibleId: '',
+    attendeeResponses: {},
+    comments: [],
     category: 'home',
     location: '',
     notes: '',
@@ -438,10 +530,71 @@ function addMinutesToTime(time, minutes) {
 
 .event-drawer__templates,
 .event-drawer__duplicate,
-.event-drawer__repeat {
+.event-drawer__repeat,
+.event-drawer__collaboration {
   display: grid;
   gap: 8px;
   padding: 10px;
+}
+
+.event-drawer__collaboration-head span,
+.event-drawer__responses > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.event-drawer__collaboration-head small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.event-drawer__responses {
+  display: grid;
+  gap: 6px;
+}
+
+.event-drawer__responses > div {
+  display: flex;
+  gap: 6px;
+}
+
+.event-drawer__responses button {
+  min-height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  font-size: 11px;
+}
+
+.event-drawer__responses button.active {
+  color: var(--text-inverse);
+  background: var(--accent);
+}
+
+.event-drawer__comments {
+  display: grid;
+  gap: 6px;
+}
+
+.event-drawer__comments article {
+  border-left: 2px solid var(--accent-border);
+  padding-left: 8px;
+}
+
+.event-drawer__comments article p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.event-drawer__comments > div:last-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: end;
 }
 
 .event-drawer__templates div,

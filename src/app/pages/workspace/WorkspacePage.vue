@@ -76,6 +76,41 @@
       </SettingsSectionCard>
 
       <SettingsSectionCard
+        icon="◈"
+        eyebrow="Календари"
+        title="Цветные слои"
+        description="Разделяй семейные, личные, рабочие и спортивные события."
+        tone="warning"
+      >
+        <div class="calendar-list">
+          <article v-for="calendar in calendars" :key="calendar.id">
+            <button
+              type="button"
+              class="calendar-list__visibility"
+              :class="{ muted: !calendar.visible }"
+              :style="{ '--calendar-color': calendar.color }"
+              @click="calendarCollectionStore.toggleCollection(calendar.id)"
+            />
+            <input
+              :value="calendar.name"
+              @change="calendarCollectionStore.updateCollection(calendar.id, { name: $event.target.value })"
+            />
+            <input
+              :value="calendar.color"
+              type="color"
+              @input="calendarCollectionStore.updateCollection(calendar.id, { color: $event.target.value })"
+            />
+            <button type="button" @click="removeCalendar(calendar.id)">Удалить</button>
+          </article>
+        </div>
+        <div class="calendar-create">
+          <UiInput v-model="newCalendarName" label="Новый календарь" placeholder="Например: Учёба" />
+          <input v-model="newCalendarColor" type="color" aria-label="Цвет календаря" />
+          <UiButton variant="secondary" @click="createCalendar">Добавить</UiButton>
+        </div>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
         icon="+"
         eyebrow="Доступ"
         title="Приглашения"
@@ -133,6 +168,7 @@ import UiSelect from '../../components/ui/UiSelect.vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
+import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const { notify } = useNotification()
 const { workspaceActivity } = useActivityLog()
@@ -143,15 +179,20 @@ const activeWorkspaceInvites = workspaceStore.activeWorkspaceInvites
 const currentUserRole = computed(() => workspaceStore.getCurrentUserRole())
 const canManageRoles = computed(() => currentUserRole.value === 'owner')
 const recentActivity = computed(() => workspaceActivity.value.slice(0, 12))
+calendarCollectionStore.ensureWorkspaceCollections()
+const calendars = calendarCollectionStore.activeCollections
 
 const workspaceName = ref('')
 const newWorkspaceName = ref('')
 const inviteEmail = ref('')
 const joinCode = ref('')
 const lastInviteCode = ref('')
+const newCalendarName = ref('')
+const newCalendarColor = ref('#60a5fa')
 
 watch(activeWorkspace, (workspace) => {
   workspaceName.value = workspace?.name || ''
+  calendarCollectionStore.ensureWorkspaceCollections()
 }, { immediate: true })
 
 function switchWorkspace(workspaceId) {
@@ -201,6 +242,18 @@ function acceptInvite() {
   if (!result.ok) return notify(result.message, 'danger')
   joinCode.value = ''
   notify('Вы присоединились к пространству', 'success')
+}
+
+function createCalendar() {
+  const calendar = calendarCollectionStore.addCollection(newCalendarName.value, newCalendarColor.value)
+  if (!calendar) return notify('Укажи название календаря', 'warning')
+  newCalendarName.value = ''
+  notify('Календарь добавлен', 'success')
+}
+
+function removeCalendar(id) {
+  const removed = calendarCollectionStore.removeCollection(id)
+  notify(removed ? 'Календарь удалён' : 'Нельзя удалить последний календарь', removed ? 'success' : 'warning')
 }
 
 function roleLabel(role) {
@@ -344,6 +397,67 @@ function formatActivityDate(value) {
   gap: 9px;
 }
 
+.calendar-list {
+  display: grid;
+  gap: 7px;
+}
+
+.calendar-list article {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 40px auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 7px;
+  background: var(--card-soft);
+}
+
+.calendar-list__visibility {
+  width: 24px;
+  height: 24px;
+  border: 6px solid color-mix(in srgb, var(--calendar-color) 20%, transparent);
+  border-radius: 50%;
+  background: var(--calendar-color);
+}
+
+.calendar-list__visibility.muted {
+  opacity: 0.28;
+}
+
+.calendar-list input:not([type='color']) {
+  min-width: 0;
+  border: 0;
+  color: var(--text-primary);
+  background: transparent;
+  outline: 0;
+}
+
+.calendar-list input[type='color'],
+.calendar-create input[type='color'] {
+  width: 38px;
+  height: 34px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--control-bg);
+}
+
+.calendar-list article > button:last-child {
+  border: 0;
+  color: var(--danger);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.calendar-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 8px;
+}
+
 .invite-card {
   display: grid;
   align-content: start;
@@ -438,7 +552,9 @@ function formatActivityDate(value) {
   }
 
   .invite-grid,
-  .member-card {
+  .member-card,
+  .calendar-list article,
+  .calendar-create {
     grid-template-columns: 1fr;
   }
 }

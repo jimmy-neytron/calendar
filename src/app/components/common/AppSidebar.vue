@@ -17,6 +17,7 @@
 const items = [
   { name: 'calendar', label: 'Календарь', icon: '📅' },
   { name: 'sport', label: 'Спорт', icon: '🏋️' },
+  { name: 'analytics', label: 'Аналитика', icon: '▥' },
   { name: 'workspace', label: 'Команда', icon: '◇' },
   { name: 'settings', label: 'Настройки', icon: '⚙️' },
 ]

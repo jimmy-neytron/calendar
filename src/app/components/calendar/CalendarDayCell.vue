@@ -24,7 +24,7 @@
         v-for="event in visibleEvents"
         :key="event.id"
         class="calendar-day__event"
-        :style="{ '--event-color': getEventAccent(event.memberIds, members) }"
+        :style="{ '--event-color': getEventColor(event) }"
         draggable="true"
         @dragstart.stop="handleDragStart(event, $event)"
         @click.stop="$emit('edit-event', event)"
@@ -40,6 +40,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { getEventAccent } from '../../utils/formatters/calendarFormatter.js'
+import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const props = defineProps({
   day: { type: Object, required: true },
@@ -55,7 +56,7 @@ const visibleEvents = computed(() => props.events.slice(0, 3))
 const hiddenCount = computed(() => Math.max(0, props.events.length - visibleEvents.value.length))
 
 function handleDragStart(event, dragEvent) {
-  dragEvent.dataTransfer.effectAllowed = 'move'
+  dragEvent.dataTransfer.effectAllowed = 'copyMove'
   dragEvent.dataTransfer.setData('text/calendar-event-id', event.id)
   dragEvent.dataTransfer.setData('text/plain', event.id)
 }
@@ -64,7 +65,11 @@ function handleDrop(dropEvent) {
   isDragOver.value = false
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
-  emit('move-event', { eventId, date: props.day.key })
+  emit('move-event', { eventId, date: props.day.key, copy: dropEvent.altKey })
+}
+
+function getEventColor(event) {
+  return calendarCollectionStore.getCollection(event.calendarId)?.color || getEventAccent(event.memberIds, props.members)
 }
 </script>
 

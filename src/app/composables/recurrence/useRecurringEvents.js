@@ -78,6 +78,8 @@ function getNextOccurrenceDate(date, event) {
   if (event.repeat === 'weekly') return DateHelper.addDays(date, 7)
   if (event.repeat === 'biweekly') return DateHelper.addDays(date, 14)
   if (event.repeat === 'monthly') return DateHelper.addMonths(date, 1)
+  if (event.repeat === 'monthly-nth-weekday') return getNthWeekdayNextMonth(date, event.date)
+  if (event.repeat === 'monthly-last-weekday') return getLastWeekdayNextMonth(date, event.date)
   if (event.repeat === 'yearly') return DateHelper.addYears(date, 1)
 
   if (event.repeat === 'custom') {
@@ -88,4 +90,28 @@ function getNextOccurrenceDate(date, event) {
   }
 
   return DateHelper.addDays(date, 1)
+}
+
+function getNthWeekdayNextMonth(currentDate, sourceKey) {
+  const source = DateHelper.parseKey(sourceKey)
+  const weekday = source.getDay()
+  const occurrence = Math.ceil(source.getDate() / 7)
+  const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+  const offset = (weekday - nextMonth.getDay() + 7) % 7
+  const day = 1 + offset + (occurrence - 1) * 7
+  const candidate = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day)
+  if (candidate.getMonth() !== nextMonth.getMonth()) return getLastWeekdayInMonth(nextMonth, weekday)
+  return candidate
+}
+
+function getLastWeekdayNextMonth(currentDate, sourceKey) {
+  const source = DateHelper.parseKey(sourceKey)
+  const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+  return getLastWeekdayInMonth(nextMonth, source.getDay())
+}
+
+function getLastWeekdayInMonth(monthDate, weekday) {
+  const last = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0)
+  const offset = (last.getDay() - weekday + 7) % 7
+  return new Date(last.getFullYear(), last.getMonth(), last.getDate() - offset)
 }

@@ -31,6 +31,8 @@ export const REPEAT_OPTIONS = [
   { value: 'weekly', label: 'Каждую неделю' },
   { value: 'biweekly', label: 'Через неделю' },
   { value: 'monthly', label: 'Каждый месяц' },
+  { value: 'monthly-nth-weekday', label: 'В этот по счёту день недели месяца' },
+  { value: 'monthly-last-weekday', label: 'В последний такой день недели месяца' },
   { value: 'yearly', label: 'Каждый год' },
   { value: 'custom', label: 'Свой вариант' },
 ]
@@ -118,6 +120,7 @@ export const EVENT_TEMPLATES = [
 
 export const DEFAULT_FILTERS = {
   search: '',
+  calendarId: 'all',
   category: 'all',
   memberId: 'all',
   importance: 'all',

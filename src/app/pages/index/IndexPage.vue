@@ -4,6 +4,7 @@
       <CalendarFilters
         :filters="filters"
         :members="members"
+        :calendars="calendars"
         @update-filter="updateFilter"
         @reset="resetFilters"
       />
@@ -34,9 +35,11 @@
       :selected-date-key="selectedDateKey"
       :selected-events="selectedEvents"
       :members="members"
+      :calendars="calendars"
       :reminders="upcomingReminders"
       @create-event="createEvent"
       @edit-event="editEvent"
+      @quick-create="quickCreateAt"
     />
 
     <EventDrawer
@@ -44,6 +47,8 @@
       :editing-event="editingEvent"
       :selected-date-key="selectedDateKey"
       :members="members"
+      :calendars="calendars"
+      :initial-start-time="quickStartTime"
       @create="handleCreateEvent"
       @update="handleUpdateEvent"
       @delete="handleDeleteEvent"
@@ -68,6 +73,7 @@ import { useCalendarPreferences } from '../../composables/preferences/useCalenda
 import { CALENDAR_MODES, DEFAULT_FILTERS } from '../../utils/constants/calendarConstants.js'
 import { groupEventsByDate } from '../../stores/calendar.store.js'
 import { authStore } from '../../stores/auth.store.js'
+import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const props = defineProps({
   forceCreateToken: { type: Number, default: 0 },
@@ -76,6 +82,9 @@ const emit = defineEmits(['view-mode-change'])
 
 const route = useRoute()
 const { defaultMode } = useCalendarPreferences()
+calendarCollectionStore.ensureWorkspaceCollections()
+const calendars = calendarCollectionStore.activeCollections
+const visibleCalendarIds = calendarCollectionStore.visibleCollectionIds
 
 const {
   selectedDateKey,
@@ -98,6 +107,7 @@ const { notify } = useNotification()
 const { isOpen: isEventDrawerOpen, open: openEventDrawer, close: closeEventDrawer } = useModal(false)
 
 const editingEvent = ref(null)
+const quickStartTime = ref('')
 const filters = reactive({ ...DEFAULT_FILTERS })
 const selectedEvents = computed(() => filteredEventsByDate.value[selectedDateKey.value] || [])
 const filteredEvents = computed(() => sortedEvents.value.filter(matchesFilters))
@@ -109,6 +119,13 @@ function toggleDayMonthView() {
 
 const createEvent = () => {
   editingEvent.value = null
+  quickStartTime.value = ''
+  openEventDrawer()
+}
+
+const quickCreateAt = (time) => {
+  editingEvent.value = null
+  quickStartTime.value = time
   openEventDrawer()
 }
 
@@ -143,14 +160,32 @@ const handleDeleteEvent = (id) => {
   closeEventDrawer()
 }
 
-const handleMoveEvent = ({ eventId, date, time }) => {
+const handleMoveEvent = ({ eventId, date, time, copy }) => {
+  if (copy) {
+    const duplicated = duplicateEvent(eventId, 'custom-dates', [date])
+    notify(duplicated.ok ? 'Событие скопировано' : 'Не удалось скопировать событие', duplicated.ok ? 'success' : 'danger')
+    return
+  }
+  const original = events.value.find((event) => event.id === String(eventId).split('::')[0])
   const result = moveEvent(eventId, date, time)
   if (!result.ok) {
     notify('Не удалось перенести событие', 'danger')
     return
   }
   selectDate(date)
-  notify(time ? `Событие перенесено на ${date} в ${time}` : `Событие перенесено на ${date}`, 'success')
+  notify(
+    time ? `Событие перенесено на ${date} в ${time}` : `Событие перенесено на ${date}`,
+    'success',
+    original ? {
+      actionLabel: 'Отменить',
+      action: () => moveEvent(original.id, original.date, original.startTime || null),
+    } : {}
+  )
+}
+
+const editEventById = (eventId) => {
+  const event = sortedEvents.value.find((item) => item.id === eventId || item.parentId === eventId)
+  if (event) editEvent(event)
 }
 
 const handleResizeEvent = ({ eventId, minutesDelta }) => {
@@ -180,6 +215,9 @@ function resetFilters() {
 }
 
 function matchesFilters(event) {
+  if (!visibleCalendarIds.value.includes(event.calendarId) && event.calendarId) return false
+  if (filters.calendarId !== 'all' && event.calendarId !== filters.calendarId) return false
+
   const query = filters.search.trim().toLowerCase()
   if (query) {
     const source = [event.title, event.location, event.notes].join(' ').toLowerCase()
@@ -196,6 +234,11 @@ function matchesFilters(event) {
   }
 
   return true
+}
+
+function setViewMode(nextMode) {
+  if (!Object.values(CALENDAR_MODES).includes(nextMode)) return
+  mode.value = nextMode
 }
 
 watch(
@@ -226,6 +269,8 @@ defineExpose({
   createEvent,
   enableDayMode,
   toggleDayMonthView,
+  setViewMode,
+  editEventById,
 })
 </script>
 

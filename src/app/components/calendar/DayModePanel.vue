@@ -49,7 +49,7 @@
                 v-for="event in getEventsForHour(hour)"
                 :key="event.id"
                 class="day-mode__event"
-                :style="{ '--event-color': getEventAccent(event.memberIds, members) }"
+                :style="{ '--event-color': getEventColor(event) }"
                 draggable="true"
                 @dragstart="handleDragStart(event, $event)"
                 @dblclick="$emit('edit-event', event)"
@@ -81,6 +81,7 @@ import EventCard from './EventCard.vue'
 import { DAY_TIMELINE_HOURS } from '../../utils/constants/calendarConstants.js'
 import { formatDateShort, formatTimeRange, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventMembers, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
+import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const props = defineProps({
   selectedDateKey: { type: String, required: true },
@@ -115,7 +116,7 @@ function formatHour(hour) {
 }
 
 function handleDragStart(event, dragEvent) {
-  dragEvent.dataTransfer.effectAllowed = 'move'
+  dragEvent.dataTransfer.effectAllowed = 'copyMove'
   dragEvent.dataTransfer.setData('text/calendar-event-id', event.id)
   dragEvent.dataTransfer.setData('text/plain', event.id)
 }
@@ -123,13 +124,17 @@ function handleDragStart(event, dragEvent) {
 function handleDayDrop(dropEvent) {
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
-  emit('move-event', { eventId, date: props.selectedDateKey })
+  emit('move-event', { eventId, date: props.selectedDateKey, copy: dropEvent.altKey })
 }
 
 function handleHourDrop(hour, dropEvent) {
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
-  emit('move-event', { eventId, date: props.selectedDateKey, time: `${String(hour).padStart(2, '0')}:00` })
+  emit('move-event', { eventId, date: props.selectedDateKey, time: `${String(hour).padStart(2, '0')}:00`, copy: dropEvent.altKey })
+}
+
+function getEventColor(event) {
+  return calendarCollectionStore.getCollection(event.calendarId)?.color || getEventAccent(event.memberIds, props.members)
 }
 
 function pluralize(value, words) {

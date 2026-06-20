@@ -6,6 +6,7 @@ const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
+const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 
 export const routes = [
@@ -14,6 +15,7 @@ export const routes = [
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
+  { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/' },

@@ -11,6 +11,15 @@
 
     <div class="calendar-filters__row">
       <label>
+        <span>Календарь</span>
+        <UiSelect :model-value="filters.calendarId" compact @update:model-value="update('calendarId', $event)">
+          <option value="all">Все календари</option>
+          <option v-for="calendar in calendars" :key="calendar.id" :value="calendar.id">
+            {{ calendar.name }}
+          </option>
+        </UiSelect>
+      </label>
+      <label>
         <span>Категория</span>
         <UiSelect :model-value="filters.category" compact @update:model-value="update('category', $event)">
           <option v-for="category in categories" :key="category.value" :value="category.value">
@@ -58,6 +67,7 @@ import { EVENT_CATEGORIES, IMPORTANCE_OPTIONS } from '../../utils/constants/cale
 defineProps({
   filters: { type: Object, required: true },
   members: { type: Array, default: () => [] },
+  calendars: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update-filter', 'reset'])
@@ -93,7 +103,7 @@ function update(key, value) {
 
 .calendar-filters__row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 0.9fr auto auto;
+  grid-template-columns: repeat(4, minmax(120px, 1fr)) auto auto;
   gap: 8px;
   align-items: end;
 }

@@ -6,3 +6,7 @@ import './assets/styles/animations.css'
 import './assets/styles/main.css'
 
 createApp(App).use(router).mount('#app')
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))
+}

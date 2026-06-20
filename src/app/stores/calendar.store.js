@@ -10,6 +10,8 @@ import { useRecurringEvents } from '../composables/recurrence/useRecurringEvents
 import { useActivityLog } from '../composables/history/useActivityLog.js'
 import { workspaceStore } from './workspace.store.js'
 import { notificationStore } from './notification.store.js'
+import { calendarCollectionStore } from './calendarCollection.store.js'
+import { authStore } from './auth.store.js'
 
 const STORAGE_KEY = `${APP_CONFIG.storageKey}:events`
 const defaultWorkspaceEvents = defaultEvents.map((event) => ({
@@ -34,6 +36,7 @@ const eventsByDate = computed(() => groupEventsByDate(sortedEvents.value))
 const upcomingReminders = computed(() => getUpcomingReminders(sortedEvents.value))
 
 const addEvent = (data) => {
+  calendarCollectionStore.ensureWorkspaceCollections()
   const now = new Date().toISOString()
   const event = normalizeEvent({
     ...data,
@@ -163,6 +166,8 @@ export const calendarStore = {
   moveEvent,
   resizeEvent,
   duplicateEvent,
+  addComment,
+  respondToEvent,
   getEventsForDate,
 }
 
@@ -175,6 +180,7 @@ export function groupEventsByDate(items) {
 }
 
 function normalizeEvent(data) {
+  const fallbackCalendar = calendarCollectionStore.activeCollections.value[0]
   return {
     id: data.id,
     workspaceId: data.workspaceId || workspaceStore.activeWorkspaceId.value || 'space-family',
@@ -183,6 +189,12 @@ function normalizeEvent(data) {
     startTime: data.allDay ? '' : data.startTime || '',
     endTime: data.allDay ? '' : data.endTime || '',
     memberIds: Array.isArray(data.memberIds) ? data.memberIds : [],
+    calendarId: data.calendarId || fallbackCalendar?.id || '',
+    responsibleId: data.responsibleId || '',
+    attendeeResponses: data.attendeeResponses && typeof data.attendeeResponses === 'object'
+      ? data.attendeeResponses
+      : {},
+    comments: Array.isArray(data.comments) ? data.comments : [],
     category: data.category || 'other',
     location: data.location || '',
     notes: data.notes || '',
@@ -199,6 +211,35 @@ function normalizeEvent(data) {
     createdAt: data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt || new Date().toISOString(),
   }
+}
+
+function addComment(id, text) {
+  const eventId = String(id).split('::')[0]
+  const target = eventRepository.findById(eventId)
+  const message = String(text || '').trim()
+  if (!target || !message) return { ok: false }
+  const user = authStore.currentUser.value
+  const comments = [
+    ...(target.comments || []),
+    {
+      id: generateId(),
+      userId: user?.id || null,
+      userName: user?.name || 'Пользователь',
+      text: message,
+      createdAt: new Date().toISOString(),
+    },
+  ]
+  return updateEvent(eventId, { comments })
+}
+
+function respondToEvent(id, response) {
+  const eventId = String(id).split('::')[0]
+  const target = eventRepository.findById(eventId)
+  const userId = authStore.currentUserId.value
+  if (!target || !userId || !['accepted', 'maybe', 'declined'].includes(response)) return { ok: false }
+  return updateEvent(eventId, {
+    attendeeResponses: { ...(target.attendeeResponses || {}), [userId]: response },
+  })
 }
 
 function compareEvents(firstEvent, secondEvent) {

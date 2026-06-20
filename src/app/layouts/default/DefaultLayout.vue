@@ -30,6 +30,23 @@
       </AppContainer>
     </div>
 
+    <button
+      v-if="route.name === 'calendar'"
+      class="quick-create"
+      type="button"
+      title="Новое событие (N)"
+      @click="openEventDrawer"
+    >
+      <span>＋</span>
+      <b>Событие</b>
+    </button>
+
+    <CommandPalette
+      v-model="isCommandPaletteOpen"
+      :commands="commands"
+      @run="runCommand"
+    />
+
     <div class="toast-stack">
       <transition-group name="list">
         <div
@@ -39,6 +56,13 @@
           :class="`toast--${notification.type}`"
         >
           {{ notification.message }}
+          <button
+            v-if="notification.action"
+            type="button"
+            @click="runNotificationAction(notification)"
+          >
+            {{ notification.actionLabel || 'Отменить' }}
+          </button>
         </div>
       </transition-group>
     </div>
@@ -46,28 +70,50 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppContainer from '../../components/common/AppContainer.vue'
 import AppHeader from '../../components/common/AppHeader.vue'
 import AppSidebar from '../../components/common/AppSidebar.vue'
+import CommandPalette from '../../components/common/CommandPalette.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
+import { calendarStore } from '../../stores/calendar.store.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
+import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 
 const route = useRoute()
 const router = useRouter()
 const activePageRef = ref(null)
 const createToken = ref(0)
 const calendarViewMode = ref('month')
-const { notifications } = useNotification()
+const isCommandPaletteOpen = ref(false)
+const { notifications, dismiss } = useNotification()
 const { runDailyAutoBackup } = useAutoBackup()
+const { start: startLocalReminders, stop: stopLocalReminders } = useLocalReminders()
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const isAuthRoute = computed(() => route.name === 'login')
+const commands = computed(() => [
+  { id: 'new-event', label: 'Новое событие', description: 'Открыть быстрое создание', icon: '＋', shortcut: 'N', action: openEventDrawer },
+  { id: 'today', label: 'Перейти к сегодня', description: 'Вернуть календарь к текущей дате', icon: '◎', shortcut: 'T', action: goCalendarToday },
+  { id: 'month', label: 'Режим месяца', description: 'Показать сетку месяца', icon: '▦', shortcut: 'M', action: () => setCalendarMode('month') },
+  { id: 'week', label: 'Режим недели', description: 'Показать неделю', icon: '▤', shortcut: 'W', action: () => setCalendarMode('week') },
+  { id: 'day', label: 'Режим дня', description: 'Показать расписание дня', icon: '◫', shortcut: 'D', action: () => setCalendarMode('day') },
+  { id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) },
+  { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
+  { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
+  ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
+    id: `event-${event.id}`,
+    label: event.title,
+    description: `${event.date}${event.startTime ? ` · ${event.startTime}` : ''}`,
+    icon: '•',
+    action: () => openEventById(event.id),
+  })),
+])
 
 const goToCalendar = async (query = {}) => {
   await router.push({ name: 'calendar', query })
@@ -79,14 +125,72 @@ const goCalendarToday = async () => {
   activePageRef.value?.goToday?.()
 }
 
+const openEventDrawer = async () => {
+  if (route.name !== 'calendar') await goToCalendar()
+  createToken.value += 1
+}
+
+const setCalendarMode = async (mode) => {
+  if (route.name !== 'calendar') await goToCalendar()
+  await nextTick()
+  activePageRef.value?.setViewMode?.(mode)
+}
+
+const openEventById = async (eventId) => {
+  if (route.name !== 'calendar') await goToCalendar()
+  await nextTick()
+  activePageRef.value?.editEventById?.(eventId)
+}
+
 const toggleCalendarView = async () => {
   if (route.name !== 'calendar') await goToCalendar()
   await nextTick()
   activePageRef.value?.toggleDayMonthView?.()
 }
 
+function runCommand(command) {
+  command.action?.()
+}
+
+function runNotificationAction(notification) {
+  notification.action?.()
+  dismiss(notification.id)
+}
+
+function handleGlobalKeydown(event) {
+  const target = event.target
+  const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    isCommandPaletteOpen.value = !isCommandPaletteOpen.value
+    return
+  }
+
+  if (event.key === '/' && !isTyping) {
+    event.preventDefault()
+    isCommandPaletteOpen.value = true
+    return
+  }
+
+  if (isTyping || event.ctrlKey || event.metaKey || event.altKey) return
+  const key = event.key.toLowerCase()
+  if (key === 'n') openEventDrawer()
+  if (key === 't') goCalendarToday()
+  if (key === 'm') setCalendarMode('month')
+  if (key === 'w') setCalendarMode('week')
+  if (key === 'd') setCalendarMode('day')
+}
+
 onMounted(() => {
   runDailyAutoBackup()
+  startLocalReminders()
+  document.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
+  stopLocalReminders()
 })
 </script>
 
@@ -124,10 +228,54 @@ onMounted(() => {
 .toast--info { border-color: var(--accent-border); }
 .toast--warning { border-color: rgba(234, 179, 8, 0.35); }
 
+.quick-create {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill);
+  padding: 0 15px 0 11px;
+  color: var(--text-inverse);
+  background: var(--accent);
+  box-shadow: var(--shadow-md);
+  font-weight: 800;
+  transition: transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
+}
+
+.toast button {
+  margin-left: 12px;
+  border: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font-weight: 850;
+  text-decoration: underline;
+}
+
+.quick-create:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.quick-create span { font-size: 20px; }
+
 @media (max-width: 860px) {
   .default-layout__body {
     display: block;
     padding-bottom: 76px;
+  }
+
+  .quick-create {
+    right: 12px;
+    bottom: 78px;
+  }
+
+  .quick-create b {
+    display: none;
   }
 }
 </style>

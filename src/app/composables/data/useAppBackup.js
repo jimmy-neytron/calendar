@@ -25,6 +25,12 @@ const DEFAULT_DATA = {
   [`${STORAGE_PREFIX}preferences`]: { defaultMode: 'month', weekStartsOn: 1, density: 'compact', theme: 'black', hidePastEvents: false },
   [`${STORAGE_PREFIX}activity`]: [],
   [`${STORAGE_PREFIX}notifications`]: [],
+  [`${STORAGE_PREFIX}calendar-collections`]: [
+    { id: 'calendar-family', workspaceId: 'space-family', name: 'Семья', color: '#60a5fa', visible: true },
+    { id: 'calendar-personal', workspaceId: 'space-family', name: 'Личное', color: '#f472b6', visible: true },
+    { id: 'calendar-work', workspaceId: 'space-family', name: 'Работа', color: '#22c55e', visible: true },
+    { id: 'calendar-sport', workspaceId: 'space-family', name: 'Спорт', color: '#fb923c', visible: true },
+  ],
   [`${STORAGE_PREFIX}sport-exercises`]: defaultExercises,
   [`${STORAGE_PREFIX}sport-completions`]: [],
 }

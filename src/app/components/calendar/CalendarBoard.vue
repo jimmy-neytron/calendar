@@ -110,7 +110,7 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
 function handleWeekDrop(date, dropEvent) {
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
-  emit('move-event', { eventId, date })
+  emit('move-event', { eventId, date, copy: dropEvent.altKey })
 }
 </script>
 

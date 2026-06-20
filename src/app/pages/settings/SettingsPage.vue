@@ -116,6 +116,20 @@
           </span>
           <UiToggle v-model="preferences.hidePastEvents" @update:model-value="markPreferencesSaved" />
         </label>
+
+        <div class="settings-switch">
+          <span>
+            <strong>Уведомления на устройстве</strong>
+            <small>Напоминания о событиях будут появляться даже при свёрнутой вкладке.</small>
+          </span>
+          <UiButton
+            size="sm"
+            :variant="localRemindersEnabled ? 'secondary' : 'primary'"
+            @click="toggleLocalReminders"
+          >
+            {{ localRemindersEnabled ? 'Выключить' : 'Включить' }}
+          </UiButton>
+        </div>
       </SettingsSectionCard>
 
       <SettingsSectionCard
@@ -178,6 +192,7 @@ import { useNotification } from '../../composables/ui/useNotification.js'
 import { useStorageQuota } from '../../composables/storage/useStorageQuota.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
+import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 
 const router = useRouter()
 const { notify } = useNotification()
@@ -185,6 +200,11 @@ const { exportAll, importAll, clearAll } = useAppBackup()
 const { quota, isWarning, formatBytes, refreshQuota } = useStorageQuota()
 const { createAutoBackup, restoreAutoBackup } = useAutoBackup()
 const { preferences, themeOptions } = useCalendarPreferences()
+const {
+  enabled: localRemindersEnabled,
+  enable: enableLocalReminders,
+  disable: disableLocalReminders,
+} = useLocalReminders()
 
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
@@ -215,6 +235,16 @@ function markPreferencesSaved() {
   preferencesSavedTimer = window.setTimeout(() => {
     preferencesSaved.value = false
   }, 1500)
+}
+
+async function toggleLocalReminders() {
+  if (localRemindersEnabled.value) {
+    disableLocalReminders()
+    notify('Уведомления выключены', 'info')
+    return
+  }
+  const result = await enableLocalReminders()
+  notify(result.message, result.ok ? 'success' : 'warning')
 }
 
 async function handleImport(event) {
