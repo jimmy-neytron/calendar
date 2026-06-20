@@ -1,0 +1,127 @@
+:root,
+html[data-theme='black'] {
+  /* Compact black theme */
+  --bg-primary: #050505;
+  --bg-secondary: #090909;
+  --bg-panel: #0d0d0d;
+  --bg-card: #111111;
+  --bg-card-soft: #151515;
+  --bg-hover: #1b1b1b;
+  --border-color: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  --text-primary: #f5f5f5;
+  --text-secondary: #a1a1a1;
+  --text-muted: #6f6f6f;
+  --text-inverse: #050505;
+
+  --accent: #eeeeee;
+  --accent-hover: #ffffff;
+  --accent-soft: rgba(255, 255, 255, 0.075);
+  --accent-border: rgba(255, 255, 255, 0.18);
+
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --info: #60a5fa;
+  --pink: #f472b6;
+  --orange: #fb923c;
+  --cyan: #22d3ee;
+  --green: #10b981;
+
+  --shadow-sm: 0 1px 6px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 18px 56px rgba(0, 0, 0, 0.58);
+  --glow: 0 0 0 rgba(0, 0, 0, 0);
+
+  --panel-bg: linear-gradient(180deg, rgba(17, 17, 17, 0.98), rgba(8, 8, 8, 0.98));
+  --card-bg: rgba(17, 17, 17, 0.92);
+  --card-solid: #090909;
+  --card-soft: #0d0d0d;
+  --control-bg: rgba(255, 255, 255, 0.045);
+  --control-bg-solid: #0d0d0d;
+  --control-bg-hover: rgba(255, 255, 255, 0.075);
+  --field-bg: rgba(255, 255, 255, 0.055);
+  --field-bg-focus: rgba(255, 255, 255, 0.08);
+  --header-bg: rgba(5, 5, 5, 0.92);
+  --sidebar-bg: rgba(5, 5, 5, 0.72);
+  --sidebar-floating-bg: rgba(5, 5, 5, 0.94);
+  --overlay-bg: rgba(0, 0, 0, 0.58);
+  --toast-bg: rgba(8, 8, 8, 0.96);
+  --avatar-text: #050505;
+  --page-gradient:
+    radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.045), transparent 24vw),
+    linear-gradient(180deg, #050505 0%, #080808 100%);
+
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --spacing-xs: 3px;
+  --spacing-sm: 6px;
+  --spacing-md: 12px;
+  --spacing-lg: 18px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 36px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --header-height: 58px;
+  --sidebar-width: 74px;
+}
+
+html[data-theme='light'] {
+  /* Warm minimal light theme */
+  --bg-primary: #f4f1ea;
+  --bg-secondary: #ebe6dc;
+  --bg-panel: #fffaf1;
+  --bg-card: #ffffff;
+  --bg-card-soft: #f6f0e6;
+  --bg-hover: #eee6da;
+  --border-color: rgba(46, 38, 29, 0.11);
+  --border-strong: rgba(46, 38, 29, 0.2);
+
+  --text-primary: #191613;
+  --text-secondary: #5e554c;
+  --text-muted: #958b80;
+  --text-inverse: #ffffff;
+
+  --accent: #1f1d1a;
+  --accent-hover: #000000;
+  --accent-soft: rgba(31, 29, 26, 0.08);
+  --accent-border: rgba(31, 29, 26, 0.22);
+
+  --success: #168a4a;
+  --warning: #b97905;
+  --danger: #c24135;
+  --info: #2f6ea5;
+  --pink: #bd4f88;
+  --orange: #c6671e;
+  --cyan: #247f89;
+  --green: #17825c;
+
+  --shadow-sm: 0 1px 8px rgba(48, 38, 25, 0.08);
+  --shadow-md: 0 12px 34px rgba(48, 38, 25, 0.12);
+  --shadow-lg: 0 24px 70px rgba(48, 38, 25, 0.16);
+  --glow: 0 0 0 rgba(0, 0, 0, 0);
+
+  --panel-bg: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(247, 242, 232, 0.98));
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-solid: #fffaf1;
+  --card-soft: #f7f1e8;
+  --control-bg: rgba(31, 29, 26, 0.045);
+  --control-bg-solid: #fffaf1;
+  --control-bg-hover: rgba(31, 29, 26, 0.08);
+  --field-bg: rgba(255, 255, 255, 0.72);
+  --field-bg-focus: #ffffff;
+  --header-bg: rgba(246, 241, 232, 0.9);
+  --sidebar-bg: rgba(250, 246, 238, 0.78);
+  --sidebar-floating-bg: rgba(255, 250, 241, 0.96);
+  --overlay-bg: rgba(28, 24, 20, 0.34);
+  --toast-bg: rgba(255, 250, 241, 0.96);
+  --avatar-text: #ffffff;
+  --page-gradient:
+    radial-gradient(circle at 16% 0%, rgba(198, 143, 77, 0.16), transparent 24vw),
+    linear-gradient(180deg, #f4f1ea 0%, #ebe6dc 100%);
+}

@@ -1,0 +1,19 @@
+{
+  "name": "skylight-calendar-clone-vue3-ru",
+  "version": "1.9.0",
+  "private": true,
+  "type": "module",
+  "description": "Компактный локальный workspace calendar на Vue 3: аккаунты, пространства, повторы, дублирование, фильтры, поиск, спорт-программа, темы, роли, история, уведомления событий и улучшенные настройки без Supabase.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "latest",
+    "vite": "latest",
+    "vue": "latest",
+    "vue-router": "latest"
+  },
+  "devDependencies": {}
+}

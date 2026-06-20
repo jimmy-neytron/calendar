@@ -1,0 +1,167 @@
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeSlideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes softGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(124, 108, 240, 0); }
+  50% { box-shadow: 0 0 42px rgba(124, 108, 240, 0.18); }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.26s var(--ease-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.modal-enter-active {
+  animation: scaleIn 0.28s var(--ease-out);
+}
+
+.modal-leave-active {
+  animation: fadeSlideDown 0.18s var(--ease-out);
+}
+
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.28s var(--ease-out);
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-14px);
+}
+
+.list-leave-active {
+  position: absolute;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.86); opacity: 0; }
+  70% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+@keyframes scorePop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.16); color: var(--accent-hover); }
+  100% { transform: scale(1); }
+}
+
+.view-switch {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.shake {
+  animation: shake 0.28s var(--ease-out);
+}
+
+.pop-in {
+  animation: popIn 0.24s var(--ease-out);
+}
+
+.check-pop {
+  animation: checkPop 0.3s var(--ease-out);
+}
+
+.score-pop {
+  animation: scorePop 0.5s var(--ease-out);
+}
+
+.calendar-slide-next-enter-active,
+.calendar-slide-next-leave-active,
+.calendar-slide-prev-enter-active,
+.calendar-slide-prev-leave-active,
+.calendar-fade-enter-active,
+.calendar-fade-leave-active {
+  transition: opacity 0.28s var(--ease-out), transform 0.28s var(--ease-out), filter 0.28s var(--ease-out);
+}
+
+.calendar-slide-next-enter-from {
+  opacity: 0;
+  transform: translateX(22px) scale(0.992);
+  filter: blur(2px);
+}
+
+.calendar-slide-next-leave-to {
+  opacity: 0;
+  transform: translateX(-22px) scale(0.992);
+  filter: blur(2px);
+}
+
+.calendar-slide-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-22px) scale(0.992);
+  filter: blur(2px);
+}
+
+.calendar-slide-prev-leave-to {
+  opacity: 0;
+  transform: translateX(22px) scale(0.992);
+  filter: blur(2px);
+}
+
+.calendar-fade-enter-from,
+.calendar-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.996);
+  filter: blur(1px);
+}
