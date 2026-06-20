@@ -55,31 +55,31 @@
             <UiInput v-model="form.date" type="date" label="Дата" required :error="errors.date" />
             <label class="event-drawer__select">
               <span>Категория</span>
-              <select v-model="form.category">
+              <UiSelect v-model="form.category">
                 <option v-for="category in EVENT_FORM_CATEGORIES" :key="category.value" :value="category.value">
                   {{ category.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
           </div>
 
           <div class="event-drawer__grid">
             <label class="event-drawer__select">
               <span>Важность</span>
-              <select v-model="form.importance">
+              <UiSelect v-model="form.importance">
                 <option v-for="importance in IMPORTANCE_OPTIONS" :key="importance.value" :value="importance.value">
                   {{ importance.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
 
             <label class="event-drawer__select">
               <span>Напоминание</span>
-              <select v-model="form.reminder">
+              <UiSelect v-model="form.reminder">
                 <option v-for="reminder in REMINDER_OPTIONS" :key="reminder.value" :value="reminder.value">
                   {{ reminder.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
           </div>
 
@@ -91,11 +91,11 @@
 
             <label class="event-drawer__select">
               <span>Повтор</span>
-              <select v-model="form.repeat">
+              <UiSelect v-model="form.repeat">
                 <option v-for="option in REPEAT_OPTIONS" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
           </div>
 
@@ -104,11 +104,11 @@
               <UiInput v-model.number="form.repeatInterval" type="number" label="Интервал" :error="errors.repeatInterval" />
               <label class="event-drawer__select">
                 <span>Единица</span>
-                <select v-model="form.repeatUnit">
+                <UiSelect v-model="form.repeatUnit">
                   <option v-for="unit in REPEAT_UNITS" :key="unit.value" :value="unit.value">
                     {{ unit.label }}
                   </option>
-                </select>
+                </UiSelect>
               </label>
             </div>
 
@@ -130,11 +130,11 @@
 
             <label class="event-drawer__select">
               <span>Закончить</span>
-              <select v-model="form.repeatEndType">
+              <UiSelect v-model="form.repeatEndType">
                 <option v-for="option in REPEAT_END_OPTIONS" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
 
             <div v-if="form.repeatEndType === 'until'" class="event-drawer__grid event-drawer__grid--one">
@@ -180,11 +180,11 @@
             <div class="event-drawer__duplicate-row">
               <label class="event-drawer__select">
                 <span>Дублировать</span>
-                <select v-model="duplicateMode">
+                <UiSelect v-model="duplicateMode">
                   <option v-for="option in DUPLICATE_OPTIONS" :key="option.value" :value="option.value">
                     {{ option.label }}
                   </option>
-                </select>
+                </UiSelect>
               </label>
               <UiButton type="button" variant="secondary" @click="duplicate">Создать копии</UiButton>
             </div>
@@ -211,6 +211,7 @@
 <script setup>
 import { nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import UiInput from '../ui/UiInput.vue'
+import UiSelect from '../ui/UiSelect.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiChip from '../ui/UiChip.vue'
 import UiToggle from '../ui/UiToggle.vue'
@@ -503,17 +504,6 @@ function addMinutesToTime(time, minutes) {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 800;
-}
-
-.event-drawer__select select {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 10px;
-  color: var(--text-primary);
-  background: var(--card-soft);
-  outline: none;
 }
 
 .event-drawer__toggle {

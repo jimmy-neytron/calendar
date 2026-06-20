@@ -16,16 +16,18 @@
     </div>
 
     <div class="app-header__actions">
-      <select
+      <UiSelect
         class="app-header__workspace"
-        :value="activeWorkspace?.id"
+        :model-value="activeWorkspace?.id"
         aria-label="Пространство"
-        @change="$emit('switch-workspace', $event.target.value)"
+        compact
+        pill
+        @update:model-value="$emit('switch-workspace', $event)"
       >
         <option v-for="workspace in workspaces" :key="workspace.id" :value="workspace.id">
           {{ workspace.name }}
         </option>
-      </select>
+      </UiSelect>
       <UiButton variant="secondary" icon="☀" @click="$emit('day-mode')">День</UiButton>
       <UiButton icon="＋" @click="$emit('create-event')">Событие</UiButton>
       <NotificationBell />
@@ -39,6 +41,7 @@
 <script setup>
 import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
+import UiSelect from '../ui/UiSelect.vue'
 import NotificationBell from '../notifications/NotificationBell.vue'
 
 defineProps({
@@ -151,14 +154,6 @@ const currentDate = computed(() => new Intl.DateTimeFormat('ru-RU', { day: 'nume
 
 .app-header__workspace {
   max-width: 150px;
-  height: 30px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  padding: 0 9px;
-  color: var(--text-primary);
-  background: var(--control-bg-solid);
-  outline: none;
-  font-size: 12px;
 }
 
 @media (max-width: 900px) {

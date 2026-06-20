@@ -77,11 +77,11 @@
           <div class="workspace-grid">
             <label class="settings-field settings-field--large">
               <span>Активное пространство</span>
-              <select :value="activeWorkspace?.id" @change="handleSwitchWorkspace($event.target.value)">
+              <UiSelect :model-value="activeWorkspace?.id" @update:model-value="handleSwitchWorkspace">
                 <option v-for="workspace in currentUserSpaces" :key="workspace.id" :value="workspace.id">
                   {{ workspace.name }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <UiInput v-model="workspaceForm.name" label="Название пространства" />
             <UiInput v-model="newWorkspaceName" label="Новое пространство" placeholder="Например: Работа" />
@@ -104,15 +104,16 @@
                 <strong>{{ member.name }}</strong>
                 <small>{{ member.email }}</small>
               </div>
-              <select
+              <UiSelect
                 v-if="member.id !== activeWorkspace?.ownerId && canManageRoles"
-                :value="member.role"
-                @change="changeRole(member.id, $event.target.value)"
+                :model-value="member.role"
+                compact
+                @update:model-value="changeRole(member.id, $event)"
               >
                 <option value="admin">Админ</option>
                 <option value="member">Участник</option>
                 <option value="viewer">Просмотр</option>
-              </select>
+              </UiSelect>
               <em v-else>{{ member.id === activeWorkspace?.ownerId ? 'владелец' : roleLabel(member.role) }}</em>
               <button v-if="member.id !== activeWorkspace?.ownerId" type="button" @click="removeMember(member.id)">убрать</button>
             </article>
@@ -139,33 +140,33 @@
           <div class="settings-card__grid settings-card__grid--4">
             <label class="settings-field">
               <span>Вид по умолчанию</span>
-              <select v-model="preferences.defaultMode" @change="savePreferences">
+              <UiSelect v-model="preferences.defaultMode" @change="savePreferences">
                 <option value="month">Месяц</option>
                 <option value="week">Неделя</option>
                 <option value="day">День</option>
-              </select>
+              </UiSelect>
             </label>
             <label class="settings-field">
               <span>Первый день</span>
-              <select v-model.number="preferences.weekStartsOn" @change="savePreferences">
+              <UiSelect v-model.number="preferences.weekStartsOn" @change="savePreferences">
                 <option :value="1">Понедельник</option>
                 <option :value="0">Воскресенье</option>
-              </select>
+              </UiSelect>
             </label>
             <label class="settings-field">
               <span>Плотность</span>
-              <select v-model="preferences.density" @change="savePreferences">
+              <UiSelect v-model="preferences.density" @change="savePreferences">
                 <option value="compact">Компактная</option>
                 <option value="normal">Обычная</option>
-              </select>
+              </UiSelect>
             </label>
             <label class="settings-field">
               <span>Тема</span>
-              <select v-model="preferences.theme" @change="savePreferences">
+              <UiSelect v-model="preferences.theme" @change="savePreferences">
                 <option v-for="theme in themeOptions" :key="theme.value" :value="theme.value">
                   {{ theme.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
           </div>
 
@@ -227,10 +228,10 @@
             <div class="backup-actions">
               <label class="settings-field">
                 <span>Режим импорта</span>
-                <select v-model="importMode">
+                <UiSelect v-model="importMode">
                   <option value="replace">Заменить текущие данные</option>
                   <option value="merge">Объединить по id</option>
-                </select>
+                </UiSelect>
               </label>
               <div class="settings-card__actions settings-card__actions--stack">
                 <UiButton icon="⬇" @click="exportAll">Экспорт JSON</UiButton>
@@ -271,6 +272,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
+import UiSelect from '../../components/ui/UiSelect.vue'
 import NotificationCenter from '../../components/notifications/NotificationCenter.vue'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
@@ -671,18 +673,6 @@ onMounted(() => {
   border-radius: var(--radius-md);
   padding: 3px;
   background: var(--card-soft);
-}
-
-.settings-field select,
-.member-row select {
-  width: 100%;
-  min-height: 34px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 10px;
-  color: var(--text-primary);
-  background: var(--card-soft);
-  outline: none;
 }
 
 .settings-check {

@@ -12,32 +12,32 @@
     <div class="calendar-filters__row">
       <label>
         <span>Категория</span>
-        <select :value="filters.category" @change="update('category', $event.target.value)">
+        <UiSelect :model-value="filters.category" compact @update:model-value="update('category', $event)">
           <option v-for="category in categories" :key="category.value" :value="category.value">
             {{ category.label }}
           </option>
-        </select>
+        </UiSelect>
       </label>
 
       <label>
         <span>Участник</span>
-        <select :value="filters.memberId" @change="update('memberId', $event.target.value)">
+        <UiSelect :model-value="filters.memberId" compact @update:model-value="update('memberId', $event)">
           <option value="all">Все участники</option>
           <option value="family">Вся семья</option>
           <option v-for="member in members" :key="member.id" :value="member.id">
             {{ member.name }}
           </option>
-        </select>
+        </UiSelect>
       </label>
 
       <label>
         <span>Важность</span>
-        <select :value="filters.importance" @change="update('importance', $event.target.value)">
+        <UiSelect :model-value="filters.importance" compact @update:model-value="update('importance', $event)">
           <option value="all">Любая</option>
           <option v-for="importance in importances" :key="importance.value" :value="importance.value">
             {{ importance.label }}
           </option>
-        </select>
+        </UiSelect>
       </label>
 
       <button class="calendar-filters__mine" :class="{ active: filters.onlyMine }" type="button" @click="update('onlyMine', !filters.onlyMine)">
@@ -52,6 +52,7 @@
 </template>
 
 <script setup>
+import UiSelect from '../ui/UiSelect.vue'
 import { EVENT_CATEGORIES, IMPORTANCE_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 defineProps({
@@ -75,8 +76,7 @@ function update(key, value) {
   padding: 10px;
 }
 
-.calendar-filters__search input,
-.calendar-filters select {
+.calendar-filters__search input {
   width: 100%;
   height: 32px;
   border: 1px solid var(--border-color);
@@ -87,8 +87,7 @@ function update(key, value) {
   outline: none;
 }
 
-.calendar-filters__search input:focus,
-.calendar-filters select:focus {
+.calendar-filters__search input:focus {
   border-color: var(--border-strong);
 }
 

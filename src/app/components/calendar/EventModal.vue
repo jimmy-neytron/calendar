@@ -21,11 +21,11 @@
         <UiInput v-model="form.date" type="date" label="Дата" required :error="errors.date" />
         <label class="event-modal__select">
           <span>Категория</span>
-          <select v-model="form.category">
+          <UiSelect v-model="form.category">
             <option v-for="category in EVENT_CATEGORIES" :key="category.value" :value="category.value">
               {{ category.label }}
             </option>
-          </select>
+          </UiSelect>
         </label>
       </div>
 
@@ -37,11 +37,11 @@
 
         <label class="event-modal__select">
           <span>Повтор</span>
-          <select v-model="form.repeat">
+          <UiSelect v-model="form.repeat">
             <option v-for="option in REPEAT_OPTIONS" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
-          </select>
+          </UiSelect>
         </label>
       </div>
 
@@ -96,6 +96,7 @@
 import { nextTick, reactive, ref, watch } from 'vue'
 import UiModal from '../ui/UiModal.vue'
 import UiInput from '../ui/UiInput.vue'
+import UiSelect from '../ui/UiSelect.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiChip from '../ui/UiChip.vue'
 import UiToggle from '../ui/UiToggle.vue'
@@ -200,17 +201,6 @@ function getEmptyForm(date = '') {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 800;
-}
-
-.event-modal__select select {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 10px;
-  color: var(--text-primary);
-  background: var(--bg-hover);
-  outline: none;
 }
 
 .event-modal__toggle {

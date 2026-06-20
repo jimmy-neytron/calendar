@@ -22,9 +22,9 @@
 
                 <label class="exercise-field">
                   <span>День</span>
-                  <select v-model.number="form.weekday">
+                  <UiSelect v-model.number="form.weekday">
                     <option v-for="day in weekdayOptions" :key="day.value" :value="day.value">{{ day.label }}</option>
-                  </select>
+                  </UiSelect>
                 </label>
 
                 <UiInput v-model="form.title" label="Упражнение" placeholder="Например: Планка" />
@@ -79,6 +79,7 @@
 import { reactive, ref, watch } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import UiInput from '../ui/UiInput.vue'
+import UiSelect from '../ui/UiSelect.vue'
 import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const props = defineProps({
@@ -223,7 +224,6 @@ function fillExample() {
   gap: 5px;
 }
 
-.exercise-field select,
 .exercise-json textarea {
   width: 100%;
   border: 1px solid var(--border-color);
@@ -231,11 +231,6 @@ function fillExample() {
   color: var(--text-primary);
   background: var(--field-bg);
   outline: none;
-}
-
-.exercise-field select {
-  min-height: 36px;
-  padding: 0 10px;
 }
 
 .exercise-json textarea {
