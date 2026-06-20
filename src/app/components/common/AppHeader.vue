@@ -1,35 +1,27 @@
 <template>
   <header class="app-header">
-    <div class="app-header__brand">
-      <button class="app-header__logo" type="button" @click="$emit('open-settings')">✦</button>
-      <div>
+    <RouterLink class="app-header__brand" :to="{ name: 'calendar' }">
+      <span class="app-header__logo">✦</span>
+      <span>
         <strong>Календарь</strong>
-        <span>{{ activeWorkspace?.name || 'Пространство' }}</span>
-      </div>
-    </div>
+        <small>{{ activeWorkspace?.name || 'Пространство' }}</small>
+      </span>
+    </RouterLink>
 
-    <div class="app-header__center">
-      <button class="app-header__date" type="button" @click="$emit('today')">
-        <span>{{ weekday }}</span>
-        <b>{{ currentDate }}</b>
-      </button>
-    </div>
+    <button class="app-header__date" type="button" @click="$emit('today')">
+      <span>{{ weekday }}</span>
+      <b>{{ currentDate }}</b>
+    </button>
 
     <div class="app-header__actions">
-      <UiSelect
-        class="app-header__workspace"
-        :model-value="activeWorkspace?.id"
-        aria-label="Пространство"
-        compact
-        pill
-        @update:model-value="$emit('switch-workspace', $event)"
+      <UiButton
+        v-if="isCalendarRoute"
+        variant="secondary"
+        :icon="viewMode === 'day' ? '▦' : '◫'"
+        @click="$emit('toggle-calendar-view')"
       >
-        <option v-for="workspace in workspaces" :key="workspace.id" :value="workspace.id">
-          {{ workspace.name }}
-        </option>
-      </UiSelect>
-      <UiButton variant="secondary" icon="☀" @click="$emit('day-mode')">День</UiButton>
-      <UiButton icon="＋" @click="$emit('create-event')">Событие</UiButton>
+        {{ viewMode === 'day' ? 'Месяц' : 'День' }}
+      </UiButton>
       <NotificationBell />
       <RouterLink class="app-header__user" :to="{ name: 'settings' }" :title="currentUser?.email">
         {{ currentUser?.avatar || '?' }}
@@ -41,16 +33,16 @@
 <script setup>
 import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
-import UiSelect from '../ui/UiSelect.vue'
 import NotificationBell from '../notifications/NotificationBell.vue'
 
 defineProps({
   currentUser: { type: Object, default: null },
   activeWorkspace: { type: Object, default: null },
-  workspaces: { type: Array, default: () => [] },
+  isCalendarRoute: { type: Boolean, default: false },
+  viewMode: { type: String, default: 'month' },
 })
 
-defineEmits(['create-event', 'today', 'day-mode', 'switch-workspace', 'open-settings'])
+defineEmits(['today', 'toggle-calendar-view'])
 
 const now = new Date()
 const weekday = computed(() => new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(now))
@@ -77,50 +69,35 @@ const currentDate = computed(() => new Intl.DateTimeFormat('ru-RU', { day: 'nume
   align-items: center;
   gap: 8px;
   min-width: 0;
+  color: var(--text-primary);
+  text-decoration: none;
 }
 
+.app-header__brand > span:last-child,
 .app-header__brand strong,
-.app-header__brand span {
+.app-header__brand small {
   display: block;
 }
 
 .app-header__brand strong {
-  white-space: nowrap;
   font-size: 13px;
 }
 
-.app-header__brand span {
+.app-header__brand small {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 600;
 }
 
 .app-header__logo,
 .app-header__user {
   display: grid;
   place-items: center;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--border-color);
-  background: var(--control-bg-solid);
-  color: var(--text-primary);
-  text-decoration: none;
-}
-
-.app-header__logo {
-  width: 30px;
-  height: 30px;
   border-radius: 9px;
-}
-
-.app-header__user {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.app-header__center {
-  justify-self: center;
+  color: var(--text-primary);
+  background: var(--control-bg-solid);
 }
 
 .app-header__date {
@@ -152,31 +129,27 @@ const currentDate = computed(() => new Intl.DateTimeFormat('ru-RU', { day: 'nume
   gap: 6px;
 }
 
-.app-header__workspace {
-  max-width: 150px;
+.app-header__user {
+  border-radius: 50%;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 @media (max-width: 900px) {
   .app-header {
     grid-template-columns: 1fr auto;
-    gap: 8px;
-    padding: 7px 10px;
   }
 
-  .app-header__center {
+  .app-header__date {
     display: none;
   }
 }
 
 @media (max-width: 620px) {
-  .app-header__brand span,
-  .app-header__actions .ui-button:first-of-type,
-  .app-header__workspace {
+  .app-header__brand small,
+  .app-header__actions .ui-button {
     display: none;
-  }
-
-  .app-header__brand strong {
-    font-size: 12px;
   }
 }
 </style>

@@ -1,279 +1,176 @@
 <template>
   <section class="settings-page">
-    <header class="settings-hero panel">
-      <div class="settings-hero__content">
-        <p>Настройки</p>
-        <h1>Аккаунт, пространство и уведомления</h1>
-        <span>Все важное собрано в одном месте: профиль, участники, приглашения, внешний вид и локальные данные.</span>
+    <header class="settings-page__hero panel">
+      <div>
+        <span>Персональные настройки</span>
+        <h1>Настрой приложение под себя</h1>
+        <p>Профиль, внешний вид календаря и управление локальными данными — без рабочих разделов и лишнего шума.</p>
       </div>
-
-      <div class="settings-hero__summary">
-        <article>
-          <small>Аккаунт</small>
-          <strong>{{ currentUser?.name || 'Пользователь' }}</strong>
-        </article>
-        <article>
-          <small>Пространство</small>
-          <strong>{{ activeWorkspace?.name || 'Не выбрано' }}</strong>
-        </article>
-        <article>
-          <small>Роль</small>
-          <strong>{{ roleLabel(currentUserRole) }}</strong>
-        </article>
-      </div>
+      <RouterLink class="settings-page__workspace-link" :to="{ name: 'workspace' }">
+        <small>Текущее пространство</small>
+        <strong>{{ activeWorkspace?.name || 'Не выбрано' }}</strong>
+        <span>Участники и доступ →</span>
+      </RouterLink>
     </header>
 
-    <div class="settings-layout">
-      <aside class="settings-nav panel">
-        <a href="#account">Аккаунт</a>
-        <a href="#workspace">Пространство</a>
-        <a href="#notifications">Уведомления</a>
-        <a href="#view">Внешний вид</a>
-        <a href="#invites">Приглашения</a>
-        <a href="#data">Данные</a>
-        <a href="#history">История</a>
-      </aside>
-
-      <div class="settings-stack">
-        <section id="account" class="settings-card settings-card--profile">
-          <div class="settings-card__title">
-            <span>Аккаунт</span>
-            <h2>Личный профиль</h2>
+    <div class="settings-page__grid">
+      <SettingsSectionCard
+        icon="◉"
+        eyebrow="Профиль"
+        title="Личный аккаунт"
+        description="Имя и визуальный идентификатор, которые видят участники пространства."
+        tone="accent"
+      >
+        <div class="profile-preview">
+          <div class="profile-preview__avatar" :style="{ '--profile-color': accountForm.color }">
+            {{ accountForm.avatar || '?' }}
           </div>
-
-          <div class="profile-block">
-            <div class="profile-block__avatar" :style="{ '--profile-color': accountForm.color }">{{ accountForm.avatar || '?' }}</div>
-            <div>
-              <strong>{{ currentUser?.name || 'Пользователь' }}</strong>
-              <small>{{ currentUser?.email }}</small>
-              <small>ID: {{ currentUser?.id }}</small>
-            </div>
+          <div>
+            <strong>{{ accountForm.name || 'Пользователь' }}</strong>
+            <span>{{ currentUser?.email }}</span>
           </div>
+        </div>
 
-          <div class="settings-card__grid settings-card__grid--3">
-            <UiInput v-model="accountForm.name" label="Имя" />
-            <UiInput v-model="accountForm.avatar" label="Аватар" placeholder="1 буква" />
-            <label class="settings-field">
-              <span>Цвет</span>
-              <input v-model="accountForm.color" type="color" />
-            </label>
-          </div>
-
-          <div class="settings-card__actions">
-            <UiButton @click="saveAccount">Сохранить профиль</UiButton>
-            <UiButton variant="secondary" @click="logout">Выйти</UiButton>
-          </div>
-        </section>
-
-        <section id="workspace" class="settings-card">
-          <div class="settings-card__title settings-card__title--row">
-            <div>
-              <span>Пространство</span>
-              <h2>{{ activeWorkspace?.name || 'Нет пространства' }}</h2>
-            </div>
-            <UiButton variant="secondary" icon="←" @click="router.push({ name: 'calendar' })">К календарю</UiButton>
-          </div>
-
-          <div class="workspace-grid">
-            <label class="settings-field settings-field--large">
-              <span>Активное пространство</span>
-              <UiSelect :model-value="activeWorkspace?.id" @update:model-value="handleSwitchWorkspace">
-                <option v-for="workspace in currentUserSpaces" :key="workspace.id" :value="workspace.id">
-                  {{ workspace.name }}
-                </option>
-              </UiSelect>
-            </label>
-            <UiInput v-model="workspaceForm.name" label="Название пространства" />
-            <UiInput v-model="newWorkspaceName" label="Новое пространство" placeholder="Например: Работа" />
-          </div>
-
-          <div class="settings-card__actions">
-            <UiButton @click="saveWorkspace">Переименовать</UiButton>
-            <UiButton variant="secondary" @click="createWorkspace">Создать пространство</UiButton>
-          </div>
-
-          <div class="members-panel">
-            <div class="members-panel__head">
-              <span>Участники</span>
-              <b>{{ activeWorkspaceMembers.length }}</b>
-            </div>
-
-            <article v-for="member in activeWorkspaceMembers" :key="member.id" class="member-row">
-              <div class="member-row__avatar" :style="{ '--member-color': member.color }">{{ member.avatar }}</div>
-              <div>
-                <strong>{{ member.name }}</strong>
-                <small>{{ member.email }}</small>
-              </div>
-              <UiSelect
-                v-if="member.id !== activeWorkspace?.ownerId && canManageRoles"
-                :model-value="member.role"
-                compact
-                @update:model-value="changeRole(member.id, $event)"
-              >
-                <option value="admin">Админ</option>
-                <option value="member">Участник</option>
-                <option value="viewer">Просмотр</option>
-              </UiSelect>
-              <em v-else>{{ member.id === activeWorkspace?.ownerId ? 'владелец' : roleLabel(member.role) }}</em>
-              <button v-if="member.id !== activeWorkspace?.ownerId" type="button" @click="removeMember(member.id)">убрать</button>
-            </article>
-          </div>
-        </section>
-
-        <section id="notifications" class="settings-card settings-card--notifications">
-          <div class="settings-card__title">
-            <span>Уведомления</span>
-            <h2>Что изменилось для тебя</h2>
-          </div>
-          <p class="settings-card__hint">
-            Если другой участник создает или меняет событие, где ты указан, уведомление обновляется в одной карточке. Так список не превращается в шум.
-          </p>
-          <NotificationCenter />
-        </section>
-
-        <section id="view" class="settings-card">
-          <div class="settings-card__title">
-            <span>Удобство</span>
-            <h2>Внешний вид календаря</h2>
-          </div>
-
-          <div class="settings-card__grid settings-card__grid--4">
-            <label class="settings-field">
-              <span>Вид по умолчанию</span>
-              <UiSelect v-model="preferences.defaultMode" @change="savePreferences">
-                <option value="month">Месяц</option>
-                <option value="week">Неделя</option>
-                <option value="day">День</option>
-              </UiSelect>
-            </label>
-            <label class="settings-field">
-              <span>Первый день</span>
-              <UiSelect v-model.number="preferences.weekStartsOn" @change="savePreferences">
-                <option :value="1">Понедельник</option>
-                <option :value="0">Воскресенье</option>
-              </UiSelect>
-            </label>
-            <label class="settings-field">
-              <span>Плотность</span>
-              <UiSelect v-model="preferences.density" @change="savePreferences">
-                <option value="compact">Компактная</option>
-                <option value="normal">Обычная</option>
-              </UiSelect>
-            </label>
-            <label class="settings-field">
-              <span>Тема</span>
-              <UiSelect v-model="preferences.theme" @change="savePreferences">
-                <option v-for="theme in themeOptions" :key="theme.value" :value="theme.value">
-                  {{ theme.label }}
-                </option>
-              </UiSelect>
-            </label>
-          </div>
-
-          <label class="settings-check">
-            <input v-model="preferences.hidePastEvents" type="checkbox" @change="savePreferences" />
-            <span>Скрывать прошедшие события</span>
+        <div class="settings-fields settings-fields--profile">
+          <UiInput v-model="accountForm.name" label="Имя" />
+          <UiInput v-model="accountForm.avatar" label="Аватар" placeholder="Одна буква" />
+          <label class="settings-field">
+            <span>Цвет профиля</span>
+            <input v-model="accountForm.color" type="color" />
           </label>
-        </section>
+        </div>
 
-        <section id="invites" class="settings-card">
-          <div class="settings-card__title">
-            <span>Приглашения</span>
-            <h2>Доступ в пространство</h2>
+        <template #actions>
+          <UiButton @click="saveAccount">Сохранить профиль</UiButton>
+          <UiButton variant="secondary" @click="logout">Выйти из аккаунта</UiButton>
+        </template>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
+        icon="✦"
+        eyebrow="Календарь"
+        title="Отображение и поведение"
+        description="Настройки применяются сразу и сохраняются на этом устройстве."
+        tone="success"
+      >
+        <template #status>
+          <span v-if="preferencesSaved" class="saved-badge">Сохранено</span>
+        </template>
+
+        <div class="preference-grid">
+          <label class="preference-card">
+            <span class="preference-card__icon">▦</span>
+            <span>
+              <strong>Стартовый режим</strong>
+              <small>Как открывать календарь</small>
+            </span>
+            <UiSelect v-model="preferences.defaultMode" @change="markPreferencesSaved">
+              <option value="month">Месяц</option>
+              <option value="week">Неделя</option>
+              <option value="day">День</option>
+            </UiSelect>
+          </label>
+
+          <label class="preference-card">
+            <span class="preference-card__icon">1</span>
+            <span>
+              <strong>Начало недели</strong>
+              <small>Первый день сетки</small>
+            </span>
+            <UiSelect v-model.number="preferences.weekStartsOn" @change="markPreferencesSaved">
+              <option :value="1">Понедельник</option>
+              <option :value="0">Воскресенье</option>
+            </UiSelect>
+          </label>
+
+          <label class="preference-card">
+            <span class="preference-card__icon">≡</span>
+            <span>
+              <strong>Плотность</strong>
+              <small>Расстояние между элементами</small>
+            </span>
+            <UiSelect v-model="preferences.density" @change="markPreferencesSaved">
+              <option value="compact">Компактная</option>
+              <option value="normal">Обычная</option>
+            </UiSelect>
+          </label>
+
+          <label class="preference-card">
+            <span class="preference-card__icon">◐</span>
+            <span>
+              <strong>Тема</strong>
+              <small>Цветовая схема интерфейса</small>
+            </span>
+            <UiSelect v-model="preferences.theme" @change="markPreferencesSaved">
+              <option v-for="theme in themeOptions" :key="theme.value" :value="theme.value">
+                {{ theme.label }}
+              </option>
+            </UiSelect>
+          </label>
+        </div>
+
+        <label class="settings-switch">
+          <span>
+            <strong>Скрывать прошедшие события</strong>
+            <small>Прошедшие записи не будут мешать текущему расписанию.</small>
+          </span>
+          <UiToggle v-model="preferences.hidePastEvents" @update:model-value="markPreferencesSaved" />
+        </label>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
+        icon="↓"
+        eyebrow="Хранилище"
+        title="Резервная копия и данные"
+        description="Экспортируй данные перед переносом устройства или крупными изменениями."
+        tone="warning"
+      >
+        <div class="storage-summary">
+          <div class="storage-summary__meter">
+            <span :style="{ width: `${Math.min(quota.percentUsed || 0, 100)}%` }" />
           </div>
-
-          <div class="invite-grid">
-            <div class="invite-panel">
-              <UiInput v-model="inviteEmail" label="Email для приглашения" placeholder="Можно оставить пустым" />
-              <div class="settings-card__actions">
-                <UiButton @click="createInvite">Создать код</UiButton>
-                <UiButton variant="secondary" :disabled="!lastInviteCode" @click="copyLastInvite">Скопировать</UiButton>
-              </div>
-              <article v-if="lastInviteCode" class="invite-code">
-                <span>Код приглашения</span>
-                <strong>{{ lastInviteCode }}</strong>
-              </article>
-            </div>
-
-            <div class="invite-panel">
-              <UiInput v-model="joinCode" label="Войти по коду" placeholder="Например: A1B2C3" />
-              <UiButton variant="secondary" @click="acceptInvite">Присоединиться</UiButton>
-              <div v-if="activeWorkspaceInvites.length" class="invite-list">
-                <span>Активные коды</span>
-                <code v-for="invite in activeWorkspaceInvites" :key="invite.id">
-                  {{ invite.code }}<template v-if="invite.invitedEmail"> · {{ invite.invitedEmail }}</template>
-                </code>
-              </div>
-            </div>
+          <div>
+            <strong>{{ quota.supported ? `${quota.percentUsed}% занято` : 'Оценка хранилища недоступна' }}</strong>
+            <small v-if="quota.supported">{{ formatBytes(quota.usage) }} из {{ formatBytes(quota.quota) }}</small>
           </div>
-        </section>
+        </div>
 
-        <section id="data" class="settings-card">
-          <div class="settings-card__title">
-            <span>Локальные данные</span>
-            <h2>Резервная копия</h2>
-          </div>
+        <div class="data-tools">
+          <label class="settings-field">
+            <span>Режим импорта</span>
+            <UiSelect v-model="importMode">
+              <option value="replace">Заменить текущие данные</option>
+              <option value="merge">Объединить по ID</option>
+            </UiSelect>
+          </label>
+          <p :class="{ warning: isWarning }">
+            {{ isWarning ? 'Хранилище почти заполнено — рекомендуем экспортировать JSON.' : 'Данные хранятся локально только на этом устройстве.' }}
+          </p>
+        </div>
 
-          <div class="data-grid">
-            <article class="backup-status">
-              <span>localStorage</span>
-              <strong v-if="quota.supported">{{ quota.percentUsed }}% занято</strong>
-              <strong v-else>квота недоступна</strong>
-              <small v-if="quota.supported">{{ formatBytes(quota.usage) }} из {{ formatBytes(quota.quota) }}</small>
-              <small :class="{ warning: isWarning }">
-                {{ isWarning ? 'Хранилище почти заполнено — сделай экспорт JSON' : 'Данные сохраняются только на этом устройстве' }}
-              </small>
-            </article>
-
-            <div class="backup-actions">
-              <label class="settings-field">
-                <span>Режим импорта</span>
-                <UiSelect v-model="importMode">
-                  <option value="replace">Заменить текущие данные</option>
-                  <option value="merge">Объединить по id</option>
-                </UiSelect>
-              </label>
-              <div class="settings-card__actions settings-card__actions--stack">
-                <UiButton icon="⬇" @click="exportAll">Экспорт JSON</UiButton>
-                <label class="upload-button">
-                  <input type="file" accept="application/json" @change="handleImport" />
-                  Импорт JSON
-                </label>
-                <UiButton variant="secondary" icon="☁" @click="handleManualBackup">Авто-бэкап</UiButton>
-                <UiButton variant="secondary" icon="↺" @click="handleRestoreAutoBackup">Восстановить</UiButton>
-                <UiButton variant="danger" icon="⌫" @click="clearAll">Сбросить</UiButton>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="history" class="settings-card">
-          <div class="settings-card__title">
-            <span>История</span>
-            <h2>Последние действия</h2>
-          </div>
-
-          <div class="activity-list">
-            <article v-for="entry in workspaceActivity.slice(0, 10)" :key="entry.id" class="activity-row">
-              <strong>{{ entry.userName }}</strong>
-              <span>{{ entry.text }}</span>
-              <small>{{ formatActivityDate(entry.createdAt) }}</small>
-            </article>
-            <p v-if="!workspaceActivity.length" class="muted">История пока пустая.</p>
-          </div>
-        </section>
-      </div>
+        <template #actions>
+          <UiButton icon="↓" @click="exportAll">Экспорт JSON</UiButton>
+          <label class="upload-button">
+            <input type="file" accept="application/json" @change="handleImport" />
+            Импорт JSON
+          </label>
+          <UiButton variant="secondary" @click="handleManualBackup">Создать автобэкап</UiButton>
+          <UiButton variant="secondary" @click="handleRestoreAutoBackup">Восстановить</UiButton>
+          <UiButton variant="danger" @click="clearAll">Сбросить данные</UiButton>
+        </template>
+      </SettingsSectionCard>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import SettingsSectionCard from '../../components/settings/SettingsSectionCard.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
-import NotificationCenter from '../../components/notifications/NotificationCenter.vue'
+import UiToggle from '../../components/ui/UiToggle.vue'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useAppBackup } from '../../composables/data/useAppBackup.js'
@@ -281,31 +178,20 @@ import { useNotification } from '../../composables/ui/useNotification.js'
 import { useStorageQuota } from '../../composables/storage/useStorageQuota.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
-import { useActivityLog } from '../../composables/history/useActivityLog.js'
 
 const router = useRouter()
 const { notify } = useNotification()
 const { exportAll, importAll, clearAll } = useAppBackup()
 const { quota, isWarning, formatBytes, refreshQuota } = useStorageQuota()
 const { createAutoBackup, restoreAutoBackup } = useAutoBackup()
-const { preferences, updatePreferences, themeOptions } = useCalendarPreferences()
-const { workspaceActivity } = useActivityLog()
+const { preferences, themeOptions } = useCalendarPreferences()
 
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
-const currentUserSpaces = workspaceStore.currentUserSpaces
-const activeWorkspaceMembers = workspaceStore.activeWorkspaceMembers
-const activeWorkspaceInvites = workspaceStore.activeWorkspaceInvites
-const currentUserRole = computed(() => workspaceStore.getCurrentUserRole())
-const canManageRoles = computed(() => currentUserRole.value === 'owner')
-
 const accountForm = reactive({ name: '', avatar: '', color: '#ffffff' })
-const workspaceForm = reactive({ name: '' })
-const newWorkspaceName = ref('')
-const inviteEmail = ref('')
-const joinCode = ref('')
-const lastInviteCode = ref('')
 const importMode = ref('replace')
+const preferencesSaved = ref(false)
+let preferencesSavedTimer = null
 
 watch(currentUser, (user) => {
   accountForm.name = user?.name || ''
@@ -313,17 +199,9 @@ watch(currentUser, (user) => {
   accountForm.color = user?.color || '#ffffff'
 }, { immediate: true })
 
-watch(activeWorkspace, (workspace) => {
-  workspaceForm.name = workspace?.name || ''
-}, { immediate: true })
-
 function saveAccount() {
-  authStore.updateCurrentUser({
-    name: accountForm.name,
-    avatar: accountForm.avatar,
-    color: accountForm.color,
-  })
-  notify('Аккаунт обновлён', 'success')
+  authStore.updateCurrentUser({ ...accountForm })
+  notify('Профиль обновлён', 'success')
 }
 
 function logout() {
@@ -331,455 +209,281 @@ function logout() {
   router.push({ name: 'login' })
 }
 
-function handleSwitchWorkspace(workspaceId) {
-  if (!workspaceStore.switchWorkspace(workspaceId)) return
-  notify('Пространство переключено', 'success')
+function markPreferencesSaved() {
+  preferencesSaved.value = true
+  window.clearTimeout(preferencesSavedTimer)
+  preferencesSavedTimer = window.setTimeout(() => {
+    preferencesSaved.value = false
+  }, 1500)
 }
 
-function saveWorkspace() {
-  if (!activeWorkspace.value) return
-  workspaceStore.updateWorkspace(activeWorkspace.value.id, { name: workspaceForm.name })
-  notify('Пространство обновлено', 'success')
-}
-
-function createWorkspace() {
-  const result = workspaceStore.createWorkspace(newWorkspaceName.value)
-  if (!result.ok) {
-    notify(result.message, 'danger')
-    return
-  }
-  newWorkspaceName.value = ''
-  notify('Пространство создано', 'success')
-}
-
-function createInvite() {
-  if (!activeWorkspace.value) return
-  const result = workspaceStore.createInvite(activeWorkspace.value.id, inviteEmail.value)
-  if (!result.ok) {
-    notify(result.message, 'danger')
-    return
-  }
-  lastInviteCode.value = result.invite.code
-  inviteEmail.value = ''
-  notify('Код приглашения создан', 'success')
-}
-
-async function copyLastInvite() {
-  if (!lastInviteCode.value) return
-  await navigator.clipboard?.writeText(lastInviteCode.value)
-  notify('Код скопирован', 'success')
-}
-
-function acceptInvite() {
-  const result = workspaceStore.acceptInvite(joinCode.value)
-  if (!result.ok) {
-    notify(result.message, 'danger')
-    return
-  }
-  joinCode.value = ''
-  notify('Ты присоединился к пространству', 'success')
-}
-
-function removeMember(userId) {
-  if (!activeWorkspace.value) return
-  workspaceStore.removeMember(activeWorkspace.value.id, userId)
-  notify('Участник удалён из пространства', 'success')
-}
-
-function changeRole(userId, role) {
-  if (!activeWorkspace.value) return
-  const ok = workspaceStore.updateMemberRole(activeWorkspace.value.id, userId, role)
-  notify(ok ? 'Роль обновлена' : 'Не удалось изменить роль', ok ? 'success' : 'danger')
-}
-
-function savePreferences() {
-  updatePreferences(preferences.value)
-  notify('Настройки вида сохранены', 'success')
-}
-
-const handleImport = async (event) => {
+async function handleImport(event) {
   const file = event.target.files?.[0]
   if (!file) return
 
   try {
     await importAll(file, importMode.value)
-    notify('Данные импортированы', 'success')
   } catch (error) {
-    notify(error.message || 'Не удалось импортировать резервную копию', 'danger')
+    notify(error.message || 'Не удалось импортировать данные', 'danger')
   } finally {
     event.target.value = ''
   }
 }
 
-const handleManualBackup = () => {
+function handleManualBackup() {
   createAutoBackup()
-  notify('Локальный авто-бэкап обновлён', 'success')
+  notify('Автобэкап обновлён', 'success')
 }
 
-const handleRestoreAutoBackup = () => {
-  const restored = restoreAutoBackup()
-  if (!restored) {
-    notify('Авто-бэкап пока не найден', 'warning')
+function handleRestoreAutoBackup() {
+  if (!restoreAutoBackup()) {
+    notify('Автобэкап пока не найден', 'warning')
     return
   }
-
-  notify('Авто-бэкап восстановлен', 'success')
   window.location.reload()
 }
 
-function roleLabel(role) {
-  return {
-    owner: 'Владелец',
-    admin: 'Админ',
-    member: 'Участник',
-    viewer: 'Просмотр',
-  }[role] || 'Участник'
-}
-
-function formatActivityDate(value) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
-
-onMounted(() => {
-  refreshQuota()
-})
+onMounted(refreshQuota)
+onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 </script>
 
 <style scoped>
 .settings-page {
   display: grid;
   gap: 14px;
+  width: min(100%, 1180px);
+  margin: 0 auto;
   padding: 14px;
-  animation: fadeSlideUp 0.42s var(--ease-out);
 }
 
-.settings-hero {
+.settings-page__hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  align-items: center;
   gap: 18px;
-  align-items: end;
-  padding: 18px;
+  padding: 20px;
   overflow: hidden;
 }
 
-.settings-hero__content {
-  display: grid;
-  gap: 5px;
-}
-
-.settings-hero__content p,
-.settings-card__title span,
-.settings-field span,
-.members-panel__head span,
-.invite-code span,
-.invite-list > span,
-.backup-status span {
+.settings-page__hero span,
+.settings-field > span {
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.11em;
 }
 
-.settings-hero h1,
-.settings-card__title h2 {
+.settings-page__hero h1 {
+  margin: 3px 0 6px;
+}
+
+.settings-page__hero p {
+  max-width: 650px;
   margin: 0;
-}
-
-.settings-hero h1 {
-  max-width: 720px;
-  font-size: clamp(25px, 4vw, 42px);
-}
-
-.settings-hero__content > span,
-.settings-card__hint {
-  max-width: 680px;
   color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
 }
 
-.settings-hero__summary {
+.settings-page__workspace-link {
   display: grid;
-  grid-template-columns: repeat(3, minmax(96px, 1fr));
-  gap: 8px;
-}
-
-.settings-hero__summary article {
-  display: grid;
-  gap: 4px;
   min-width: 0;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 10px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text-primary);
   background: var(--card-soft);
+  text-decoration: none;
+  transition:
+    border-color 0.18s var(--ease-out),
+    background 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
 }
 
-.settings-hero__summary small {
+.settings-page__workspace-link:hover {
+  border-color: var(--border-strong);
+  background: var(--control-bg-hover);
+  transform: translateY(-1px);
+}
+
+.settings-page__workspace-link small,
+.settings-page__workspace-link span {
   color: var(--text-muted);
   font-size: 10px;
 }
 
-.settings-hero__summary strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.settings-layout {
+.settings-page__grid {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
   gap: 14px;
-  align-items: start;
 }
 
-.settings-nav {
-  position: sticky;
-  top: calc(var(--header-height) + 14px);
-  display: grid;
-  gap: 5px;
-  padding: 8px;
-}
-
-.settings-nav a {
-  border-radius: var(--radius-md);
-  padding: 8px 10px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 750;
-  transition: background 0.18s var(--ease-out), color 0.18s var(--ease-out);
-}
-
-.settings-nav a:hover {
-  color: var(--text-primary);
-  background: var(--control-bg-hover);
-}
-
-.settings-stack {
-  display: grid;
-  gap: 12px;
-}
-
-.settings-card {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  padding: 14px;
-  background: var(--card-solid);
-  box-shadow: var(--shadow-sm);
-}
-
-.settings-card--profile {
-  grid-template-columns: 260px minmax(0, 1fr);
-  align-items: center;
-}
-
-.settings-card--profile .settings-card__title,
-.settings-card--profile .profile-block {
-  grid-column: 1;
-}
-
-.settings-card--profile .settings-card__grid,
-.settings-card--profile .settings-card__actions {
-  grid-column: 2;
-}
-
-.settings-card__title {
-  display: grid;
-  gap: 4px;
-}
-
-.settings-card__title--row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.profile-block {
+.profile-preview {
   display: flex;
   align-items: center;
   gap: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--card-soft);
 }
 
-.profile-block__avatar,
-.member-row__avatar {
+.profile-preview__avatar {
   display: grid;
   place-items: center;
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--border-color);
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   color: var(--avatar-text);
-  background: var(--profile-color, var(--member-color, var(--accent)));
+  background: var(--profile-color);
   font-weight: 900;
 }
 
-.profile-block small,
-.member-row small,
-.backup-status small {
+.profile-preview strong,
+.profile-preview span {
   display: block;
+}
+
+.profile-preview span {
   color: var(--text-muted);
+  font-size: 11px;
 }
 
-.settings-card__grid,
-.workspace-grid,
-.invite-grid,
-.data-grid {
+.settings-fields,
+.settings-field {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
-.settings-card__grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.settings-card__grid--3 {
-  grid-template-columns: 1.4fr 0.8fr 0.6fr;
-}
-
-.settings-card__grid--4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.workspace-grid {
-  grid-template-columns: 1.2fr 1fr 1fr;
-}
-
-.invite-grid,
-.data-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.settings-field,
-.settings-check {
-  display: grid;
-  gap: 5px;
+.settings-fields--profile {
+  grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 0.7fr) 110px;
 }
 
 .settings-field input[type='color'] {
   width: 100%;
-  height: 34px;
+  min-height: 36px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 3px;
+  padding: 4px;
+  background: var(--field-bg);
+}
+
+.preference-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.preference-card {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-content: start;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
   background: var(--card-soft);
 }
 
-.settings-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.preference-card__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   color: var(--text-secondary);
-  font-weight: 700;
+  background: var(--control-bg);
+  font-weight: 900;
 }
 
-.settings-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.preference-card strong,
+.preference-card small {
+  display: block;
 }
 
-.settings-card__actions--stack {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.preference-card small {
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
-.members-panel,
-.invite-panel,
-.backup-actions,
-.activity-list {
-  display: grid;
-  gap: 8px;
+.preference-card :deep(.ui-select) {
+  grid-column: 1 / -1;
+  margin-top: 2px;
 }
 
-.members-panel__head {
+.settings-switch {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--card-soft);
 }
 
-.members-panel__head b {
-  display: grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
+.settings-switch strong,
+.settings-switch small {
+  display: block;
+}
+
+.settings-switch small {
+  color: var(--text-muted);
+}
+
+.saved-badge {
+  border: 1px solid color-mix(in srgb, var(--success) 32%, transparent);
   border-radius: var(--radius-pill);
-  color: var(--text-secondary);
-  background: var(--control-bg);
-  font-size: 11px;
-}
-
-.member-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(102px, auto) auto;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 8px;
-  background: var(--card-soft);
-}
-
-.member-row button {
-  border: 0;
-  color: var(--danger);
-  background: transparent;
-  font-size: 11px;
+  padding: 4px 9px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 9%, transparent);
+  font-size: 10px;
   font-weight: 800;
-  cursor: pointer;
 }
 
-.member-row em {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-style: normal;
-}
-
-.invite-code,
-.backup-status,
-.activity-row {
+.storage-summary {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(220px, 0.8fr) 1fr;
+  align-items: center;
+  gap: 12px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 10px;
+  border-radius: 12px;
+  padding: 14px;
   background: var(--card-soft);
 }
 
-.invite-code strong {
-  font-size: 22px;
-  letter-spacing: 0.12em;
+.storage-summary__meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--control-bg);
 }
 
-.invite-list {
-  display: grid;
-  gap: 5px;
+.storage-summary__meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--warning);
 }
 
-.invite-list code {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 6px 8px;
-  color: var(--text-secondary);
-  background: var(--bg-primary);
-}
-
-.activity-row span,
-.activity-row small {
+.storage-summary small {
+  display: block;
   color: var(--text-muted);
 }
 
-.backup-status small.warning {
+.data-tools {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.65fr) 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.data-tools p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.data-tools p.warning {
   color: var(--warning);
 }
 
@@ -789,10 +493,11 @@ onMounted(() => {
   min-height: 34px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-pill);
+  padding: 0 14px;
   color: var(--text-primary);
   background: var(--control-bg);
-  font-weight: 700;
   font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -800,54 +505,53 @@ onMounted(() => {
   display: none;
 }
 
-@media (max-width: 1180px) {
-  .settings-hero,
-  .settings-layout,
-  .settings-card--profile {
-    grid-template-columns: 1fr;
+@media (max-width: 1040px) {
+  .preference-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .settings-card--profile .settings-card__title,
-  .settings-card--profile .profile-block,
-  .settings-card--profile .settings-card__grid,
-  .settings-card--profile .settings-card__actions {
-    grid-column: auto;
-  }
-
-  .settings-nav {
-    position: static;
-    display: flex;
-    flex-wrap: wrap;
+  .settings-fields--profile {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 0.6fr) 100px;
   }
 }
 
-@media (max-width: 860px) {
-  .settings-hero__summary,
-  .settings-card__grid,
-  .settings-card__grid--3,
-  .settings-card__grid--4,
-  .workspace-grid,
-  .invite-grid,
-  .data-grid,
-  .settings-card__actions--stack {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 620px) {
+@media (max-width: 720px) {
   .settings-page {
     padding: 10px;
   }
 
-  .settings-hero,
-  .settings-card {
-    padding: 12px;
+  .settings-page__hero {
+    grid-template-columns: 1fr;
+    padding: 14px;
   }
 
-  .settings-card__title--row,
-  .member-row {
-    display: grid;
+  .settings-page__workspace-link {
+    min-width: 0;
+  }
+
+  .settings-fields--profile,
+  .preference-grid,
+  .data-tools,
+  .storage-summary {
     grid-template-columns: 1fr;
+  }
+
+  .profile-preview {
+    padding: 11px;
+  }
+
+  .settings-switch {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 460px) {
+  .preference-card {
+    padding: 10px;
+  }
+
+  .settings-page__hero h1 {
+    font-size: 25px;
   }
 }
 </style>

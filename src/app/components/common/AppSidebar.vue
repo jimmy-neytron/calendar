@@ -17,6 +17,7 @@
 const items = [
   { name: 'calendar', label: 'Календарь', icon: '📅' },
   { name: 'sport', label: 'Спорт', icon: '🏋️' },
+  { name: 'workspace', label: 'Команда', icon: '◇' },
   { name: 'settings', label: 'Настройки', icon: '⚙️' },
 ]
 </script>
@@ -45,7 +46,11 @@ const items = [
   color: var(--text-muted);
   background: transparent;
   text-decoration: none;
-  transition: all 0.18s var(--ease-out);
+  transition:
+    color 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out),
+    background 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
 }
 
 .app-sidebar__item span {
@@ -61,6 +66,10 @@ const items = [
   color: var(--text-primary);
   border-color: var(--border-strong);
   background: var(--control-bg-hover);
+}
+
+.app-sidebar__item:active {
+  transform: scale(0.96);
 }
 
 @media (max-width: 860px) {

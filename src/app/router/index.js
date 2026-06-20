@@ -5,6 +5,7 @@ import { workspaceStore } from '../stores/workspace.store.js'
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
+const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 
 export const routes = [
@@ -12,7 +13,8 @@ export const routes = [
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
-  { path: '/spaces', redirect: '/settings' },
+  { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
+  { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/' },
   { path: '/lists', redirect: '/' },
@@ -22,8 +24,10 @@ export const routes = [
 export const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
-    return { top: 0, behavior: 'smooth' }
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.path === from.path) return false
+    return { top: 0 }
   },
 })
 

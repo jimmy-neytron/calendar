@@ -65,13 +65,14 @@ import { useFamilyMembers } from '../../composables/calendar/useFamilyMembers.js
 import { useModal } from '../../composables/ui/useModal.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
-import { DEFAULT_FILTERS } from '../../utils/constants/calendarConstants.js'
+import { CALENDAR_MODES, DEFAULT_FILTERS } from '../../utils/constants/calendarConstants.js'
 import { groupEventsByDate } from '../../stores/calendar.store.js'
 import { authStore } from '../../stores/auth.store.js'
 
 const props = defineProps({
   forceCreateToken: { type: Number, default: 0 },
 })
+const emit = defineEmits(['view-mode-change'])
 
 const route = useRoute()
 const { defaultMode } = useCalendarPreferences()
@@ -101,6 +102,10 @@ const filters = reactive({ ...DEFAULT_FILTERS })
 const selectedEvents = computed(() => filteredEventsByDate.value[selectedDateKey.value] || [])
 const filteredEvents = computed(() => sortedEvents.value.filter(matchesFilters))
 const filteredEventsByDate = computed(() => groupEventsByDate(filteredEvents.value))
+
+function toggleDayMonthView() {
+  mode.value = mode.value === CALENDAR_MODES.DAY ? CALENDAR_MODES.MONTH : CALENDAR_MODES.DAY
+}
 
 const createEvent = () => {
   editingEvent.value = null
@@ -194,6 +199,12 @@ function matchesFilters(event) {
 }
 
 watch(
+  mode,
+  (nextMode) => emit('view-mode-change', nextMode),
+  { immediate: true }
+)
+
+watch(
   () => route.query,
   (query) => {
     if (query.mode === 'day') enableDayMode()
@@ -214,6 +225,7 @@ defineExpose({
   goToday,
   createEvent,
   enableDayMode,
+  toggleDayMonthView,
 })
 </script>
 

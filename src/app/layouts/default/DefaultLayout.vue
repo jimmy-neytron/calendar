@@ -1,7 +1,7 @@
 <template>
   <RouterView v-if="isAuthRoute" v-slot="{ Component }">
     <transition name="fade" mode="out-in">
-      <component :is="Component" :key="$route.fullPath" />
+      <component :is="Component" :key="$route.name" />
     </transition>
   </RouterView>
 
@@ -9,26 +9,23 @@
     <AppHeader
       :current-user="currentUser"
       :active-workspace="activeWorkspace"
-      :workspaces="currentUserSpaces"
-      @create-event="openEventModal"
+      :is-calendar-route="route.name === 'calendar'"
+      :view-mode="calendarViewMode"
       @today="goCalendarToday"
-      @day-mode="enableCalendarDayMode"
-      @switch-workspace="switchWorkspace"
-      @open-settings="router.push({ name: 'settings' })"
-          />
+      @toggle-calendar-view="toggleCalendarView"
+    />
 
     <div class="default-layout__body">
       <AppSidebar />
       <AppContainer>
         <RouterView v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component
-              :is="Component"
-              :key="$route.fullPath"
-              ref="activePageRef"
-              :force-create-token="createToken"
-            />
-          </transition>
+          <component
+            :is="Component"
+            :key="$route.name"
+            ref="activePageRef"
+            :force-create-token="createToken"
+            @view-mode-change="calendarViewMode = $event"
+          />
         </RouterView>
       </AppContainer>
     </div>
@@ -64,12 +61,12 @@ const route = useRoute()
 const router = useRouter()
 const activePageRef = ref(null)
 const createToken = ref(0)
-const { notifications, notify } = useNotification()
+const calendarViewMode = ref('month')
+const { notifications } = useNotification()
 const { runDailyAutoBackup } = useAutoBackup()
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
-const currentUserSpaces = workspaceStore.currentUserSpaces
 const isAuthRoute = computed(() => route.name === 'login')
 
 const goToCalendar = async (query = {}) => {
@@ -77,26 +74,15 @@ const goToCalendar = async (query = {}) => {
   await nextTick()
 }
 
-const openEventModal = async () => {
-  createToken.value += 1
-  await goToCalendar()
-}
-
 const goCalendarToday = async () => {
   await goToCalendar({ today: Date.now().toString() })
   activePageRef.value?.goToday?.()
 }
 
-const enableCalendarDayMode = async () => {
-  await goToCalendar({ mode: 'day', t: Date.now().toString() })
-  activePageRef.value?.enableDayMode?.()
-  notify('Режим дня включён', 'success')
-}
-
-const switchWorkspace = async (workspaceId) => {
-  if (!workspaceStore.switchWorkspace(workspaceId)) return
-  await router.push({ name: 'calendar' })
-  notify('Пространство переключено', 'success')
+const toggleCalendarView = async () => {
+  if (route.name !== 'calendar') await goToCalendar()
+  await nextTick()
+  activePageRef.value?.toggleDayMonthView?.()
 }
 
 onMounted(() => {
