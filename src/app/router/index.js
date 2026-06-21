@@ -11,6 +11,7 @@ const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
 const IdeasPage = () => import('../pages/ideas/IdeasPage.vue')
 const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
+const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
@@ -19,6 +20,7 @@ export const routes = [
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
+  { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность' } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
   { path: '/spaces', redirect: '/workspace' },

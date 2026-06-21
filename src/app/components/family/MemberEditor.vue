@@ -9,14 +9,14 @@
       <article v-for="member in members" :key="member.id" class="member-editor__card">
         <span class="member-editor__avatar" :style="{ background: member.color }">{{ member.avatar }}</span>
         <input :value="member.name" @input="$emit('update', member.id, { name: $event.target.value })" />
-        <input :value="member.color" type="color" @input="$emit('update', member.id, { color: $event.target.value })" />
-        <UiButton variant="ghost" icon="✕" icon-only @click="$emit('delete', member.id)" />
+        <UiColorPicker :model-value="member.color" label="Цвет" @update:model-value="$emit('update', member.id, { color: $event })" />
+        <UiIconButton icon="close" label="Удалить участника" variant="danger" @click="$emit('delete', member.id)" />
       </article>
     </div>
 
     <form class="member-editor__form" @submit.prevent="createMember">
       <UiInput v-model="form.name" label="Имя" placeholder="Участник семьи" />
-      <input v-model="form.color" class="member-editor__color" type="color" />
+      <UiColorPicker v-model="form.color" label="Цвет участника" />
       <UiButton icon="＋">Добавить</UiButton>
     </form>
   </section>
@@ -26,6 +26,8 @@
 import { reactive } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import UiInput from '../ui/UiInput.vue'
+import UiColorPicker from '../ui/UiColorPicker.vue'
+import UiIconButton from '../ui/UiIconButton.vue'
 import { MEMBER_COLORS } from '../../utils/constants/calendarConstants.js'
 
 const props = defineProps({
@@ -99,19 +101,6 @@ const createMember = () => {
   color: var(--text-primary);
   background: var(--control-bg);
   outline: none;
-}
-
-.member-editor input[type='color'] {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: var(--radius-md);
-  padding: 0;
-  background: transparent;
-}
-
-.member-editor__color {
-  align-self: end;
 }
 
 @media (max-width: 620px) {

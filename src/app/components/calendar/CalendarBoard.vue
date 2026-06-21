@@ -12,9 +12,9 @@
           <button :class="{ active: mode === CALENDAR_MODES.WEEK }" type="button" @click="$emit('update:mode', CALENDAR_MODES.WEEK)">Неделя</button>
           <button :class="{ active: mode === CALENDAR_MODES.DAY }" type="button" @click="$emit('update:mode', CALENDAR_MODES.DAY)">День</button>
         </div>
-        <UiButton variant="secondary" icon="‹" icon-only @click="$emit('previous')" />
+        <UiIconButton icon="left" label="Предыдущий период" @click="$emit('previous')" />
         <UiButton variant="secondary" @click="$emit('today')">Сегодня</UiButton>
-        <UiButton variant="secondary" icon="›" icon-only @click="$emit('next')" />
+        <UiIconButton icon="right" label="Следующий период" @click="$emit('next')" />
       </div>
     </header>
 
@@ -92,6 +92,7 @@
 
 <script setup>
 import UiButton from '../ui/UiButton.vue'
+import UiIconButton from '../ui/UiIconButton.vue'
 import MemberPill from '../family/MemberPill.vue'
 import CalendarDayCell from './CalendarDayCell.vue'
 import EventCard from './EventCard.vue'

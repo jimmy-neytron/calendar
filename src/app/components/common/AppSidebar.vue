@@ -17,12 +17,12 @@
         :to="{ name: item.name }"
         :title="item.label"
       >
-        <span class="app-sidebar__icon">{{ item.icon }}</span>
+        <span class="app-sidebar__icon"><UiIcon :name="item.icon" /></span>
         <span class="app-sidebar__copy">
           <b>{{ item.label }}</b>
           <small>{{ item.description }}</small>
         </span>
-        <i>›</i>
+        <i><UiIcon name="right" /></i>
       </RouterLink>
     </nav>
   </aside>
@@ -31,6 +31,7 @@
 <script setup>
 import { computed } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
+import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
@@ -39,18 +40,19 @@ const groups = [
   {
     label: 'Планирование',
     items: [
-      { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: '▦' },
-      { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: '♡' },
-      { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: '✦' },
-      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: '◒' },
+      { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: 'calendar' },
+      { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
+      { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: 'sparkles' },
+      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport' },
     ],
   },
   {
     label: 'Пространство',
     items: [
-      { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: '▥' },
-      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: '◇' },
-      { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: '⚙' },
+      { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart' },
+      { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity' },
+      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
+      { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
     ],
   },
 ]

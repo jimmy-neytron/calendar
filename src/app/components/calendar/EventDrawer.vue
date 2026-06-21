@@ -23,7 +23,7 @@
             <p>Календарь</p>
             <h2>{{ editingEvent ? 'Редактировать событие' : 'Новое событие' }}</h2>
           </div>
-          <button type="button" class="event-drawer__close" aria-label="Закрыть" @click="$emit('update:modelValue', false)">×</button>
+        <UiIconButton icon="close" label="Закрыть" @click="$emit('update:modelValue', false)" />
         </header>
 
         <form class="event-drawer__form" @submit.prevent="submit">
@@ -267,6 +267,7 @@ import UiSelect from '../ui/UiSelect.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiChip from '../ui/UiChip.vue'
 import UiToggle from '../ui/UiToggle.vue'
+import UiIconButton from '../ui/UiIconButton.vue'
 import {
   DUPLICATE_OPTIONS,
   EVENT_FORM_CATEGORIES,

@@ -36,7 +36,7 @@
           <UiInput v-model="accountForm.avatar" label="Аватар" placeholder="Одна буква" />
           <label class="settings-field">
             <span>Цвет профиля</span>
-            <input v-model="accountForm.color" type="color" />
+            <UiColorPicker v-model="accountForm.color" label="Цвет профиля" />
           </label>
         </div>
 
@@ -203,6 +203,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
+import UiColorPicker from '../../components/ui/UiColorPicker.vue'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useAppBackup } from '../../composables/data/useAppBackup.js'
@@ -398,16 +399,7 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 }
 
 .settings-fields--profile {
-  grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 0.7fr) 110px;
-}
-
-.settings-field input[type='color'] {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 4px;
-  background: var(--field-bg);
+  grid-template-columns: minmax(220px, 1.2fr) minmax(150px, 0.6fr) minmax(190px, 0.8fr);
 }
 
 .preference-grid {
@@ -575,7 +567,7 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
   }
 
   .settings-fields--profile {
-    grid-template-columns: minmax(0, 1fr) minmax(150px, 0.6fr) 100px;
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 0.6fr) minmax(180px, .8fr);
   }
 }
 

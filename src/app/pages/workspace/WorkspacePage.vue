@@ -95,17 +95,17 @@
               :value="calendar.name"
               @change="calendarCollectionStore.updateCollection(calendar.id, { name: $event.target.value })"
             />
-            <input
-              :value="calendar.color"
-              type="color"
-              @input="calendarCollectionStore.updateCollection(calendar.id, { color: $event.target.value })"
+            <UiColorPicker
+              :model-value="calendar.color"
+              label="Цвет"
+              @update:model-value="calendarCollectionStore.updateCollection(calendar.id, { color: $event })"
             />
-            <button type="button" @click="removeCalendar(calendar.id)">Удалить</button>
+            <UiIconButton icon="trash" label="Удалить календарь" variant="danger" @click="removeCalendar(calendar.id)" />
           </article>
         </div>
         <div class="calendar-create">
           <UiInput v-model="newCalendarName" label="Новый календарь" placeholder="Например: Учёба" />
-          <input v-model="newCalendarColor" type="color" aria-label="Цвет календаря" />
+          <UiColorPicker v-model="newCalendarColor" label="Цвет календаря" />
           <UiButton variant="secondary" @click="createCalendar">Добавить</UiButton>
         </div>
       </SettingsSectionCard>
@@ -154,6 +154,9 @@
           </article>
           <p v-if="!recentActivity.length" class="workspace-page__empty">История пока пуста.</p>
         </div>
+        <template #actions>
+          <RouterLink class="activity-link" :to="{ name: 'activity' }">Открыть всю историю →</RouterLink>
+        </template>
       </SettingsSectionCard>
     </div>
   </section>
@@ -165,20 +168,22 @@ import SettingsSectionCard from '../../components/settings/SettingsSectionCard.v
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
+import UiColorPicker from '../../components/ui/UiColorPicker.vue'
+import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const { notify } = useNotification()
-const { workspaceActivity } = useActivityLog()
+const { workspaceActivity, addActivity } = useActivityLog()
 const activeWorkspace = workspaceStore.activeWorkspace
 const currentUserSpaces = workspaceStore.currentUserSpaces
 const activeWorkspaceMembers = workspaceStore.activeWorkspaceMembers
 const activeWorkspaceInvites = workspaceStore.activeWorkspaceInvites
 const currentUserRole = computed(() => workspaceStore.getCurrentUserRole())
 const canManageRoles = computed(() => currentUserRole.value === 'owner')
-const recentActivity = computed(() => workspaceActivity.value.slice(0, 12))
+const recentActivity = computed(() => workspaceActivity.value.slice(0, 15))
 calendarCollectionStore.ensureWorkspaceCollections()
 const calendars = calendarCollectionStore.activeCollections
 
@@ -202,6 +207,7 @@ async function switchWorkspace(workspaceId) {
 async function saveWorkspace() {
   if (!activeWorkspace.value) return
   const result = await workspaceStore.updateWorkspace(activeWorkspace.value.id, { name: workspaceName.value })
+  if (result.ok) addActivity('workspace:update', `изменил(а) название пространства на «${workspaceName.value}»`)
   notify(result.ok ? 'Название обновлено' : result.message, result.ok ? 'success' : 'danger')
 }
 
@@ -209,18 +215,23 @@ async function createWorkspace() {
   const result = await workspaceStore.createWorkspace(newWorkspaceName.value)
   if (!result.ok) return notify(result.message, 'danger')
   newWorkspaceName.value = ''
+  addActivity('workspace:create', `создал(а) пространство «${result.workspace?.name || 'Новое пространство'}»`)
   notify('Пространство создано', 'success')
 }
 
 async function changeRole(userId, role) {
   if (!activeWorkspace.value) return
   const updated = await workspaceStore.updateMemberRole(activeWorkspace.value.id, userId, role)
+  const member = activeWorkspaceMembers.value.find((item) => item.id === userId)
+  if (updated) addActivity('member:role', `изменил(а) роль участника ${member?.name || ''} на «${roleLabel(role)}»`, { userId, role })
   notify(updated ? 'Роль обновлена' : 'Не удалось изменить роль', updated ? 'success' : 'danger')
 }
 
 async function removeMember(userId) {
   if (!activeWorkspace.value) return
+  const member = activeWorkspaceMembers.value.find((item) => item.id === userId)
   const result = await workspaceStore.removeMember(activeWorkspace.value.id, userId)
+  if (result.ok) addActivity('member:remove', `удалил(а) участника ${member?.name || ''} из пространства`, { userId })
   notify(result.ok ? 'Участник удалён' : result.message, result.ok ? 'success' : 'danger')
 }
 
@@ -230,6 +241,7 @@ async function createInvite() {
   if (!result.ok) return notify(result.message, 'danger')
   lastInviteCode.value = result.invite.code
   inviteEmail.value = ''
+  addActivity('member:invite', `создал(а) приглашение${result.invite.invitedEmail ? ` для ${result.invite.invitedEmail}` : ''}`)
 }
 
 async function copyInvite() {
@@ -248,11 +260,14 @@ function createCalendar() {
   const calendar = calendarCollectionStore.addCollection(newCalendarName.value, newCalendarColor.value)
   if (!calendar) return notify('Укажи название календаря', 'warning')
   newCalendarName.value = ''
+  addActivity('workspace:calendar', `добавил(а) календарь «${calendar.name}»`, { calendarId: calendar.id })
   notify('Календарь добавлен', 'success')
 }
 
 function removeCalendar(id) {
+  const calendar = calendars.value.find((item) => item.id === id)
   const removed = calendarCollectionStore.removeCollection(id)
+  if (removed) addActivity('workspace:calendar', `удалил(а) календарь «${calendar?.name || ''}»`, { calendarId: id })
   notify(removed ? 'Календарь удалён' : 'Нельзя удалить последний календарь', removed ? 'success' : 'warning')
 }
 
@@ -404,7 +419,7 @@ function formatActivityDate(value) {
 
 .calendar-list article {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 40px auto;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(150px, 190px) auto;
   align-items: center;
   gap: 8px;
   border: 1px solid var(--border-color);
@@ -433,27 +448,9 @@ function formatActivityDate(value) {
   outline: 0;
 }
 
-.calendar-list input[type='color'],
-.calendar-create input[type='color'] {
-  width: 38px;
-  height: 34px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 3px;
-  background: var(--control-bg);
-}
-
-.calendar-list article > button:last-child {
-  border: 0;
-  color: var(--danger);
-  background: transparent;
-  font-size: 10px;
-  font-weight: 800;
-}
-
 .calendar-create {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 220px) auto;
   align-items: end;
   gap: 8px;
 }
@@ -520,6 +517,16 @@ function formatActivityDate(value) {
   border-radius: 12px;
   padding: 24px;
   text-align: center;
+}
+
+.activity-link {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 8px 13px;
+  color: var(--text-primary);
+  background: var(--control-bg);
+  text-decoration: none;
+  font-weight: 700;
 }
 
 @media (max-width: 1080px) {

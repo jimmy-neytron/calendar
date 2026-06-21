@@ -7,13 +7,19 @@
     @click="$emit('click', $event)"
   >
     <span v-if="loading" class="ui-button__spinner" />
-    <span v-else-if="icon" class="ui-button__icon">{{ icon }}</span>
+    <span v-else-if="icon" class="ui-button__icon">
+      <UiIcon v-if="iconName" :name="iconName" />
+      <template v-else>{{ icon }}</template>
+    </span>
     <span v-if="$slots.default" class="ui-button__content"><slot /></span>
   </button>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+import UiIcon from './UiIcon.vue'
+
+const props = defineProps({
   variant: { type: String, default: 'primary' },
   size: { type: String, default: 'md' },
   loading: { type: Boolean, default: false },
@@ -24,6 +30,14 @@ defineProps({
 })
 
 defineEmits(['click'])
+const iconName = computed(() => ({
+  '＋': 'plus',
+  '+': 'plus',
+  '→': 'right',
+  '↓': 'download',
+  '⇣': 'download',
+  '⌕': 'search',
+}[props.icon] || ''))
 </script>
 
 <style scoped>
@@ -107,5 +121,12 @@ defineEmits(['click'])
   border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.ui-button__icon {
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  line-height: 0;
 }
 </style>

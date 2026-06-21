@@ -10,7 +10,7 @@
                 <h2>Добавить упражнения</h2>
                 <p>Добавь одно упражнение или вставь JSON, чтобы импортировать сразу программу.</p>
               </div>
-              <button type="button" class="exercise-drawer__close" aria-label="Закрыть" @click="close">×</button>
+        <UiIconButton icon="close" label="Закрыть" @click="close" />
             </header>
 
             <div class="exercise-drawer__body">
@@ -80,6 +80,7 @@ import { reactive, ref, watch } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import UiInput from '../ui/UiInput.vue'
 import UiSelect from '../ui/UiSelect.vue'
+import UiIconButton from '../ui/UiIconButton.vue'
 import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const props = defineProps({

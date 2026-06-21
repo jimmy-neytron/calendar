@@ -33,7 +33,7 @@
       <span>{{ typeMeta(randomIdea.type).icon }}</span>
       <div><small>Почему бы не…</small><strong>{{ randomIdea.title }}</strong><p v-if="randomIdea.note">{{ randomIdea.note }}</p></div>
       <UiButton size="sm" @click="openPlanner(randomIdea)">Запланировать</UiButton>
-      <button type="button" aria-label="Закрыть" @click="randomIdea = null">×</button>
+      <UiIconButton icon="close" label="Закрыть" @click="randomIdea = null" />
     </div>
 
     <div class="idea-grid">
@@ -41,7 +41,7 @@
         <header>
           <span>{{ typeMeta(idea.type).icon }}</span>
           <small>{{ typeMeta(idea.type).label }}</small>
-          <button type="button" @click="ideaStore.removeIdea(idea.id)">×</button>
+          <UiIconButton icon="trash" label="Удалить идею" size="sm" variant="danger" @click="ideaStore.removeIdea(idea.id)" />
         </header>
         <strong>{{ idea.title }}</strong>
         <p>{{ idea.note || 'Без заметки — просто хорошая идея.' }}</p>
@@ -73,6 +73,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiModal from '../../components/ui/UiModal.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
+import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { ideaStore } from '../../stores/idea.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'

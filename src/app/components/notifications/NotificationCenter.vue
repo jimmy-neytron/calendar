@@ -34,7 +34,7 @@
             <span v-if="notification.eventDate">{{ formatEventDate(notification.eventDate) }}</span>
           </footer>
         </div>
-        <button type="button" aria-label="Удалить" @click.stop="notificationStore.removeNotification(notification.id)">×</button>
+          <UiIconButton icon="close" label="Удалить уведомление" size="sm" @click.stop="notificationStore.removeNotification(notification.id)" />
       </article>
 
       <div v-if="!notifications.length" class="notification-empty">
@@ -47,6 +47,7 @@
 </template>
 
 <script setup>
+import UiIconButton from '../ui/UiIconButton.vue'
 import { computed } from 'vue'
 import { notificationStore } from '../../stores/notification.store.js'
 

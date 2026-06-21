@@ -9,7 +9,7 @@
                 <p v-if="eyebrow" class="ui-modal__eyebrow">{{ eyebrow }}</p>
                 <h2>{{ title }}</h2>
               </div>
-              <UiButton variant="ghost" icon="✕" icon-only @click="close" />
+              <UiIconButton icon="close" label="Закрыть" @click="close" />
             </header>
             <div class="ui-modal__body">
               <slot />
@@ -23,7 +23,7 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted } from 'vue'
-import UiButton from './UiButton.vue'
+import UiIconButton from './UiIconButton.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

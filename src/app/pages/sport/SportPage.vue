@@ -76,7 +76,7 @@
             <small v-if="exercise.note">{{ exercise.note }}</small>
           </div>
 
-          <button class="exercise-row__delete" type="button" title="Удалить" @click="removeExercise(exercise.id)">×</button>
+              <UiIconButton icon="trash" label="Удалить упражнение" size="sm" variant="danger" @click="removeExercise(exercise.id)" />
         </article>
       </transition-group>
 
@@ -99,6 +99,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import UiButton from '../../components/ui/UiButton.vue'
+import UiIconButton from '../../components/ui/UiIconButton.vue'
 import ExerciseDrawer from '../../components/sport/ExerciseDrawer.vue'
 import { sportStore } from '../../stores/sport.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
