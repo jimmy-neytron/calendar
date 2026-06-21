@@ -58,22 +58,14 @@
     />
 
     <div class="toast-stack">
-      <transition-group name="list">
-        <div
+      <transition-group name="toast-list">
+        <AppToast
           v-for="notification in notifications"
           :key="notification.id"
-          class="toast"
-          :class="`toast--${notification.type}`"
-        >
-          {{ notification.message }}
-          <button
-            v-if="notification.action"
-            type="button"
-            @click="runNotificationAction(notification)"
-          >
-            {{ notification.actionLabel || 'Отменить' }}
-          </button>
-        </div>
+          :notification="notification"
+          @dismiss="dismiss"
+          @action="runNotificationAction"
+        />
       </transition-group>
     </div>
   </div>
@@ -86,6 +78,7 @@ import AppContainer from '../../components/common/AppContainer.vue'
 import AppHeader from '../../components/common/AppHeader.vue'
 import AppSidebar from '../../components/common/AppSidebar.vue'
 import CommandPalette from '../../components/common/CommandPalette.vue'
+import AppToast from '../../components/common/AppToast.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { authStore } from '../../stores/auth.store.js'
@@ -298,23 +291,39 @@ onBeforeUnmount(() => {
   bottom: 14px;
   z-index: 70;
   display: grid;
-  gap: 8px;
+  gap: 9px;
+  pointer-events: none;
 }
 
-.toast {
-  min-width: 220px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 10px 12px;
-  background: var(--toast-bg);
-  box-shadow: var(--shadow-md);
-  color: var(--text-primary);
+.toast-stack :deep(.app-toast) {
+  pointer-events: auto;
 }
 
-.toast--success { border-color: rgba(34, 197, 94, 0.35); }
-.toast--danger { border-color: rgba(239, 68, 68, 0.35); }
-.toast--info { border-color: var(--accent-border); }
-.toast--warning { border-color: rgba(234, 179, 8, 0.35); }
+:global(.toast-list-enter-active) {
+  animation: toastEnter .44s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+:global(.toast-list-leave-active) {
+  position: absolute;
+  right: 0;
+  animation: toastLeave .3s cubic-bezier(.4, 0, 1, 1) both;
+}
+
+:global(.toast-list-move) {
+  transition: transform .34s var(--ease-out);
+}
+
+@keyframes toastEnter {
+  0% { opacity: 0; transform: translate3d(34px, 12px, 0) scale(.86); filter: blur(5px); }
+  62% { opacity: 1; transform: translate3d(-4px, 0, 0) scale(1.015); filter: blur(0); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes toastLeave {
+  0% { opacity: 1; transform: scale(1); max-height: 150px; }
+  55% { opacity: 0; transform: translateX(32px) scale(.92); max-height: 150px; }
+  100% { opacity: 0; transform: translateX(45px) scale(.82); max-height: 0; margin: -5px 0; }
+}
 
 .quick-create {
   position: fixed;
@@ -333,15 +342,6 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-md);
   font-weight: 800;
   transition: transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
-}
-
-.toast button {
-  margin-left: 12px;
-  border: 0;
-  color: var(--text-primary);
-  background: transparent;
-  font-weight: 850;
-  text-decoration: underline;
 }
 
 .quick-create:hover {
@@ -365,12 +365,22 @@ onBeforeUnmount(() => {
   .quick-create b {
     display: none;
   }
+
+  .toast-stack {
+    right: 10px;
+    bottom: 82px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   :global(.page-shift-enter-active),
   :global(.page-shift-leave-active) {
     animation-duration: 0.01ms;
+  }
+
+  :global(.toast-list-enter-active),
+  :global(.toast-list-leave-active) {
+    animation-duration: .01ms;
   }
 }
 </style>

@@ -1,3 +1,4 @@
+import './app/stores/networkActivity.store.js'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { router } from './app/router/index.js'
