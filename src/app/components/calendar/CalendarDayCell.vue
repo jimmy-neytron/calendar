@@ -6,6 +6,7 @@
       'calendar-day--today': day.isToday,
       'calendar-day--selected': selected,
       'calendar-day--drag-over': isDragOver,
+      'calendar-day--birthday': hasBirthday,
     }"
     type="button"
     @click="$emit('select', day.key)"
@@ -16,7 +17,8 @@
   >
     <header class="calendar-day__header">
       <span>{{ day.date.getDate() }}</span>
-      <small v-if="day.isToday">Сегодня</small>
+      <small v-if="hasBirthday" class="calendar-day__birthday-label">♡ День рождения</small>
+      <small v-else-if="day.isToday">Сегодня</small>
     </header>
 
     <div class="calendar-day__events">
@@ -24,12 +26,13 @@
         v-for="event in visibleEvents"
         :key="event.id"
         class="calendar-day__event"
+        :class="{ 'calendar-day__event--birthday': isBirthdayEvent(event) }"
         :style="{ '--event-color': getEventColor(event) }"
         draggable="true"
         @dragstart.stop="handleDragStart(event, $event)"
         @click.stop="$emit('edit-event', event)"
       >
-        <b>{{ event.allDay ? 'Весь день' : event.startTime }}</b>
+        <b>{{ isBirthdayEvent(event) ? '🎁' : event.allDay ? 'Весь день' : event.startTime }}</b>
         {{ event.title }}
       </span>
       <span v-if="hiddenCount" class="calendar-day__more">+{{ hiddenCount }} ещё</span>
@@ -52,8 +55,11 @@ const props = defineProps({
 const emit = defineEmits(['select', 'edit-event', 'move-event'])
 const isDragOver = ref(false)
 
-const visibleEvents = computed(() => props.events.slice(0, 3))
+const visibleEvents = computed(() => [...props.events]
+  .sort((first, second) => Number(isBirthdayEvent(second)) - Number(isBirthdayEvent(first)))
+  .slice(0, 3))
 const hiddenCount = computed(() => Math.max(0, props.events.length - visibleEvents.value.length))
+const hasBirthday = computed(() => props.events.some(isBirthdayEvent))
 
 function handleDragStart(event, dragEvent) {
   dragEvent.dataTransfer.effectAllowed = 'copyMove'
@@ -70,6 +76,10 @@ function handleDrop(dropEvent) {
 
 function getEventColor(event) {
   return calendarCollectionStore.getCollection(event.calendarId)?.color || getEventAccent(event.memberIds, props.members)
+}
+
+function isBirthdayEvent(event) {
+  return event.category === 'birthday' && /^день рождения:/i.test(event.title || '')
 }
 </script>
 
@@ -114,6 +124,26 @@ function getEventColor(event) {
   box-shadow: inset 0 0 0 1px var(--accent-hover);
 }
 
+.calendar-day--birthday {
+  position: relative;
+  border-color: color-mix(in srgb, var(--pink) 42%, var(--border-color));
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--pink) 18%, transparent), transparent 55%),
+    color-mix(in srgb, var(--pink) 5%, var(--control-bg));
+}
+
+.calendar-day--birthday::after {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pink);
+  box-shadow: -9px 5px 0 color-mix(in srgb, var(--pink) 50%, transparent);
+  content: '';
+}
+
 .calendar-day__header {
   display: flex;
   justify-content: space-between;
@@ -137,6 +167,13 @@ function getEventColor(event) {
   text-transform: uppercase;
 }
 
+.calendar-day__header .calendar-day__birthday-label {
+  margin-right: 12px;
+  color: var(--pink);
+  letter-spacing: .02em;
+  text-transform: none;
+}
+
 .calendar-day__events {
   display: grid;
   gap: 4px;
@@ -158,6 +195,13 @@ function getEventColor(event) {
 
 .calendar-day__event:active {
   cursor: grabbing;
+}
+
+.calendar-day__event--birthday {
+  border-left-color: var(--pink);
+  color: color-mix(in srgb, var(--pink) 75%, var(--text-primary));
+  background: color-mix(in srgb, var(--pink) 14%, var(--control-bg));
+  font-weight: 700;
 }
 
 .calendar-day__event b {

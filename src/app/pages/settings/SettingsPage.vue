@@ -4,7 +4,7 @@
       <div>
         <span>Персональные настройки</span>
         <h1>Настрой приложение под себя</h1>
-        <p>Профиль, внешний вид календаря и управление локальными данными — без рабочих разделов и лишнего шума.</p>
+        <p>Профиль, внешний вид календаря и понятное управление синхронизацией — без технического шума.</p>
       </div>
       <RouterLink class="settings-page__workspace-link" :to="{ name: 'workspace' }">
         <small>Текущее пространство</small>
@@ -133,45 +133,62 @@
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        icon="↓"
-        eyebrow="Хранилище"
-        title="Резервная копия и данные"
-        description="Общие данные синхронизируются с Supabase, а JSON остаётся резервной копией."
-        tone="warning"
+        icon="↻"
+        eyebrow="Данные"
+        title="Синхронизация и перенос"
+        description="События сохраняются в Supabase автоматически. Здесь нужны только перенос и личная копия."
+        tone="accent"
       >
-        <div class="storage-summary">
-          <div class="storage-summary__meter">
-            <span :style="{ width: `${Math.min(quota.percentUsed || 0, 100)}%` }" />
-          </div>
+        <div class="sync-status" :class="{ 'sync-status--error': workspaceStore.error.value }">
+          <span class="sync-status__icon">{{ workspaceStore.error.value ? '!' : '✓' }}</span>
           <div>
-            <strong>{{ quota.supported ? `${quota.percentUsed}% занято` : 'Оценка хранилища недоступна' }}</strong>
-            <small v-if="quota.supported">{{ formatBytes(quota.usage) }} из {{ formatBytes(quota.quota) }}</small>
+            <strong>{{ workspaceStore.error.value ? 'Есть проблема с синхронизацией' : 'Синхронизация включена' }}</strong>
+            <small>
+              {{ workspaceStore.error.value || `Пространство «${activeWorkspace?.name || 'Моё пространство'}» подключено к Supabase` }}
+            </small>
           </div>
         </div>
 
-        <div class="data-tools">
-          <label class="settings-field">
-            <span>Режим импорта</span>
-            <UiSelect v-model="importMode">
-              <option value="replace">Заменить текущие данные</option>
-              <option value="merge">Объединить по ID</option>
-            </UiSelect>
-          </label>
-          <p :class="{ warning: isWarning }">
-            {{ isWarning ? 'Хранилище почти заполнено — рекомендуем экспортировать JSON.' : 'События и общие разделы синхронизируются с Supabase.' }}
-          </p>
+        <div class="data-actions">
+          <article>
+            <span>☁</span>
+            <div>
+              <strong>Сохраняется автоматически</strong>
+              <small>События, дни рождения, идеи, спорт и участники доступны после входа на другом устройстве.</small>
+            </div>
+          </article>
+          <article>
+            <span>↓</span>
+            <div>
+              <strong>Личная JSON-копия</strong>
+              <small>Нужна только для архива или ручного переноса. Для обычной работы экспортировать ничего не требуется.</small>
+            </div>
+          </article>
+          <article>
+            <span>↥</span>
+            <div>
+              <strong>Старые данные браузера</strong>
+              <small>Если до подключения Supabase уже были события, перенеси их один раз в текущее пространство.</small>
+            </div>
+          </article>
         </div>
+
+        <label class="settings-field import-mode">
+          <span>При импорте JSON</span>
+          <UiSelect v-model="importMode">
+            <option value="merge">Добавить недостающие записи</option>
+            <option value="replace">Полностью заменить локальную копию</option>
+          </UiSelect>
+        </label>
 
         <template #actions>
-          <UiButton icon="↓" @click="exportAll">Экспорт JSON</UiButton>
-          <UiButton variant="secondary" @click="migrateLocalData">Перенести старые данные в Supabase</UiButton>
+          <UiButton icon="↓" @click="exportAll">Скачать JSON-копию</UiButton>
+          <UiButton variant="secondary" @click="migrateLocalData">Перенести старые данные</UiButton>
           <label class="upload-button">
             <input type="file" accept="application/json" @change="handleImport" />
-            Импорт JSON
+            Загрузить JSON
           </label>
-          <UiButton variant="secondary" @click="handleManualBackup">Создать автобэкап</UiButton>
-          <UiButton variant="secondary" @click="handleRestoreAutoBackup">Восстановить</UiButton>
-          <UiButton variant="danger" @click="clearAll">Сбросить данные</UiButton>
+          <UiButton variant="danger" @click="clearLocalData">Очистить локальный кеш</UiButton>
         </template>
       </SettingsSectionCard>
     </div>
@@ -179,7 +196,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import SettingsSectionCard from '../../components/settings/SettingsSectionCard.vue'
 import UiButton from '../../components/ui/UiButton.vue'
@@ -190,8 +207,6 @@ import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useAppBackup } from '../../composables/data/useAppBackup.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
-import { useStorageQuota } from '../../composables/storage/useStorageQuota.js'
-import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 import { migrateLocalDataToSupabase } from '../../services/backend/localDataMigration.service.js'
@@ -199,8 +214,6 @@ import { migrateLocalDataToSupabase } from '../../services/backend/localDataMigr
 const router = useRouter()
 const { notify } = useNotification()
 const { exportAll, importAll, clearAll } = useAppBackup()
-const { quota, isWarning, formatBytes, refreshQuota } = useStorageQuota()
-const { createAutoBackup, restoreAutoBackup } = useAutoBackup()
 const { preferences, themeOptions } = useCalendarPreferences()
 const {
   enabled: localRemindersEnabled,
@@ -211,7 +224,7 @@ const {
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const accountForm = reactive({ name: '', avatar: '', color: '#ffffff' })
-const importMode = ref('replace')
+const importMode = ref('merge')
 const preferencesSaved = ref(false)
 let preferencesSavedTimer = null
 
@@ -270,20 +283,11 @@ async function handleImport(event) {
   }
 }
 
-function handleManualBackup() {
-  createAutoBackup()
-  notify('Автобэкап обновлён', 'success')
+function clearLocalData() {
+  clearAll()
+  notify('Локальный кеш очищен. Облачные данные останутся в Supabase.', 'info')
 }
 
-function handleRestoreAutoBackup() {
-  if (!restoreAutoBackup()) {
-    notify('Автобэкап пока не найден', 'warning')
-    return
-  }
-  window.location.reload()
-}
-
-onMounted(refreshQuota)
 onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 </script>
 
@@ -481,52 +485,72 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
   font-weight: 800;
 }
 
-.storage-summary {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) 1fr;
+.sync-status {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  border: 1px solid var(--border-color);
+  gap: 11px;
+  border: 1px solid color-mix(in srgb, var(--success) 28%, var(--border-color));
   border-radius: 12px;
   padding: 14px;
+  background: color-mix(in srgb, var(--success) 7%, var(--card-soft));
+}
+
+.sync-status--error {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border-color));
+  background: color-mix(in srgb, var(--danger) 7%, var(--card-soft));
+}
+
+.sync-status__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, var(--control-bg));
+  font-weight: 900;
+}
+
+.sync-status--error .sync-status__icon { color: var(--danger); }
+.sync-status strong,
+.sync-status small { display: block; }
+.sync-status small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.data-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.data-actions article {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
   background: var(--card-soft);
 }
 
-.storage-summary__meter {
-  height: 8px;
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: var(--control-bg);
-}
-
-.storage-summary__meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--warning);
-}
-
-.storage-summary small {
-  display: block;
-  color: var(--text-muted);
-}
-
-.data-tools {
+.data-actions article > span {
   display: grid;
-  grid-template-columns: minmax(260px, 0.65fr) 1fr;
-  align-items: center;
-  gap: 12px;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: var(--info);
+  background: color-mix(in srgb, var(--info) 10%, var(--control-bg));
+  font-weight: 800;
 }
 
-.data-tools p {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.data-tools p.warning {
-  color: var(--warning);
-}
-
+.data-actions strong,
+.data-actions small { display: block; }
+.data-actions small { margin-top: 3px; color: var(--text-muted); line-height: 1.35; }
+.import-mode { max-width: 360px; }
 .upload-button {
   display: grid;
   place-items: center;
@@ -571,8 +595,7 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 
   .settings-fields--profile,
   .preference-grid,
-  .data-tools,
-  .storage-summary {
+  .data-actions {
     grid-template-columns: 1fr;
   }
 

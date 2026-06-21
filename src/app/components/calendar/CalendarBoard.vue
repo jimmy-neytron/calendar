@@ -60,7 +60,11 @@
               v-for="day in weekRange"
               :key="day.key"
               class="calendar-board__week-day"
-              :class="{ 'calendar-board__week-day--today': day.isToday, 'calendar-board__week-day--selected': day.key === selectedDateKey }"
+              :class="{
+                'calendar-board__week-day--today': day.isToday,
+                'calendar-board__week-day--selected': day.key === selectedDateKey,
+                'calendar-board__week-day--birthday': hasBirthday(eventsByDate[day.key] || []),
+              }"
               @click="$emit('select-date', day.key)"
               @dragover.prevent
               @drop.stop="handleWeekDrop(day.key, $event)"
@@ -68,6 +72,7 @@
               <div class="calendar-board__week-date">
                 <span>{{ day.date.getDate() }}</span>
                 <b>{{ WEEK_DAYS[day.date.getDay()] }}</b>
+                <small v-if="hasBirthday(eventsByDate[day.key] || [])">♡ Праздник</small>
               </div>
               <EventCard
                 v-for="event in eventsByDate[day.key] || []"
@@ -111,6 +116,10 @@ function handleWeekDrop(date, dropEvent) {
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
   emit('move-event', { eventId, date, copy: dropEvent.altKey })
+}
+
+function hasBirthday(events) {
+  return events.some((event) => event.category === 'birthday' && /^день рождения:/i.test(event.title || ''))
 }
 </script>
 
@@ -230,6 +239,13 @@ function handleWeekDrop(date, dropEvent) {
   background: var(--accent-soft);
 }
 
+.calendar-board__week-day--birthday {
+  border-color: color-mix(in srgb, var(--pink) 40%, var(--border-color));
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--pink) 16%, transparent), transparent 48%),
+    color-mix(in srgb, var(--pink) 5%, var(--control-bg));
+}
+
 .calendar-board__week-date {
   display: flex;
   align-items: center;
@@ -245,6 +261,13 @@ function handleWeekDrop(date, dropEvent) {
   border-radius: 50%;
   background: var(--field-bg-focus);
   font-weight: 700;
+}
+
+.calendar-board__week-date small {
+  margin-left: auto;
+  color: var(--pink);
+  font-size: 9px;
+  font-weight: 800;
 }
 
 .calendar-board__empty {

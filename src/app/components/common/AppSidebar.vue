@@ -1,27 +1,58 @@
 <template>
   <aside class="app-sidebar">
-    <RouterLink
-      v-for="item in items"
-      :key="item.name"
-      class="app-sidebar__item"
-      :to="{ name: item.name }"
-      :title="item.label"
-    >
-      <span>{{ item.icon }}</span>
-      <b>{{ item.label }}</b>
-    </RouterLink>
+    <div class="app-sidebar__context">
+      <span class="app-sidebar__mark">{{ workspaceInitial }}</span>
+      <div>
+        <small>Пространство</small>
+        <strong>{{ activeWorkspace?.name || 'Календарь' }}</strong>
+      </div>
+    </div>
+
+    <nav v-for="group in groups" :key="group.label" class="app-sidebar__group">
+      <span class="app-sidebar__label">{{ group.label }}</span>
+      <RouterLink
+        v-for="item in group.items"
+        :key="item.name"
+        class="app-sidebar__item"
+        :to="{ name: item.name }"
+        :title="item.label"
+      >
+        <span class="app-sidebar__icon">{{ item.icon }}</span>
+        <span class="app-sidebar__copy">
+          <b>{{ item.label }}</b>
+          <small>{{ item.description }}</small>
+        </span>
+        <i>›</i>
+      </RouterLink>
+    </nav>
   </aside>
 </template>
 
 <script setup>
-const items = [
-  { name: 'calendar', label: 'Календарь', icon: '📅' },
-  { name: 'sport', label: 'Спорт', icon: '🏋️' },
-  { name: 'ideas', label: 'Идеи', icon: '✦' },
-  { name: 'birthdays', label: 'Дни рождения', icon: '♡' },
-  { name: 'analytics', label: 'Аналитика', icon: '▥' },
-  { name: 'workspace', label: 'Команда', icon: '◇' },
-  { name: 'settings', label: 'Настройки', icon: '⚙️' },
+import { computed } from 'vue'
+import { workspaceStore } from '../../stores/workspace.store.js'
+
+const activeWorkspace = workspaceStore.activeWorkspace
+const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
+
+const groups = [
+  {
+    label: 'Планирование',
+    items: [
+      { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: '▦' },
+      { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: '♡' },
+      { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: '✦' },
+      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: '◒' },
+    ],
+  },
+  {
+    label: 'Пространство',
+    items: [
+      { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: '▥' },
+      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: '◇' },
+      { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: '⚙' },
+    ],
+  },
 ]
 </script>
 
@@ -30,49 +61,129 @@ const items = [
   position: sticky;
   top: var(--header-height);
   height: calc(100vh - var(--header-height));
+  width: var(--sidebar-width);
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  width: var(--sidebar-width);
-  padding: 12px 10px;
+  gap: 18px;
+  padding: 14px 12px;
   border-right: 1px solid var(--border-color);
   background: var(--sidebar-bg);
+  overflow-y: auto;
+}
+
+.app-sidebar__context {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 10px;
+  background: var(--card-soft);
+}
+
+.app-sidebar__mark {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--text-inverse);
+  background: var(--accent);
+  font-weight: 900;
+}
+
+.app-sidebar__context div,
+.app-sidebar__copy {
+  min-width: 0;
+}
+
+.app-sidebar__context small,
+.app-sidebar__context strong,
+.app-sidebar__copy b,
+.app-sidebar__copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-sidebar__context small,
+.app-sidebar__copy small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.app-sidebar__group {
+  display: grid;
+  gap: 5px;
+}
+
+.app-sidebar__label {
+  padding: 0 8px 3px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .app-sidebar__item {
   display: grid;
-  place-items: center;
-  gap: 4px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
   min-height: 48px;
   border: 1px solid transparent;
   border-radius: 13px;
-  color: var(--text-muted);
-  background: transparent;
+  padding: 6px 8px;
+  color: var(--text-secondary);
   text-decoration: none;
-  transition:
-    color 0.18s var(--ease-out),
-    border-color 0.18s var(--ease-out),
-    background 0.18s var(--ease-out),
-    transform 0.18s var(--ease-out);
+  transition: 0.18s var(--ease-out);
 }
 
-.app-sidebar__item span {
-  font-size: 17px;
+.app-sidebar__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  font-size: 16px;
+  font-weight: 800;
 }
 
-.app-sidebar__item b {
-  font-size: 9px;
-}
-
-.app-sidebar__item:hover,
-.app-sidebar__item.router-link-active {
+.app-sidebar__copy b {
   color: var(--text-primary);
-  border-color: var(--border-strong);
-  background: var(--control-bg-hover);
+  font-size: 12px;
 }
 
-.app-sidebar__item:active {
-  transform: scale(0.96);
+.app-sidebar__item i {
+  color: var(--text-muted);
+  font-style: normal;
+  opacity: 0;
+}
+
+.app-sidebar__item:hover {
+  border-color: var(--border-color);
+  background: var(--control-bg);
+  transform: translateX(2px);
+}
+
+.app-sidebar__item.router-link-active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.app-sidebar__item.router-link-active .app-sidebar__icon {
+  color: var(--text-inverse);
+  background: var(--accent);
+}
+
+.app-sidebar__item.router-link-active i {
+  opacity: 1;
 }
 
 @media (max-width: 860px) {
@@ -80,35 +191,49 @@ const items = [
     position: fixed;
     z-index: 25;
     left: 50%;
-    right: auto;
-    bottom: 12px;
+    bottom: 10px;
     top: auto;
     width: auto;
-    max-width: calc(100vw - 20px);
-    height: 54px;
+    max-width: calc(100vw - 16px);
+    height: 58px;
     flex-direction: row;
+    gap: 3px;
     padding: 6px;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
+    border-radius: 18px;
     background: var(--sidebar-floating-bg);
-    backdrop-filter: blur(16px);
+    backdrop-filter: blur(18px);
     box-shadow: var(--shadow-md);
     transform: translateX(-50%);
     overflow-x: auto;
     scrollbar-width: none;
   }
 
-  .app-sidebar::-webkit-scrollbar {
+  .app-sidebar__context,
+  .app-sidebar__label {
     display: none;
   }
 
-  .app-sidebar__item {
-    min-width: 46px;
-    min-height: 42px;
-    border-radius: 12px;
+  .app-sidebar__group {
+    display: flex;
+    gap: 3px;
   }
 
-  .app-sidebar__item b {
+  .app-sidebar__item {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: 46px;
+    min-height: 44px;
+    padding: 5px;
+  }
+
+  .app-sidebar__icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .app-sidebar__copy,
+  .app-sidebar__item i {
     display: none;
   }
 }
