@@ -1,16 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Calendar tasks favicon">
   <defs>
-    <linearGradient id="bg" x1="8" y1="5" x2="56" y2="59" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#242424"/>
-      <stop offset="1" stop-color="#050505"/>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151A2E"/>
+      <stop offset="1" stop-color="#050506"/>
     </linearGradient>
-    <linearGradient id="mark" x1="20" y1="16" x2="46" y2="49" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#9ca3af"/>
+
+    <linearGradient id="accent" x1="14" y1="15" x2="50" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset=".55" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A855F7"/>
     </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".45"/>
+    </filter>
   </defs>
-  <rect width="64" height="64" rx="17" fill="url(#bg)"/>
-  <rect x="13.5" y="14.5" width="37" height="36" rx="10" fill="none" stroke="#fff" stroke-opacity=".18"/>
-  <path d="M21 28.5h22M25 20v7M39 20v7" stroke="url(#mark)" stroke-width="3.4" stroke-linecap="round"/>
-  <path d="m23 38 5.5 5.5L42 30" fill="none" stroke="url(#mark)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+
+  <g filter="url(#shadow)">
+    <!-- calendar body -->
+    <rect x="12" y="14" width="40" height="40" rx="9" fill="#F8FAFC"/>
+
+    <!-- calendar header -->
+    <path d="M12 23C12 18.03 16.03 14 21 14H43C47.97 14 52 18.03 52 23V28H12V23Z" fill="url(#accent)"/>
+
+    <!-- rings -->
+    <path d="M22 10V19M42 10V19" stroke="#F8FAFC" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- small cells, simplified for favicon scale -->
+    <rect x="17" y="33" width="7" height="7" rx="2" fill="#D7DCE7"/>
+    <rect x="28.5" y="33" width="7" height="7" rx="2" fill="#D7DCE7"/>
+    <rect x="40" y="33" width="7" height="7" rx="2" fill="#D7DCE7"/>
+    <rect x="17" y="44" width="7" height="7" rx="2" fill="#D7DCE7"/>
+    <rect x="40" y="44" width="7" height="7" rx="2" fill="#D7DCE7"/>
+
+    <!-- task check -->
+    <path d="M23 42L29 48L42 35" fill="none" stroke="url(#accent)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>
