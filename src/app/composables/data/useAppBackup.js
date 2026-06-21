@@ -35,6 +35,7 @@ const DEFAULT_DATA = {
   ],
   [`${STORAGE_PREFIX}sport-exercises`]: defaultExercises,
   [`${STORAGE_PREFIX}sport-completions`]: [],
+  [`${STORAGE_PREFIX}movie-watchlist`]: [],
 }
 
 export function useAppBackup() {

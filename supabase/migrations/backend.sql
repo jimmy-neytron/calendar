@@ -172,3 +172,26 @@ CREATE TABLE public.activity_entries (
   CONSTRAINT activity_entries_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
   CONSTRAINT activity_entries_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.profiles(id)
 );
+CREATE TABLE public.movie_watchlist (
+  id text NOT NULL,
+  workspace_id text NOT NULL,
+  tmdb_id integer NOT NULL,
+  media_type text NOT NULL CHECK (media_type = ANY (ARRAY['movie'::text, 'tv'::text])),
+  title text NOT NULL,
+  original_title text NOT NULL DEFAULT ''::text,
+  overview text NOT NULL DEFAULT ''::text,
+  poster_path text NOT NULL DEFAULT ''::text,
+  backdrop_path text NOT NULL DEFAULT ''::text,
+  release_date date,
+  vote_average numeric NOT NULL DEFAULT 0,
+  vote_count integer NOT NULL DEFAULT 0,
+  popularity numeric NOT NULL DEFAULT 0,
+  genre_ids integer[] NOT NULL DEFAULT '{}'::integer[],
+  planned_event_id text,
+  added_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT movie_watchlist_pkey PRIMARY KEY (id),
+  CONSTRAINT movie_watchlist_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT movie_watchlist_planned_event_id_fkey FOREIGN KEY (planned_event_id) REFERENCES public.events(id)
+);

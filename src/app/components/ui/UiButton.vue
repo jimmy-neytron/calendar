@@ -38,6 +38,8 @@ const iconName = computed(() => ({
   '⇣': 'download',
   '⌕': 'search',
   'calendar': 'calendar',
+  'refresh': 'refresh',
+  'heart': 'heart',
 }[props.icon] || ''))
 </script>
 

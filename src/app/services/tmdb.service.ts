@@ -10,8 +10,8 @@ import type {
 
 const API_URL = 'https://api.themoviedb.org/3'
 const IMAGE_URL = 'https://image.tmdb.org/t/p'
-const readAccessToken = String(import.meta.env.VITE_TMDB_READ_ACCESS_TOKEN || '').trim()
-const apiKey = String(import.meta.env.VITE_TMDB_API_KEY || '').trim()
+const readAccessToken = cleanCredential(import.meta.env.VITE_TMDB_READ_ACCESS_TOKEN, true)
+const apiKey = cleanCredential(import.meta.env.VITE_TMDB_API_KEY)
 
 export const isTmdbConfigured = Boolean(readAccessToken || apiKey)
 
@@ -137,4 +137,9 @@ function normalizeMedia(item: TmdbMediaResponse, fallbackType?: MediaType): Movi
     popularity: Number(item.popularity || 0),
     genreIds: Array.isArray(item.genre_ids) ? item.genre_ids.map(Number) : [],
   }
+}
+
+function cleanCredential(value: unknown, removeBearer = false): string {
+  const credential = String(value || '').trim().replace(/^['"]|['"]$/g, '')
+  return removeBearer ? credential.replace(/^Bearer\s+/i, '').trim() : credential
 }

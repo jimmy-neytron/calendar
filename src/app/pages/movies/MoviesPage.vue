@@ -102,6 +102,20 @@
             </div>
           </div>
         </section>
+        <section v-else class="movie-feature-empty panel">
+          <div class="movie-feature-empty__visual">
+            <span><UiIcon name="movie" /></span><i /><i /><i />
+          </div>
+          <div>
+            <span>Кино на вечер</span>
+            <h2>Каталог скоро вернётся</h2>
+            <p>Пока TMDB недоступен, можно открыть сохранённое, подготовить поиск или повторить подключение.</p>
+            <footer>
+              <UiButton variant="secondary" icon="refresh" @click="retryLastRequest">Повторить подключение</UiButton>
+              <UiButton icon="heart" @click="selectTab('watchlist')">Хочу посмотреть · {{ watchlist.length }}</UiButton>
+            </footer>
+          </div>
+        </section>
         <MediaShelf title="Сейчас популярно" eyebrow="Фильмы" :movies="popularMovies" :loading="loading" @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
         <MediaShelf title="Сериалы, о которых говорят" eyebrow="Сериалы" :movies="popularTv" :loading="loading" @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
       </template>
@@ -119,9 +133,13 @@
         />
       </section>
 
-      <div v-if="errorMessage" class="movies-error panel">
-        <UiIcon name="warning" /><span>{{ errorMessage }}</span><button type="button" @click="loadCatalog">Повторить</button>
-      </div>
+      <MovieErrorModal
+        v-model="isErrorModalOpen"
+        :title="errorTitle"
+        :description="errorMessage"
+        :hint="errorHint"
+        @retry="retryLastRequest"
+      />
 
       <UiModal v-model="isPlannerOpen" title="Запланировать просмотр" eyebrow="Фильмы" width="440px">
         <div class="movie-planner">
@@ -172,10 +190,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MediaShelf from '../../components/movies/MediaShelf.vue'
 import MovieGrid from '../../components/movies/MovieGrid.vue'
 import MovieDetailsDrawer from '../../components/movies/MovieDetailsDrawer.vue'
+import MovieErrorModal from '../../components/movies/MovieErrorModal.vue'
 import MovieSearchLoader from '../../components/movies/MovieSearchLoader.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
@@ -213,6 +232,7 @@ const searchResults = ref<MovieMedia[]>([])
 const loading = ref(false)
 const searchLoading = ref(false)
 const errorMessage = ref('')
+const isErrorModalOpen = ref(false)
 const searchPage = ref(1)
 const searchTotalPages = ref(1)
 const searchTotalResults = ref(0)
@@ -275,6 +295,17 @@ const paginationItems = computed(() => {
     items.push({ key: `page-${page}`, type: 'page', page })
   })
   return items
+})
+const isTmdbAuthError = computed(() => errorMessage.value.includes('TMDB не принял ключ'))
+const errorTitle = computed(() => isTmdbAuthError.value ? 'TMDB отклонил доступ' : 'Каталог временно недоступен')
+const errorHint = computed(() => (
+  isTmdbAuthError.value
+    ? 'В .env.local нужен сам Read Access Token без слова Bearer и без кавычек. После изменения перезапусти Vite.'
+    : 'Проверь соединение и повтори запрос.'
+))
+
+watch(errorMessage, (message) => {
+  if (message) isErrorModalOpen.value = true
 })
 
 onMounted(async () => {
@@ -375,13 +406,23 @@ function selectTab(tab: MoviesTab): void {
   clearSearch()
 }
 
-function toggleWatchlist(movie: MovieMedia): void {
-  const result = movieWatchlistStore.toggle(movie)
+async function toggleWatchlist(movie: MovieMedia): Promise<void> {
+  const result = await movieWatchlistStore.toggle(movie)
   if (result.blocked) {
-    notify('Сначала убери фильм из календаря', 'warning')
+    notify(result.message || 'Сначала убери фильм из календаря', 'warning')
+    return
+  }
+  if (!result.ok) {
+    notify(result.message || 'Не удалось синхронизировать список', 'warning')
     return
   }
   notify(result.saved ? 'Добавлено в «Хочу посмотреть»' : 'Убрано из списка', result.saved ? 'success' : 'info')
+}
+
+function retryLastRequest(): void {
+  isErrorModalOpen.value = false
+  if (isSearching.value) runSearch(searchPage.value)
+  else loadCatalog()
 }
 
 async function openMovieDetails(movie: MovieMedia): Promise<void> {
@@ -458,4 +499,5 @@ function getErrorMessage(error: unknown): string {
 <style scoped>
 .movies-page{display:grid;gap:16px}.movies-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);align-items:end;gap:24px;padding:22px;background:radial-gradient(circle at 90% 0%,color-mix(in srgb,var(--info) 10%,transparent),transparent 45%),var(--panel-bg)}.movies-hero__copy>span,.movies-section :deep(.movies-section__heading) span{color:var(--text-muted);font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.movies-hero h1{margin:4px 0 7px}.movies-hero p{max-width:600px;margin:0;color:var(--text-secondary)}.movie-search{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:48px;border:1px solid var(--border-color);border-radius:var(--radius-pill);padding:0 16px;background:var(--field-bg);transition:.18s var(--ease-out)}.movie-search:focus-within{border-color:var(--accent-border);background:var(--field-bg-focus);box-shadow:0 0 0 3px var(--accent-soft)}.movie-search>svg{color:var(--text-muted);font-size:17px}.movie-search input{min-width:0;border:0;color:var(--text-primary);background:transparent;outline:0}.movie-search input::-webkit-search-cancel-button{display:none}.movie-search button{display:grid;place-items:center;border:0;padding:4px;color:var(--text-muted);background:transparent}.movie-search>span{border:1px solid var(--border-color);border-radius:5px;padding:2px 6px;color:var(--text-muted);font-size:9px}.movies-setup{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:start;gap:14px;padding:18px}.movies-setup__icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;color:var(--text-inverse);background:var(--accent);font-size:20px}.movies-setup strong{display:block;font-size:15px}.movies-setup p{margin:3px 0 10px;color:var(--text-secondary)}.movies-setup code{display:inline-block;border:1px solid var(--border-color);border-radius:7px;padding:6px 9px;color:var(--text-secondary);background:var(--control-bg);font-size:11px}.movies-tabs{display:flex;gap:5px;overflow-x:auto}.movies-tabs button{display:flex;align-items:center;gap:6px;min-height:34px;border:1px solid var(--border-color);border-radius:var(--radius-pill);padding:0 13px;color:var(--text-muted);background:var(--control-bg);font-size:11px;font-weight:750;white-space:nowrap}.movies-tabs button.active{color:var(--text-inverse);border-color:var(--accent);background:var(--accent)}.movies-tabs small{display:grid;place-items:center;min-width:17px;height:17px;border-radius:50%;background:color-mix(in srgb,currentColor 12%,transparent);font-size:9px}.movie-feature{position:relative;min-height:330px;overflow:hidden}.movie-feature>img,.movie-feature__shade{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.movie-feature__shade{background:linear-gradient(90deg,rgba(0,0,0,.94),rgba(0,0,0,.72) 43%,rgba(0,0,0,.08)),linear-gradient(0deg,rgba(0,0,0,.45),transparent 65%)}.movie-feature__content{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;max-width:720px;min-height:330px;padding:30px;color:#fff}.movie-feature__content>span{font-size:10px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}.movie-feature h2{margin:7px 0 9px;font-size:clamp(28px,4vw,46px);line-height:1.02;letter-spacing:-.04em}.movie-feature p{display:-webkit-box;max-width:530px;margin:0 0 18px;overflow:hidden;color:rgba(255,255,255,.72);-webkit-box-orient:vertical;-webkit-line-clamp:3}.movie-feature__content>div{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.movie-feature__content b{color:#fde047}.movie-feature__content small{color:rgba(255,255,255,.65);margin-right:auto}.movies-section{display:grid;gap:10px}.movies-section :deep(.movies-section__heading){display:flex;align-items:end;justify-content:space-between;gap:12px;padding:3px 2px}.movies-section :deep(.movies-section__heading h2){margin:2px 0 0}.movies-section :deep(.movies-section__heading>small){color:var(--text-muted)}.movie-filters{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) auto;align-items:end;gap:8px;padding:11px}.movie-filters label{display:grid;gap:5px}.movie-filters label>span{color:var(--text-muted);font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.movie-filters>button{display:flex;align-items:center;gap:5px;min-height:36px;border:1px solid var(--border-color);border-radius:var(--radius-pill);padding:0 11px;color:var(--text-secondary);background:var(--control-bg)}.movie-pagination{display:flex;align-items:center;justify-content:center;gap:5px;padding-top:6px}.movie-pagination button{display:grid;place-items:center;min-width:34px;height:34px;border:1px solid var(--border-color);border-radius:10px;color:var(--text-secondary);background:var(--control-bg);font-weight:750}.movie-pagination button.active{color:var(--text-inverse);border-color:var(--accent);background:var(--accent)}.movie-pagination button:disabled{opacity:.35}.movie-pagination span{padding:0 3px;color:var(--text-muted)}.movies-error{display:flex;align-items:center;gap:9px;padding:12px 14px;color:var(--danger)}.movies-error button{margin-left:auto;border:0;color:var(--text-primary);background:transparent;text-decoration:underline}.movie-planner{display:grid;gap:13px}.movie-planner__title{display:flex;align-items:center;gap:10px}.movie-planner__title>span{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;color:var(--text-inverse);background:var(--accent);font-size:18px}.movie-planner__title small,.movie-planner__title strong{display:block}.movie-planner__title small,.movie-planner__field>span{color:var(--text-muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em}.movie-planner__title strong{font-size:15px}.movie-planner__row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.movie-planner__field{display:grid;gap:5px}.movie-planner footer{display:flex;justify-content:flex-end;gap:7px;margin-top:3px}
 @media(max-width:900px){.movie-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.movie-filters>button{justify-content:center}}@media(max-width:760px){.movies-hero{grid-template-columns:1fr;gap:16px;padding:17px}.movie-feature,.movie-feature__content{min-height:290px}.movie-feature__content{padding:22px}.movie-feature__shade{background:linear-gradient(0deg,rgba(0,0,0,.96),rgba(0,0,0,.25))}}@media(max-width:520px){.movies-page{gap:12px}.movies-hero{padding:14px}.movie-search{min-height:44px}.movie-search>span{display:none}.movie-feature,.movie-feature__content{min-height:320px}.movie-feature__content{padding:18px}.movie-feature__content>div{align-items:flex-start;flex-wrap:wrap}.movie-feature__content :deep(.ui-button){width:100%;margin:4px 0 0}.movies-setup{grid-template-columns:1fr}.movies-setup code{max-width:100%;overflow:auto}.movie-filters{grid-template-columns:1fr}.movie-planner__row{grid-template-columns:1fr}}
+.movie-feature-empty{position:relative;display:grid;grid-template-columns:190px minmax(0,1fr);align-items:center;gap:28px;min-height:300px;padding:30px;overflow:hidden;background:radial-gradient(circle at 12% 50%,color-mix(in srgb,var(--danger) 10%,transparent),transparent 190px),var(--panel-bg)}.movie-feature-empty__visual{position:relative;display:grid;place-items:center;width:170px;height:170px;border:1px solid var(--border-color);border-radius:50%;background:var(--control-bg)}.movie-feature-empty__visual span{display:grid;place-items:center;width:74px;height:74px;border-radius:22px;color:var(--text-inverse);background:var(--accent);font-size:30px}.movie-feature-empty__visual i{position:absolute;inset:18px;border:1px solid var(--border-color);border-radius:50%}.movie-feature-empty__visual i:nth-child(3){inset:36px}.movie-feature-empty__visual i:nth-child(4){inset:-16px;border-style:dashed;animation:emptyOrbit 18s linear infinite}.movie-feature-empty>div:last-child>span{color:var(--text-muted);font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.movie-feature-empty h2{margin:5px 0 8px;font-size:clamp(25px,4vw,38px)}.movie-feature-empty p{max-width:550px;margin:0;color:var(--text-secondary)}.movie-feature-empty footer{display:flex;flex-wrap:wrap;gap:7px;margin-top:20px}@keyframes emptyOrbit{to{transform:rotate(360deg)}}@media(max-width:650px){.movie-feature-empty{grid-template-columns:1fr;padding:22px}.movie-feature-empty__visual{width:130px;height:130px}.movie-feature-empty footer :deep(.ui-button){width:100%}}@media(prefers-reduced-motion:reduce){.movie-feature-empty__visual i{animation:none}}
 </style>

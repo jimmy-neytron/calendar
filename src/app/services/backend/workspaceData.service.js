@@ -4,6 +4,7 @@ import { calendarStore } from '../../stores/calendar.store.js'
 import { ideaStore } from '../../stores/idea.store.js'
 import { sportStore } from '../../stores/sport.store.js'
 import { notificationStore } from '../../stores/notification.store.js'
+import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 
 export async function loadWorkspaceData(workspaceId) {
@@ -17,6 +18,7 @@ export async function loadWorkspaceData(workspaceId) {
     birthdayStore.loadWorkspace(workspaceId),
     sportStore.loadWorkspace(workspaceId),
     notificationStore.loadWorkspace(workspaceId),
+    movieWatchlistStore.loadWorkspace(workspaceId),
     useActivityLog().loadWorkspace(workspaceId),
   ])
   return results.some((result) => result === null)

@@ -10,12 +10,14 @@
 
             <MovieSearchLoader v-if="loading" class="movie-drawer__loader" title="Открываем карточку…" />
 
-            <div v-else-if="error" class="movie-drawer__error">
-              <span><UiIcon name="warning" /></span>
-              <strong>Не удалось загрузить подробности</strong>
-              <p>{{ error }}</p>
-              <UiButton variant="secondary" @click="$emit('retry')">Повторить</UiButton>
-            </div>
+            <MovieErrorState
+              v-else-if="error"
+              class="movie-drawer__error"
+              title="Карточка не загрузилась"
+              :description="error"
+              hint="Проверь TMDB-токен или повтори запрос через несколько секунд."
+              @retry="$emit('retry')"
+            />
 
             <template v-else-if="details">
               <header class="movie-drawer__hero">
@@ -102,6 +104,7 @@ import type { MovieDetails, MovieMedia } from '../../types/movie'
 import UiButton from '../ui/UiButton.vue'
 import UiIcon from '../ui/UiIcon.vue'
 import MovieSearchLoader from './MovieSearchLoader.vue'
+import MovieErrorState from './MovieErrorState.vue'
 
 const props = defineProps<{
   modelValue: boolean

@@ -12,6 +12,7 @@ const entities = [
   { suffix: 'birthdays', table: 'birthdays' },
   { suffix: 'sport-exercises', table: 'sport_exercises' },
   { suffix: 'sport-completions', table: 'sport_completions' },
+  { suffix: 'movie-watchlist', table: 'movie_watchlist' },
 ]
 
 function readCollection(suffix) {
@@ -52,7 +53,10 @@ export async function migrateLocalDataToSupabase() {
     counts[entity.suffix] = items.length
     if (!items.length) continue
 
-    const { error } = await createCollectionApi(entity.table).upsert(items.map(toDatabaseRow))
+    const rows = entity.suffix === 'movie-watchlist'
+      ? items.map(toMovieWatchlistRow)
+      : items.map(toDatabaseRow)
+    const { error } = await createCollectionApi(entity.table).upsert(rows)
     if (error) return { ok: false, message: `${entity.suffix}: ${error.message}`, counts }
   }
 
@@ -62,5 +66,26 @@ export async function migrateLocalDataToSupabase() {
     ok: true,
     counts,
     total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+  }
+}
+
+function toMovieWatchlistRow(movie) {
+  return {
+    id: `${movie.workspaceId}:${movie.mediaType}:${movie.id}`,
+    workspace_id: movie.workspaceId,
+    tmdb_id: movie.id,
+    media_type: movie.mediaType,
+    title: movie.title,
+    original_title: movie.originalTitle || '',
+    overview: movie.overview || '',
+    poster_path: movie.posterPath || '',
+    backdrop_path: movie.backdropPath || '',
+    release_date: movie.releaseDate || null,
+    vote_average: Number(movie.voteAverage || 0),
+    vote_count: Number(movie.voteCount || 0),
+    popularity: Number(movie.popularity || 0),
+    genre_ids: movie.genreIds || [],
+    planned_event_id: movie.plannedEventId || null,
+    added_at: movie.addedAt || new Date().toISOString(),
   }
 }
