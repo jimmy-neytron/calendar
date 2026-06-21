@@ -1,6 +1,14 @@
 <template>
   <main class="login-page">
-    <section class="login-card panel">
+    <section
+      v-if="authStage !== 'success'"
+      class="login-card panel"
+      :class="{ 'login-card--vortex': authStage === 'vortex' }"
+    >
+      <div class="login-card__vortex" aria-hidden="true">
+        <i /><i /><i />
+      </div>
+      <div class="login-card__content">
       <div class="login-card__brand">
         <span>✦</span>
         <div>
@@ -31,8 +39,18 @@
           {{ mode === 'login' ? 'Войти в аккаунт' : 'Создать аккаунт' }}
         </UiButton>
       </form>
-
+      </div>
     </section>
+
+    <div v-else class="login-success" role="status" aria-label="Авторизация выполнена">
+      <span class="login-success__orbit" />
+      <span class="login-success__mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m5 12 4.2 4.2L19 6.5" />
+        </svg>
+      </span>
+      <strong>Готово</strong>
+    </div>
   </main>
 </template>
 
@@ -49,6 +67,7 @@ const route = useRoute()
 const mode = ref('login')
 const message = ref('')
 const hasError = ref(false)
+const authStage = ref('idle')
 
 const form = reactive({
   name: '',
@@ -57,6 +76,7 @@ const form = reactive({
 })
 
 async function submit() {
+  if (authStage.value !== 'idle') return
   message.value = ''
   hasError.value = false
 
@@ -83,8 +103,19 @@ async function submit() {
     message.value = workspaceStore.error.value || 'Не удалось подготовить пространство'
     return
   }
+  await playSuccessAnimation()
   router.push(route.query.redirect || { name: 'calendar' })
 }
+
+async function playSuccessAnimation() {
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  authStage.value = 'vortex'
+  await wait(reducedMotion ? 40 : 620)
+  authStage.value = 'success'
+  await wait(reducedMotion ? 80 : 720)
+}
+
+const wait = (duration) => new Promise((resolve) => window.setTimeout(resolve, duration))
 </script>
 
 <style scoped>
@@ -97,10 +128,160 @@ async function submit() {
 }
 
 .login-card {
+  position: relative;
   width: min(520px, 100%);
   display: grid;
   gap: 14px;
   padding: 18px;
+  overflow: hidden;
+  transform-origin: center;
+}
+
+.login-card__content {
+  display: grid;
+  gap: 14px;
+}
+
+.login-card__vortex {
+  position: absolute;
+  z-index: 4;
+  inset: 50% auto auto 50%;
+  width: 74px;
+  height: 74px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.login-card__vortex i {
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--accent-hover);
+  border-radius: 50%;
+}
+
+.login-card__vortex i:nth-child(2) {
+  inset: 9px;
+  border-top-color: var(--info);
+  transform: rotate(120deg);
+}
+
+.login-card__vortex i:nth-child(3) {
+  inset: 19px;
+  border-top-color: var(--pink);
+  transform: rotate(240deg);
+}
+
+.login-card--vortex {
+  animation: authCardCollapse .62s cubic-bezier(.7, 0, .2, 1) both;
+}
+
+.login-card--vortex .login-card__content {
+  animation: authContentVanish .38s ease-in both;
+}
+
+.login-card--vortex .login-card__vortex {
+  animation: authVortexAppear .62s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.login-card--vortex .login-card__vortex i:first-child { animation: authSpin .48s linear infinite; }
+.login-card--vortex .login-card__vortex i:nth-child(2) { animation: authSpinReverse .38s linear infinite; }
+.login-card--vortex .login-card__vortex i:nth-child(3) { animation: authSpin .3s linear infinite; }
+
+.login-success {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  color: var(--text-primary);
+  animation: authSuccessEnter .34s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+
+.login-success__orbit {
+  position: absolute;
+  top: 25px;
+  width: 92px;
+  height: 92px;
+  border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+  border-radius: 50%;
+  animation: authSuccessOrbit .72s var(--ease-out) both;
+}
+
+.login-success__mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid color-mix(in srgb, var(--success) 42%, var(--border-color));
+  border-radius: 50%;
+  color: #fff;
+  background:
+    radial-gradient(circle at 35% 25%, color-mix(in srgb, #fff 20%, transparent), transparent 35%),
+    var(--success);
+  box-shadow: 0 18px 55px color-mix(in srgb, var(--success) 26%, transparent);
+  animation: authSuccessPulse .64s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.login-success__mark svg {
+  width: 40px;
+  height: 40px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.login-success__mark path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: authCheckDraw .34s .12s var(--ease-out) forwards;
+}
+
+.login-success strong {
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  animation: authSuccessText .3s .18s both;
+}
+
+@keyframes authContentVanish {
+  to { opacity: 0; transform: scale(.82); filter: blur(5px); }
+}
+
+@keyframes authCardCollapse {
+  0% { opacity: 1; transform: scale(1) rotate(0); border-radius: var(--radius-xl); }
+  55% { opacity: .92; transform: scale(.72) rotate(-3deg); border-radius: 32px; }
+  100% { opacity: 0; transform: scale(.16) rotate(220deg); border-radius: 50%; }
+}
+
+@keyframes authVortexAppear {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.35); }
+  30%, 78% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
+}
+
+@keyframes authSpin { to { transform: rotate(360deg); } }
+@keyframes authSpinReverse { to { transform: rotate(-360deg); } }
+@keyframes authSuccessEnter {
+  from { opacity: 0; transform: scale(.55) rotate(-12deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes authSuccessPulse {
+  0% { transform: scale(.72); }
+  55% { transform: scale(1.13); }
+  78% { transform: scale(.96); }
+  100% { transform: scale(1); }
+}
+@keyframes authSuccessOrbit {
+  0% { opacity: .7; transform: scale(.35); }
+  100% { opacity: 0; transform: scale(1.45); }
+}
+@keyframes authCheckDraw { to { stroke-dashoffset: 0; } }
+@keyframes authSuccessText {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .login-card__brand {
@@ -217,5 +398,20 @@ async function submit() {
 
 .login-card__demo small {
   color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card--vortex,
+  .login-card--vortex .login-card__content,
+  .login-card--vortex .login-card__vortex,
+  .login-card--vortex .login-card__vortex i,
+  .login-success,
+  .login-success__mark,
+  .login-success__orbit,
+  .login-success__mark path,
+  .login-success strong {
+    animation-duration: .01ms !important;
+    animation-delay: 0ms !important;
+  }
 }
 </style>

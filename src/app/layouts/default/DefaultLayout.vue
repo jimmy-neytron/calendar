@@ -1,6 +1,6 @@
 <template>
   <RouterView v-if="isAuthRoute" v-slot="{ Component }">
-    <transition name="fade" mode="out-in">
+    <transition name="page-shift" mode="out-in">
       <component :is="Component" :key="$route.name" />
     </transition>
   </RouterView>
@@ -24,13 +24,15 @@
       <AppSidebar />
       <AppContainer>
         <RouterView v-slot="{ Component }">
-          <component
-            :is="Component"
-            :key="$route.name"
-            ref="activePageRef"
-            :force-create-token="createToken"
-            @view-mode-change="calendarViewMode = $event"
-          />
+          <transition name="page-shift" mode="out-in">
+            <component
+              :is="Component"
+              :key="$route.name"
+              ref="activePageRef"
+              :force-create-token="createToken"
+              @view-mode-change="calendarViewMode = $event"
+            />
+          </transition>
         </RouterView>
       </AppContainer>
     </div>
@@ -234,6 +236,39 @@ onBeforeUnmount(() => {
   min-height: 100vh;
 }
 
+:global(.page-shift-enter-active) {
+  animation: pageShiftIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity;
+}
+
+:global(.page-shift-leave-active) {
+  animation: pageShiftOut 0.12s cubic-bezier(0.4, 0, 1, 1) both;
+  transform-origin: center 18%;
+  will-change: transform, opacity;
+}
+
+@keyframes pageShiftIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes pageShiftOut {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.985);
+  }
+}
+
 .default-layout__body {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
@@ -328,6 +363,13 @@ onBeforeUnmount(() => {
 
   .quick-create b {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.page-shift-enter-active),
+  :global(.page-shift-leave-active) {
+    animation-duration: 0.01ms;
   }
 }
 </style>
