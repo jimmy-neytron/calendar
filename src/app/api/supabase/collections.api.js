@@ -1,21 +1,26 @@
-import { requireSupabase } from './client.js'
+import { requireAuthenticatedSupabase } from './client.js'
 
 export function createCollectionApi(table) {
   return {
-    list(workspaceId) {
-      return requireSupabase().from(table).select('*').eq('workspace_id', workspaceId)
+    async list(workspaceId) {
+      const client = await requireAuthenticatedSupabase()
+      return client.from(table).select('*').eq('workspace_id', workspaceId)
     },
-    create(payload) {
-      return requireSupabase().from(table).insert(payload)
+    async create(payload) {
+      const client = await requireAuthenticatedSupabase()
+      return client.from(table).insert(payload)
     },
-    update(id, payload) {
-      return requireSupabase().from(table).update(payload).eq('id', id)
+    async update(id, payload) {
+      const client = await requireAuthenticatedSupabase()
+      return client.from(table).update(payload).eq('id', id)
     },
-    remove(id) {
-      return requireSupabase().from(table).delete().eq('id', id)
+    async remove(id) {
+      const client = await requireAuthenticatedSupabase()
+      return client.from(table).delete().eq('id', id)
     },
-    upsert(items) {
-      return requireSupabase().from(table).upsert(items, { onConflict: 'id' })
+    async upsert(items) {
+      const client = await requireAuthenticatedSupabase()
+      return client.from(table).upsert(items, { onConflict: 'id' })
     },
   }
 }

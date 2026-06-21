@@ -18,14 +18,40 @@ const activeCollections = computed(() => collections.value.filter(
   (calendar) => calendar.workspaceId === workspaceStore.activeWorkspaceId.value
 ))
 const visibleCollectionIds = computed(() => activeCollections.value.filter((calendar) => calendar.visible).map((calendar) => calendar.id))
+let ensurePromise = null
+let ensureWorkspaceId = ''
 
 async function ensureWorkspaceCollections() {
   const workspaceId = workspaceStore.activeWorkspace.value?.id
-  if (!workspaceId || activeCollections.value.length) return
-  await Promise.all([
-    repository.createAndWait({ id: generateId(), workspaceId, name: 'Основной', color: '#60a5fa', visible: true }),
-    repository.createAndWait({ id: generateId(), workspaceId, name: 'Личное', color: '#f472b6', visible: true }),
-  ])
+  if (!workspaceId) return { ok: false, message: 'Пространство не загружено' }
+  if (activeCollections.value.length) return { ok: true, collections: activeCollections.value }
+  if (ensurePromise && ensureWorkspaceId === workspaceId) return ensurePromise
+
+  ensureWorkspaceId = workspaceId
+  ensurePromise = (async () => {
+    const definitions = [
+      { name: 'Основной', color: '#60a5fa' },
+      { name: 'Личное', color: '#f472b6' },
+    ]
+    for (const definition of definitions) {
+      const result = await repository.createAndWait({
+        id: generateId(),
+        workspaceId,
+        name: definition.name,
+        color: definition.color,
+        visible: true,
+      })
+      if (!result.ok) return result
+    }
+    return { ok: true, collections: activeCollections.value }
+  })()
+
+  try {
+    return await ensurePromise
+  } finally {
+    ensurePromise = null
+    ensureWorkspaceId = ''
+  }
 }
 
 function addCollection(name, color = '#60a5fa') {

@@ -42,6 +42,11 @@ const icons = {
   chart: { paths: ['M5 20V10', 'M12 20V4', 'M19 20v-7'] },
   users: { paths: ['M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2', 'M9 11a4 4 0 100-8 4 4 0 000 8z', 'M22 21v-2a4 4 0 00-3-3.87', 'M16 3.13a4 4 0 010 7.75'] },
   settings: { paths: ['M4 7h6', 'M14 7h6', 'M4 17h10', 'M18 17h2', 'M10 4v6', 'M14 14v6'] },
+  movie: { paths: ['M4 6h16v14H4z', 'M4 10h16', 'M8 6l2-3', 'M14 6l2-3'] },
+  star: { paths: ['M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3z'] },
+  key: { paths: ['M14 7a5 5 0 11-1.5 3.6L21 19v2h-3v-2h-2v-2h-2l-2.1-2.1', 'M7 7h.01'] },
+  warning: { paths: ['M12 3L2.8 20h18.4L12 3z', 'M12 9v4', 'M12 17h.01'] },
+  play: { paths: ['M8 5l11 7-11 7V5z'] },
 }
 const current = computed(() => icons[props.name] || icons.close)
 const paths = computed(() => current.value.paths || [])

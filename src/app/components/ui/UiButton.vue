@@ -37,6 +37,7 @@ const iconName = computed(() => ({
   '↓': 'download',
   '⇣': 'download',
   '⌕': 'search',
+  'calendar': 'calendar',
 }[props.icon] || ''))
 </script>
 

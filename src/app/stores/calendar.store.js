@@ -67,6 +67,10 @@ const addEvent = (data) => {
 }
 
 const addEventAndWait = async (data) => {
+  const collectionsReady = await calendarCollectionStore.ensureWorkspaceCollections()
+  if (!collectionsReady?.ok) {
+    return { ok: false, errors: { backend: collectionsReady?.message || 'Не удалось подготовить календарь' } }
+  }
   const prepared = prepareEvent(data)
   if (!prepared.ok) return prepared
   const { event } = prepared

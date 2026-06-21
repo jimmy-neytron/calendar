@@ -21,3 +21,23 @@ export function requireSupabase() {
   }
   return supabase
 }
+
+export async function requireAuthenticatedSupabase() {
+  const client = requireSupabase()
+  const { data, error } = await client.auth.getSession()
+  if (error) throw error
+
+  let session = data.session
+  const expiresSoon = session?.expires_at && session.expires_at * 1000 < Date.now() + 60_000
+  if (!session || expiresSoon) {
+    const refreshed = await client.auth.refreshSession()
+    if (refreshed.error) throw refreshed.error
+    session = refreshed.data.session
+  }
+
+  if (!session?.access_token) {
+    throw new Error('Сессия истекла. Войди в аккаунт ещё раз.')
+  }
+
+  return client
+}

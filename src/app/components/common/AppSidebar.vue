@@ -44,6 +44,7 @@ const groups = [
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
       { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: 'sparkles' },
       { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport' },
+      { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie' },
     ],
   },
   {
