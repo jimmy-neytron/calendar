@@ -13,17 +13,32 @@
       <aside
         v-if="modelValue"
         class="event-drawer"
+        :style="{ '--event-drawer-accent': eventAccent }"
         role="dialog"
         aria-modal="true"
         :aria-label="editingEvent ? 'Редактировать событие' : 'Новое событие'"
         @keydown.esc="$emit('update:modelValue', false)"
       >
-        <header class="event-drawer__header">
-          <div>
-            <p>Календарь</p>
-            <h2>{{ editingEvent ? 'Редактировать событие' : 'Новое событие' }}</h2>
+        <header class="event-drawer__hero">
+          <div class="event-drawer__hero-orbit"><i /><i /><i /></div>
+          <div class="event-drawer__hero-content">
+            <span class="event-drawer__hero-icon"><UiIcon :name="categoryIcon" /></span>
+            <div class="event-drawer__hero-copy">
+              <p>{{ editingEvent ? categoryMeta.label : 'Новое событие' }}</p>
+              <h2>{{ form.title || (editingEvent ? 'Без названия' : 'Создадим новый план') }}</h2>
+              <div>
+                <span><UiIcon name="calendar" />{{ formattedEventDate }}</span>
+                <span><UiIcon name="activity" />{{ formattedEventTime }}</span>
+                <span v-if="calendarName"><i :style="{ background: eventAccent }" />{{ calendarName }}</span>
+              </div>
+            </div>
           </div>
-        <UiIconButton icon="close" label="Закрыть" @click="$emit('update:modelValue', false)" />
+          <div class="event-drawer__hero-badges">
+            <span v-if="form.importance !== 'normal'">{{ importanceLabel }}</span>
+            <span v-if="form.repeat !== 'none'">Повторяется</span>
+            <span v-if="form.reminder !== 'none'">С напоминанием</span>
+          </div>
+          <UiIconButton class="event-drawer__hero-close" icon="close" label="Закрыть" @click="$emit('update:modelValue', false)" />
         </header>
 
         <form class="event-drawer__form" @submit.prevent="submit">
@@ -261,13 +276,14 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import UiInput from '../ui/UiInput.vue'
 import UiSelect from '../ui/UiSelect.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiChip from '../ui/UiChip.vue'
 import UiToggle from '../ui/UiToggle.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
+import UiIcon from '../ui/UiIcon.vue'
 import {
   DUPLICATE_OPTIONS,
   EVENT_FORM_CATEGORIES,
@@ -279,7 +295,8 @@ import {
   REPEAT_UNITS,
   WEEKDAY_OPTIONS,
 } from '../../utils/constants/calendarConstants.js'
-import { toDateKey } from '../../utils/formatters/dateFormatter.js'
+import { formatDate, formatTimeRange, toDateKey } from '../../utils/formatters/dateFormatter.js'
+import { getCategoryMeta } from '../../utils/formatters/calendarFormatter.js'
 import { validateEvent } from '../../utils/validators/calendarValidator.js'
 import { authStore } from '../../stores/auth.store.js'
 import { generateId } from '../../utils/helpers/idGenerator.js'
@@ -308,6 +325,26 @@ const RESPONSE_OPTIONS = [
   { value: 'maybe', label: 'Возможно' },
   { value: 'declined', label: 'Не смогу' },
 ]
+const categoryMeta = computed(() => getCategoryMeta(form.category))
+const selectedCalendar = computed(() => props.calendars.find((calendar) => calendar.id === form.calendarId))
+const eventAccent = computed(() => selectedCalendar.value?.color || categoryMeta.value.color || 'var(--accent)')
+const calendarName = computed(() => selectedCalendar.value?.name || '')
+const formattedEventDate = computed(() => {
+  try {
+    return formatDate(form.date)
+  } catch {
+    return 'Дата не выбрана'
+  }
+})
+const formattedEventTime = computed(() => formatTimeRange(form.startTime, form.endTime, form.allDay))
+const importanceLabel = computed(() => IMPORTANCE_OPTIONS.find((item) => item.value === form.importance)?.label || '')
+const categoryIcon = computed(() => ({
+  birthday: 'heart',
+  sports: 'sport',
+  work: 'activity',
+  health: 'heart',
+  personal: 'star',
+}[form.category] || 'calendar'))
 
 watch(
   () => props.modelValue,
@@ -471,35 +508,100 @@ function addMinutesToTime(time, minutes) {
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.64);
+  backdrop-filter: blur(9px);
 }
 
 .event-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
   z-index: 90;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  width: min(500px, 100vw);
-  height: 100vh;
-  border-left: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  box-shadow: -22px 0 64px rgba(0, 0, 0, 0.58);
+  width: min(720px, calc(100vw - 30px));
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background: var(--card-solid);
+  box-shadow: -24px 0 80px rgba(0, 0, 0, 0.58);
+  overflow: hidden;
 }
 
-.event-drawer__header {
+.event-drawer__hero {
+  position: relative;
+  min-height: 205px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--control-bg-solid);
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 28px 30px 22px;
+  color: #fff;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--event-drawer-accent) 74%, #050505), rgba(5,5,5,.92) 78%),
+    var(--card-solid);
+  overflow: hidden;
 }
 
-.event-drawer__header p,
+.event-drawer__hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 70px;
+  background: linear-gradient(0deg, var(--card-solid), transparent);
+  pointer-events: none;
+}
+
+.event-drawer__hero-orbit {
+  position: absolute;
+  right: 42px;
+  top: 50%;
+  width: 190px;
+  height: 190px;
+  opacity: .22;
+  transform: translateY(-50%);
+}
+
+.event-drawer__hero-orbit i {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 50%;
+}
+
+.event-drawer__hero-orbit i:nth-child(2) { inset: 28px; }
+.event-drawer__hero-orbit i:nth-child(3) { inset: 58px; border-style: dashed; animation: eventOrbit 18s linear infinite; }
+
+.event-drawer__hero-content {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 15px;
+}
+
+.event-drawer__hero-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 17px;
+  background: rgba(0,0,0,.24);
+  backdrop-filter: blur(12px);
+  font-size: 25px;
+}
+
+.event-drawer__hero-copy p {
+  margin-bottom: 4px;
+  color: rgba(255,255,255,.65);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
 .event-drawer__templates > span,
 .event-drawer__duplicate > span {
   margin-bottom: 4px;
@@ -510,28 +612,86 @@ function addMinutesToTime(time, minutes) {
   letter-spacing: 0.12em;
 }
 
-.event-drawer__header h2 {
+.event-drawer__hero-copy h2 {
+  max-width: 500px;
   margin: 0;
-  font-size: 20px;
+  overflow: hidden;
+  font-size: clamp(24px, 4vw, 38px);
+  line-height: 1.04;
+  letter-spacing: -.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.event-drawer__close {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  color: var(--text-primary);
-  background: var(--card-soft);
-  font-size: 20px;
-  line-height: 1;
+.event-drawer__hero-copy > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 13px;
+  margin-top: 9px;
+}
+
+.event-drawer__hero-copy > div span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+}
+
+.event-drawer__hero-copy > div span > i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 50%;
+}
+
+.event-drawer__hero-badges {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.event-drawer__hero-badges span {
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--radius-pill);
+  padding: 5px 9px;
+  color: rgba(255,255,255,.8);
+  background: rgba(0,0,0,.22);
+  backdrop-filter: blur(9px);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.event-drawer__hero-close {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  right: 14px;
+  color: #fff;
+  background: rgba(0,0,0,.35);
 }
 
 .event-drawer__form {
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px 24px 0;
   overflow-y: auto;
+}
+
+.event-drawer__form > .ui-input,
+.event-drawer__form > .event-drawer__select,
+.event-drawer__form > .event-drawer__grid,
+.event-drawer__form > .event-drawer__templates,
+.event-drawer__form > .event-drawer__repeat,
+.event-drawer__form > .event-drawer__members,
+.event-drawer__form > .event-drawer__collaboration,
+.event-drawer__form > .event-drawer__duplicate,
+.event-drawer__form > .event-drawer__footer {
+  grid-column: 1 / -1;
 }
 
 .event-drawer__templates,
@@ -702,11 +862,14 @@ function addMinutesToTime(time, minutes) {
   grid-template-columns: auto 1fr auto auto;
   gap: 8px;
   align-items: center;
-  margin: 4px -14px -14px;
-  padding: 12px 14px;
+  margin: 8px -24px 0;
+  padding: 14px 24px;
   border-top: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  background: color-mix(in srgb, var(--card-solid) 92%, transparent);
+  backdrop-filter: blur(18px);
 }
+
+@keyframes eventOrbit { to { transform: rotate(360deg); } }
 
 .drawer-enter-active,
 .drawer-leave-active,
@@ -727,13 +890,27 @@ function addMinutesToTime(time, minutes) {
 
 @media (max-width: 560px) {
   .event-drawer {
+    inset: 0;
     width: 100vw;
+    border: 0;
+    border-radius: 0;
   }
 
+  .event-drawer__hero { min-height: 190px; padding: 25px 18px 18px; }
+  .event-drawer__hero-content { grid-template-columns: 48px minmax(0,1fr); }
+  .event-drawer__hero-icon { width: 48px; height: 48px; }
+  .event-drawer__hero-orbit { right: -35px; }
+  .event-drawer__form { grid-template-columns: 1fr; padding: 16px 14px 0; }
   .event-drawer__grid,
   .event-drawer__footer,
   .event-drawer__duplicate-row {
     grid-template-columns: 1fr;
   }
+
+  .event-drawer__footer { margin: 6px -14px 0; padding: 12px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-drawer__hero-orbit i { animation: none; }
 }
 </style>
