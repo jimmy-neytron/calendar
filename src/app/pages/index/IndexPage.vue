@@ -108,6 +108,7 @@ const { isOpen: isEventDrawerOpen, open: openEventDrawer, close: closeEventDrawe
 
 const editingEvent = ref(null)
 const quickStartTime = ref('')
+const handledCreateToken = ref(props.forceCreateToken)
 const filters = reactive({ ...DEFAULT_FILTERS })
 const selectedEvents = computed(() => filteredEventsByDate.value[selectedDateKey.value] || [])
 const filteredEvents = computed(() => sortedEvents.value.filter(matchesFilters))
@@ -259,9 +260,10 @@ watch(
 watch(
   () => props.forceCreateToken,
   (token) => {
-    if (token > 0) createEvent()
-  },
-  { immediate: true }
+    if (token <= handledCreateToken.value) return
+    handledCreateToken.value = token
+    createEvent()
+  }
 )
 
 defineExpose({

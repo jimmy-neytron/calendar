@@ -56,11 +56,19 @@ function addActivity(action, text, payload = {}) {
   return entry
 }
 
+function forgetActivity(workspaceId, entryIds = null) {
+  const ids = entryIds?.length ? new Set(entryIds) : null
+  repository.items.value = repository.items.value.filter((entry) => (
+    entry.workspaceId !== workspaceId || (ids && !ids.has(entry.id))
+  ))
+}
+
 export function useActivityLog() {
   return {
     activity,
     workspaceActivity,
     addActivity,
+    forgetActivity,
     loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
   }
 }

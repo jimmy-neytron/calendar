@@ -5,8 +5,10 @@ import { generateId } from '../utils/helpers/idGenerator.js'
 import { DateHelper } from '../utils/date/dateHelper.js'
 import { workspaceStore } from './workspace.store.js'
 import { calendarStore } from './calendar.store.js'
+import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const repository = new SyncedCollectionRepository(`${APP_CONFIG.storageKey}:birthdays`, [], 'birthdays')
+const { addActivity } = useActivityLog()
 
 const birthdays = computed(() => repository.items.value
   .filter((birthday) => birthday.workspaceId === workspaceStore.activeWorkspaceId.value)
@@ -41,6 +43,10 @@ async function addBirthday(data) {
     await removeCalendarEvents(synced.ids)
     return { ok: false, message: created.message }
   }
+  addActivity('birthday:create', `добавил(а) день рождения ${birthday.name}`, {
+    birthdayId: birthday.id,
+    birthDate: birthday.birthDate,
+  })
   return { ok: true, birthday }
 }
 
@@ -64,6 +70,10 @@ async function updateBirthday(id, updates) {
     return { ok: false, message: updated.message }
   }
   await removeCalendarEvents(current)
+  addActivity('birthday:update', `обновил(а) день рождения ${next.name}`, {
+    birthdayId: id,
+    birthDate: next.birthDate,
+  })
   return { ok: true }
 }
 
@@ -71,7 +81,10 @@ async function removeBirthday(id) {
   const birthday = repository.findById(id)
   if (!birthday) return
   const removed = await repository.deleteAndWait(id)
-  if (removed.ok) await removeCalendarEvents(birthday)
+  if (removed.ok) {
+    await removeCalendarEvents(birthday)
+    addActivity('birthday:delete', `удалил(а) день рождения ${birthday.name}`, { birthdayId: id })
+  }
 }
 
 function addGiftIdea(id, text) {
@@ -82,24 +95,41 @@ function addGiftIdea(id, text) {
     giftIdeas: [...(birthday.giftIdeas || []), { id: generateId(), title, purchased: false }],
     updatedAt: new Date().toISOString(),
   })
+  addActivity('birthday:gift-add', `добавил(а) идею подарка для ${birthday.name}`, {
+    birthdayId: id,
+    giftTitle: title,
+  })
   return true
 }
 
 function toggleGiftIdea(birthdayId, giftId) {
   const birthday = repository.findById(birthdayId)
   if (!birthday) return
+  const gift = (birthday.giftIdeas || []).find((item) => item.id === giftId)
+  if (!gift) return
+  const purchased = !gift.purchased
   repository.update(birthdayId, {
-    giftIdeas: (birthday.giftIdeas || []).map((gift) => (
-      gift.id === giftId ? { ...gift, purchased: !gift.purchased } : gift
+    giftIdeas: (birthday.giftIdeas || []).map((item) => (
+      item.id === giftId ? { ...item, purchased } : item
     )),
+  })
+  addActivity('birthday:gift-toggle', `${purchased ? 'отметил(а) купленным' : 'вернул(а) в список'} подарок «${gift.title}» для ${birthday.name}`, {
+    birthdayId,
+    giftId,
+    purchased,
   })
 }
 
 function removeGiftIdea(birthdayId, giftId) {
   const birthday = repository.findById(birthdayId)
   if (!birthday) return
+  const gift = (birthday.giftIdeas || []).find((item) => item.id === giftId)
   repository.update(birthdayId, {
     giftIdeas: (birthday.giftIdeas || []).filter((gift) => gift.id !== giftId),
+  })
+  if (gift) addActivity('birthday:gift-delete', `удалил(а) идею подарка «${gift.title}» для ${birthday.name}`, {
+    birthdayId,
+    giftId,
   })
 }
 

@@ -5,6 +5,7 @@ import { generateId } from '../utils/helpers/idGenerator.js'
 import { DateHelper } from '../utils/date/dateHelper.js'
 import { authStore } from './auth.store.js'
 import { workspaceStore } from './workspace.store.js'
+import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const EXERCISES_KEY = `${APP_CONFIG.storageKey}:sport-exercises`
 const COMPLETIONS_KEY = `${APP_CONFIG.storageKey}:sport-completions`
@@ -26,9 +27,16 @@ const defaultExercises = [
 
 const exerciseRepository = new SyncedCollectionRepository(EXERCISES_KEY, defaultExercises, 'sport_exercises')
 const completionRepository = new SyncedCollectionRepository(COMPLETIONS_KEY, [], 'sport_completions')
+const { addActivity } = useActivityLog()
 
-const exercises = computed(() => exerciseRepository.items.value.filter((exercise) => exercise.workspaceId === workspaceStore.activeWorkspaceId.value))
-const completions = computed(() => completionRepository.items.value.filter((completion) => completion.workspaceId === workspaceStore.activeWorkspaceId.value))
+const exercises = computed(() => exerciseRepository.items.value.filter((exercise) => (
+  exercise.workspaceId === workspaceStore.activeWorkspaceId.value
+  && exercise.userId === authStore.currentUserId.value
+)))
+const completions = computed(() => completionRepository.items.value.filter((completion) => (
+  completion.workspaceId === workspaceStore.activeWorkspaceId.value
+  && completion.userId === authStore.currentUserId.value
+)))
 
 const weekProgram = computed(() => {
   return Array.from({ length: 7 }, (_, weekday) => ({
@@ -71,6 +79,11 @@ function toggleExercise(exerciseId, dateKey, userId = authStore.currentUserId.va
 
   if (existing) {
     completionRepository.delete(existing.id)
+    const exercise = exerciseRepository.findById(exerciseId)
+    addActivity('sport:uncomplete', `снял(а) отметку с упражнения «${exercise?.title || 'Упражнение'}»`, {
+      exerciseId,
+      date: dateKey,
+    })
     return { ok: true, completed: false }
   }
 
@@ -84,16 +97,24 @@ function toggleExercise(exerciseId, dateKey, userId = authStore.currentUserId.va
   }
 
   completionRepository.create(completion)
+  const exercise = exerciseRepository.findById(exerciseId)
+  addActivity('sport:complete', `выполнил(а) упражнение «${exercise?.title || 'Упражнение'}»`, {
+    exerciseId,
+    date: dateKey,
+  })
   return { ok: true, completed: true, completion }
 }
 
 function addExercise(data) {
   const title = String(data.title || '').trim()
   if (!title) return { ok: false, message: 'Укажи упражнение' }
+  const userId = authStore.currentUserId.value
+  if (!userId) return { ok: false, message: 'Сначала войди в аккаунт' }
 
   const exercise = {
     id: generateId(),
     workspaceId: workspaceStore.activeWorkspace.value?.id,
+    userId,
     weekday: Number(data.weekday ?? new Date().getDay()),
     title,
     sets: String(data.sets || '').trim() || '1 подход',
@@ -105,12 +126,18 @@ function addExercise(data) {
   }
 
   exerciseRepository.create(exercise)
+  if (!data.__skipActivity) {
+    addActivity('sport:create', `добавил(а) упражнение «${exercise.title}»`, {
+      exerciseId: exercise.id,
+      weekday: exercise.weekday,
+    })
+  }
   return { ok: true, exercise }
 }
 
 function updateExercise(id, updates) {
   const target = exerciseRepository.findById(id)
-  if (!target) return { ok: false, message: 'Упражнение не найдено' }
+  if (!target || target.userId !== authStore.currentUserId.value) return { ok: false, message: 'Упражнение не найдено' }
   const next = {
     ...target,
     ...updates,
@@ -119,12 +146,25 @@ function updateExercise(id, updates) {
     updatedAt: new Date().toISOString(),
   }
   exerciseRepository.update(id, next)
+  addActivity('sport:update', `обновил(а) упражнение «${next.title}»`, {
+    exerciseId: id,
+    weekday: next.weekday,
+  })
   return { ok: true, exercise: next }
 }
 
 function deleteExercise(id) {
+  const target = exerciseRepository.findById(id)
+  if (!target || target.userId !== authStore.currentUserId.value) return false
   exerciseRepository.delete(id)
-  completionRepository.items.value = completionRepository.items.value.filter((completion) => completion.exerciseId !== id)
+  completionRepository.items.value
+    .filter((completion) => (
+      completion.exerciseId === id
+      && completion.userId === authStore.currentUserId.value
+    ))
+    .forEach((completion) => completionRepository.delete(completion.id))
+  addActivity('sport:delete', `удалил(а) упражнение «${target.title}»`, { exerciseId: id })
+  return true
 }
 
 function getDayProgress(dateKey) {
@@ -170,6 +210,7 @@ function addExercisesBulk(rawItems) {
       ...item,
       weekday: normalizeWeekday(item.weekday ?? item.day ?? item.weekDay),
       order: item.order || Date.now() + index,
+      __skipActivity: true,
     })
 
     if (result.ok) {
@@ -177,6 +218,10 @@ function addExercisesBulk(rawItems) {
     } else {
       errors.push(`Строка ${index + 1}: ${result.message}`)
     }
+  })
+
+  if (created.length) addActivity('sport:import', `импортировал(а) ${created.length} упражнений`, {
+    exerciseIds: created.map((exercise) => exercise.id),
   })
 
   return {
@@ -259,6 +304,7 @@ function createDefaultExercise(id, weekday, title, sets, reps, note, order) {
   return {
     id,
     workspaceId: 'space-family',
+    userId: 'u-anna',
     weekday,
     title,
     sets,

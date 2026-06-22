@@ -125,6 +125,7 @@ CREATE TABLE public.birthdays (
 CREATE TABLE public.sport_exercises (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,
   workspace_id text NOT NULL,
+  user_id uuid NOT NULL DEFAULT auth.uid(),
   weekday integer NOT NULL CHECK (weekday >= 0 AND weekday <= 6),
   title text NOT NULL,
   sets text NOT NULL DEFAULT ''::text,
@@ -134,7 +135,8 @@ CREATE TABLE public.sport_exercises (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT sport_exercises_pkey PRIMARY KEY (id),
-  CONSTRAINT sport_exercises_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id)
+  CONSTRAINT sport_exercises_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT sport_exercises_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
 CREATE TABLE public.sport_completions (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,

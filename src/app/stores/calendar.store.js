@@ -271,7 +271,12 @@ function addComment(id, text) {
       createdAt: new Date().toISOString(),
     },
   ]
-  return updateEvent(eventId, { comments })
+  const result = updateEvent(eventId, { comments })
+  if (result.ok) addActivity('event:comment', `добавил(а) комментарий к событию «${target.title}»`, {
+    eventId,
+    commentId: comments.at(-1)?.id,
+  })
+  return result
 }
 
 function respondToEvent(id, response) {
@@ -279,9 +284,14 @@ function respondToEvent(id, response) {
   const target = eventRepository.findById(eventId)
   const userId = authStore.currentUserId.value
   if (!target || !userId || !['accepted', 'maybe', 'declined'].includes(response)) return { ok: false }
-  return updateEvent(eventId, {
+  const result = updateEvent(eventId, {
     attendeeResponses: { ...(target.attendeeResponses || {}), [userId]: response },
   })
+  if (result.ok) addActivity('event:response', `изменил(а) ответ на событие «${target.title}»`, {
+    eventId,
+    response,
+  })
+  return result
 }
 
 function compareEvents(firstEvent, secondEvent) {

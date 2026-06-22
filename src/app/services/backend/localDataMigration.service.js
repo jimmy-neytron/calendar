@@ -34,8 +34,22 @@ function normalizeItem(item, suffix, workspaceId, userId) {
     normalized.createdBy = userId
   }
   if (suffix === 'ideas') normalized.authorId = userId
-  if (suffix === 'sport-completions') normalized.userId = userId
+  if (suffix === 'sport-exercises') {
+    normalized.id = withUserSuffix(item.id, userId)
+    normalized.userId = userId
+  }
+  if (suffix === 'sport-completions') {
+    normalized.id = withUserSuffix(item.id, userId)
+    normalized.exerciseId = withUserSuffix(item.exerciseId, userId)
+    normalized.userId = userId
+  }
   return normalized
+}
+
+function withUserSuffix(id, userId) {
+  const value = String(id || '')
+  const suffix = `:${userId}`
+  return value.endsWith(suffix) ? value : `${value}${suffix}`
 }
 
 export async function migrateLocalDataToSupabase() {

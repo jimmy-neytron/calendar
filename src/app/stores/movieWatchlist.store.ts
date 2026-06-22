@@ -6,12 +6,14 @@ import type { MovieMedia, WatchlistMovie } from '../types/movie'
 import { calendarStore } from './calendar.store.js'
 import { calendarCollectionStore } from './calendarCollection.store.js'
 import { workspaceStore } from './workspace.store.js'
+import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const { state: savedMovies } = useLocalStorage(
   `${APP_CONFIG.storageKey}:movie-watchlist`,
   [] as WatchlistMovie[],
 )
 const api = createCollectionApi('movie_watchlist')
+const { addActivity } = useActivityLog()
 
 const watchlist = computed(() => savedMovies.value
   .filter((movie) => movie.workspaceId === workspaceStore.activeWorkspaceId.value)
@@ -42,6 +44,10 @@ async function add(movie: MovieMedia) {
     const { error } = await api.create(toDatabaseRow(savedMovie))
     if (error) return { ok: false, message: getDatabaseMessage(error) }
     savedMovies.value = [...savedMovies.value, savedMovie]
+    addActivity('movie:save', `добавил(а) «${savedMovie.title}» в список «Хочу посмотреть»`, {
+      tmdbId: savedMovie.id,
+      mediaType: savedMovie.mediaType,
+    })
     return { ok: true, movie: savedMovie }
   } catch (error) {
     return { ok: false, message: getErrorMessage(error) }
@@ -62,6 +68,10 @@ async function remove(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
   savedMovies.value = savedMovies.value.filter((item) => !(
     item.workspaceId === workspaceId && getKey(item) === getKey(movie)
   ))
+  addActivity('movie:remove', `убрал(а) «${saved.title}» из списка «Хочу посмотреть»`, {
+    tmdbId: saved.id,
+    mediaType: saved.mediaType,
+  })
   return { ok: true }
 }
 
@@ -127,6 +137,13 @@ async function planMovie(
       return linked
     }
   }
+  addActivity('movie:plan', `запланировал(а) просмотр «${movie.title}» на ${data.date} в ${startTime}`, {
+    tmdbId: movie.id,
+    mediaType: movie.mediaType,
+    eventId: result.event.id,
+    date: data.date,
+    time: startTime,
+  })
   return { ok: true, event: result.event }
 }
 
@@ -135,7 +152,12 @@ async function unplanMovie(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
   if (!saved?.plannedEventId) return { ok: true }
   const result = await calendarStore.deleteEventAndWait(saved.plannedEventId)
   if (!result.ok) return { ok: false, message: result.message || 'Не удалось удалить событие' }
-  return updateSavedMovie(saved, { plannedEventId: '' })
+  const unlinked = await updateSavedMovie(saved, { plannedEventId: '' })
+  if (unlinked.ok) addActivity('movie:unplan', `убрал(а) просмотр «${saved.title}» из календаря`, {
+    tmdbId: saved.id,
+    mediaType: saved.mediaType,
+  })
+  return unlinked
 }
 
 async function loadWorkspace(workspaceId: string) {

@@ -5,8 +5,10 @@ import { generateId } from '../utils/helpers/idGenerator.js'
 import { workspaceStore } from './workspace.store.js'
 import { authStore } from './auth.store.js'
 import { calendarStore } from './calendar.store.js'
+import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const repository = new SyncedCollectionRepository(`${APP_CONFIG.storageKey}:ideas`, [], 'ideas')
+const { addActivity } = useActivityLog()
 
 const ideas = computed(() => repository.items.value
   .filter((idea) => idea.workspaceId === workspaceStore.activeWorkspaceId.value)
@@ -28,11 +30,14 @@ function addIdea(data) {
   }
 
   repository.create(idea)
+  addActivity('idea:create', `сохранил(а) идею «${idea.title}»`, { ideaId: idea.id, type: idea.type })
   return { ok: true, idea }
 }
 
 function removeIdea(id) {
+  const idea = repository.findById(id)
   repository.delete(id)
+  if (idea) addActivity('idea:delete', `удалил(а) идею «${idea.title}»`, { ideaId: id })
 }
 
 async function planIdea(id, date, time = '12:00') {
@@ -58,6 +63,12 @@ async function planIdea(id, date, time = '12:00') {
     await calendarStore.deleteEventAndWait(result.event.id)
     return { ok: false, message: linked.message }
   }
+  addActivity('idea:plan', `запланировал(а) идею «${idea.title}» на ${date} в ${time}`, {
+    ideaId: id,
+    eventId: result.event.id,
+    date,
+    time,
+  })
   return { ok: true, event: result.event }
 }
 
@@ -66,7 +77,10 @@ async function unplanIdea(id) {
   if (!idea?.plannedEventId) return
   const eventId = idea.plannedEventId
   const unlinked = await repository.updateAndWait(id, { plannedEventId: '' })
-  if (unlinked.ok) await calendarStore.deleteEventAndWait(eventId)
+  if (unlinked.ok) {
+    await calendarStore.deleteEventAndWait(eventId)
+    addActivity('idea:unplan', `убрал(а) идею «${idea.title}» из календаря`, { ideaId: id, eventId })
+  }
 }
 
 const categoryByType = {

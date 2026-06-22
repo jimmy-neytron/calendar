@@ -3,6 +3,7 @@ import { APP_CONFIG } from '../config/app.config.js'
 import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { workspaceStore } from './workspace.store.js'
+import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const STORAGE_KEY = `${APP_CONFIG.storageKey}:calendar-collections`
 const defaultCollections = [
@@ -13,6 +14,7 @@ const defaultCollections = [
 ]
 
 const repository = new SyncedCollectionRepository(STORAGE_KEY, defaultCollections, 'calendar_collections')
+const { addActivity } = useActivityLog()
 const collections = repository.items
 const activeCollections = computed(() => collections.value.filter(
   (calendar) => calendar.workspaceId === workspaceStore.activeWorkspaceId.value
@@ -69,12 +71,28 @@ function addCollection(name, color = '#60a5fa') {
 }
 
 function updateCollection(id, updates) {
-  repository.update(id, updates)
+  const current = repository.findById(id)
+  const updated = repository.update(id, updates)
+  if (updated && current) {
+    if (updates.name !== undefined && updates.name !== current.name) {
+      addActivity('calendar:update', `переименовал(а) календарь «${current.name}» в «${updated.name}»`, { calendarId: id })
+    } else if (updates.color !== undefined && updates.color !== current.color) {
+      addActivity('calendar:color', `изменил(а) цвет календаря «${updated.name}»`, { calendarId: id, color: updated.color })
+    }
+  }
+  return updated
 }
 
 function toggleCollection(id) {
   const calendar = collections.value.find((item) => item.id === id)
-  if (calendar) updateCollection(id, { visible: !calendar.visible })
+  if (calendar) {
+    const visible = !calendar.visible
+    repository.update(id, { visible })
+    addActivity('calendar:visibility', `${visible ? 'показал(а)' : 'скрыл(а)'} календарь «${calendar.name}»`, {
+      calendarId: id,
+      visible,
+    })
+  }
 }
 
 function removeCollection(id) {

@@ -1,4 +1,4 @@
-import { requireSupabase } from './client.js'
+import { requireAuthenticatedSupabase, requireSupabase } from './client.js'
 
 export async function listActivity({
   workspaceId,
@@ -21,4 +21,12 @@ export async function listActivity({
   if (userId !== 'all') request = request.eq('actor_id', userId)
   if (query.trim()) request = request.ilike('message', `%${query.trim()}%`)
   return request
+}
+
+export async function deleteActivity({ workspaceId, entryIds = null }) {
+  const client = await requireAuthenticatedSupabase()
+  return client.rpc('delete_workspace_activity', {
+    p_workspace_id: workspaceId,
+    p_entry_ids: entryIds?.length ? entryIds : null,
+  })
 }
