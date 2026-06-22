@@ -57,6 +57,8 @@
       @smart-create="createSmartEvent"
     />
 
+    <AppOnboarding />
+
     <div class="toast-stack">
       <transition-group name="toast-list">
         <AppToast
@@ -72,13 +74,14 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppContainer from '../../components/common/AppContainer.vue'
 import AppHeader from '../../components/common/AppHeader.vue'
 import AppSidebar from '../../components/common/AppSidebar.vue'
 import CommandPalette from '../../components/common/CommandPalette.vue'
 import AppToast from '../../components/common/AppToast.vue'
+import AppOnboarding from '../../components/onboarding/AppOnboarding.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { authStore } from '../../stores/auth.store.js'
@@ -88,6 +91,7 @@ import { useCalendarPreferences } from '../../composables/preferences/useCalenda
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
+import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,12 +101,14 @@ const calendarViewMode = ref('month')
 const isCommandPaletteOpen = ref(false)
 const paletteQuery = ref('')
 const { notifications, dismiss, notify } = useNotification()
+const { start: startOnboarding } = useOnboarding()
 const { runDailyAutoBackup } = useAutoBackup()
 const { start: startLocalReminders, stop: stopLocalReminders } = useLocalReminders()
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const isAuthRoute = computed(() => route.name === 'login')
+let onboardingTimer = null
 const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
   members: workspaceStore.activeWorkspaceMembers.value,
   calendars: calendarCollectionStore.activeCollections.value,
@@ -218,10 +224,17 @@ onMounted(() => {
   window.addEventListener('backend-sync-error', handleBackendSyncError)
 })
 
+watch([currentUser, isAuthRoute], ([user, authRoute]) => {
+  window.clearTimeout(onboardingTimer)
+  if (!user || authRoute) return
+  onboardingTimer = window.setTimeout(() => startOnboarding(), 650)
+}, { immediate: true })
+
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('backend-sync-error', handleBackendSyncError)
   stopLocalReminders()
+  window.clearTimeout(onboardingTimer)
 })
 </script>
 

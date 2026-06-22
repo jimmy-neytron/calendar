@@ -47,6 +47,23 @@
       </SettingsSectionCard>
 
       <SettingsSectionCard
+        icon="?"
+        eyebrow="Помощь"
+        title="Обучение по приложению"
+        description="Полноэкранный тур объяснит назначение календаря, фильмов, спорта, идей, активности, аналитики и остальных возможностей."
+        tone="warning"
+      >
+        <div class="learning-preview">
+          <span><UiIcon name="play" /></span>
+          <div>
+            <strong>Пройти обучение заново</strong>
+            <small>Прогресс и данные приложения не изменятся. Тур можно закрыть в любой момент.</small>
+          </div>
+          <UiButton icon="play" @click="openOnboarding">Запустить обучение</UiButton>
+        </div>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
         icon="✦"
         eyebrow="Календарь"
         title="Отображение и поведение"
@@ -204,6 +221,7 @@ import UiInput from '../../components/ui/UiInput.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
 import UiColorPicker from '../../components/ui/UiColorPicker.vue'
+import UiIcon from '../../components/ui/UiIcon.vue'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useAppBackup } from '../../composables/data/useAppBackup.js'
@@ -211,9 +229,11 @@ import { useNotification } from '../../composables/ui/useNotification.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 import { migrateLocalDataToSupabase } from '../../services/backend/localDataMigration.service.js'
+import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 
 const router = useRouter()
 const { notify } = useNotification()
+const { start: startOnboarding } = useOnboarding()
 const { exportAll, importAll, clearAll } = useAppBackup()
 const { preferences, themeOptions } = useCalendarPreferences()
 const {
@@ -287,6 +307,10 @@ async function handleImport(event) {
 function clearLocalData() {
   clearAll()
   notify('Локальный кеш очищен. Облачные данные останутся в Supabase.', 'info')
+}
+
+function openOnboarding() {
+  startOnboarding({ force: true })
 }
 
 onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
@@ -477,6 +501,40 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
   font-weight: 800;
 }
 
+.learning-preview {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 22%, var(--border-color));
+  border-radius: 14px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--warning) 10%, transparent), transparent 180px),
+    var(--card-soft);
+}
+
+.learning-preview > span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 11%, var(--control-bg));
+  font-size: 20px;
+}
+
+.learning-preview strong,
+.learning-preview small {
+  display: block;
+}
+
+.learning-preview small {
+  margin-top: 3px;
+  color: var(--text-muted);
+}
+
 .sync-status {
   display: flex;
   align-items: center;
@@ -587,7 +645,8 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 
   .settings-fields--profile,
   .preference-grid,
-  .data-actions {
+  .data-actions,
+  .learning-preview {
     grid-template-columns: 1fr;
   }
 

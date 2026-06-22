@@ -40,6 +40,7 @@ const iconName = computed(() => ({
   'calendar': 'calendar',
   'refresh': 'refresh',
   'heart': 'heart',
+  'play': 'play',
 }[props.icon] || ''))
 </script>
 
