@@ -5,6 +5,7 @@ const CATEGORY_ALIASES = {
   тренировка: 'sports',
   работа: 'work',
   встреча: 'work',
+  встречу: 'work',
   школа: 'school',
   учеба: 'school',
   учёба: 'school',
@@ -116,7 +117,7 @@ function parseDate(source, now) {
 
 function parseTime(source) {
   const match = source.match(/\b(?:в\s*)?([01]?\d|2[0-3])[:.](\d{2})\b/i)
-    || source.match(/\bв\s+([01]?\d|2[0-3])\b/i)
+    || source.match(/(?:^|\s)в\s+([01]?\d|2[0-3])(?=\s|$)/i)
   if (!match) return ''
   return `${String(Number(match[1])).padStart(2, '0')}:${String(Number(match[2] || 0)).padStart(2, '0')}`
 }
@@ -151,6 +152,7 @@ function findCalendar(token, category, calendars) {
 
 function cleanTitle(source) {
   return source
+    .replace(/^\s*(?:добавь|добавить|создай|создать|запланируй|запланировать|поставь|поставить)\s+/i, '')
     .replace(/(?:сегодня|завтра|послезавтра)/gi, '')
     .replace(/\b(?:в\s*)?(?:[01]?\d|2[0-3])[:.]\d{2}\b/gi, '')
     .replace(/(^|\s)в\s+(?:[01]?\d|2[0-3])(?=\s|$)/gi, ' ')
@@ -161,6 +163,7 @@ function cleanTitle(source) {
     .replace(/#[а-яёa-z-]+/gi, '')
     .replace(/@[а-яёa-z0-9._-]+/gi, '')
     .replace(/!срочно|!важно|!!/gi, '')
+    .replace(/^\s*(?:добавь|добавить|создай|создать|запланируй|запланировать|поставь|поставить)\s+/i, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

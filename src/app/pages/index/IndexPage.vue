@@ -9,6 +9,12 @@
         @reset="resetFilters"
       />
 
+      <SmartEventInput
+        v-model="smartEventQuery"
+        :suggestion="smartEventSuggestion"
+        @submit="handleSmartEventCreate"
+      />
+
       <CalendarBoard
         :heading="heading"
         :mode="mode"
@@ -63,6 +69,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CalendarBoard from '../../components/calendar/CalendarBoard.vue'
 import CalendarFilters from '../../components/calendar/CalendarFilters.vue'
+import SmartEventInput from '../../components/calendar/SmartEventInput.vue'
 import TodayRail from '../../components/calendar/TodayRail.vue'
 import EventDrawer from '../../components/calendar/EventDrawer.vue'
 import { useCalendarView } from '../../composables/calendar/useCalendarView.js'
@@ -76,6 +83,7 @@ import { CALENDAR_MODES, DEFAULT_FILTERS } from '../../utils/constants/calendarC
 import { groupEventsByDate } from '../../stores/calendar.store.js'
 import { authStore } from '../../stores/auth.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
+import { parseSmartEvent } from '../../services/smartEventParser.js'
 
 const props = defineProps({
   forceCreateToken: { type: Number, default: 0 },
@@ -110,9 +118,14 @@ const { isOpen: isEventDrawerOpen, open: openEventDrawer, close: closeEventDrawe
 
 const editingEvent = ref(null)
 const quickStartTime = ref('')
+const smartEventQuery = ref('')
 const handledCreateToken = ref(props.forceCreateToken)
 const filters = reactive({ ...DEFAULT_FILTERS })
 const selectedEvents = computed(() => filteredEventsByDate.value[selectedDateKey.value] || [])
+const smartEventSuggestion = computed(() => parseSmartEvent(smartEventQuery.value, {
+  members: members.value,
+  calendars: calendars.value,
+}))
 const filteredEvents = computed(() => sortedEvents.value.filter(matchesFilters))
 const filteredEventsByDate = computed(() => groupEventsByDate(filteredEvents.value))
 const visibleHolidayYears = computed(() => {
@@ -150,6 +163,18 @@ const handleCreateEvent = (data) => {
   }
   notify('Событие добавлено', 'success')
   closeEventDrawer()
+}
+
+const handleSmartEventCreate = (eventData) => {
+  const { preview, ...data } = eventData
+  const result = addEvent(data)
+  if (!result.ok) {
+    notify(Object.values(result.errors || {})[0] || 'Не удалось создать событие', 'danger')
+    return
+  }
+  smartEventQuery.value = ''
+  selectDate(result.event.date)
+  notify(`Событие «${result.event.title}» добавлено`, 'success')
 }
 
 const handleUpdateEvent = (id, data) => {
