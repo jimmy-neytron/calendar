@@ -50,9 +50,9 @@ const groups = [
   {
     label: 'Пространство',
     items: [
+      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
       { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart' },
       { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity' },
-      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
       { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
     ],
   },

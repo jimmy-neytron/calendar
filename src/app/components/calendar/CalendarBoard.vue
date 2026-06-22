@@ -7,6 +7,7 @@
       </div>
 
       <div class="calendar-board__actions">
+        <CalendarShortcutsHelp />
         <div class="calendar-board__segmented">
           <button :class="{ active: mode === CALENDAR_MODES.MONTH }" type="button" @click="$emit('update:mode', CALENDAR_MODES.MONTH)">Месяц</button>
           <button :class="{ active: mode === CALENDAR_MODES.WEEK }" type="button" @click="$emit('update:mode', CALENDAR_MODES.WEEK)">Неделя</button>
@@ -94,6 +95,7 @@
 import UiButton from '../ui/UiButton.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
 import MemberPill from '../family/MemberPill.vue'
+import CalendarShortcutsHelp from './CalendarShortcutsHelp.vue'
 import CalendarDayCell from './CalendarDayCell.vue'
 import EventCard from './EventCard.vue'
 import DayModePanel from './DayModePanel.vue'
