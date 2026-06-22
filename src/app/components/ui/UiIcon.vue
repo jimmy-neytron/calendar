@@ -47,6 +47,8 @@ const icons = {
   key: { paths: ['M14 7a5 5 0 11-1.5 3.6L21 19v2h-3v-2h-2v-2h-2l-2.1-2.1', 'M7 7h.01'] },
   warning: { paths: ['M12 3L2.8 20h18.4L12 3z', 'M12 9v4', 'M12 17h.01'] },
   play: { paths: ['M8 5l11 7-11 7V5z'] },
+  grid: { paths: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'] },
+  table: { paths: ['M4 5h16v14H4z', 'M4 10h16', 'M4 15h16', 'M10 5v14'] },
 }
 const current = computed(() => icons[props.name] || icons.close)
 const paths = computed(() => current.value.paths || [])
