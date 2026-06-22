@@ -42,8 +42,15 @@
           >
             Удалить выбранные
           </UiButton>
-          <UiButton size="sm" variant="ghost" :disabled="deleting" @click="clearAll">
-            Очистить всё
+          <UiButton
+            size="sm"
+            variant="danger"
+            icon="trash"
+            :loading="deleting && !selectedIds.length"
+            :disabled="deleting"
+            @click="clearAll"
+          >
+            Удалить всю историю
           </UiButton>
         </div>
       </header>
