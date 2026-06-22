@@ -14,6 +14,11 @@ const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
+const protectedPageLoaders = [
+  IndexPage, SettingsPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
+  IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage,
+]
+let pagesPreloaded = false
 
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
@@ -62,7 +67,8 @@ router.beforeEach(async (to) => {
   }
 
   if (!to.meta.public) {
-    const workspace = await workspaceStore.ensureActiveWorkspace()
+    const workspace = workspaceStore.activeWorkspace.value
+      || await workspaceStore.ensureActiveWorkspace()
     if (workspace) await loadWorkspaceData(workspace.id)
   }
 
@@ -71,4 +77,13 @@ router.beforeEach(async (to) => {
 
 router.afterEach((to) => {
   document.title = `${to.meta.title || 'Календарь'} · Пространство`
+  if (!to.meta.public) preloadProtectedPages()
 })
+
+function preloadProtectedPages() {
+  if (pagesPreloaded) return
+  pagesPreloaded = true
+  const preload = () => Promise.allSettled(protectedPageLoaders.map((load) => load()))
+  if ('requestIdleCallback' in window) window.requestIdleCallback(preload, { timeout: 1800 })
+  else window.setTimeout(preload, 350)
+}

@@ -244,12 +244,12 @@ onBeforeUnmount(() => {
 }
 
 :global(.page-shift-enter-active) {
-  animation: pageShiftIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: pageShiftIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   will-change: transform, opacity;
 }
 
 :global(.page-shift-leave-active) {
-  animation: pageShiftOut 0.12s cubic-bezier(0.4, 0, 1, 1) both;
+  animation: pageShiftOut 0.06s cubic-bezier(0.4, 0, 1, 1) both;
   transform-origin: center 18%;
   will-change: transform, opacity;
 }
