@@ -103,6 +103,7 @@ const updateEvent = (id, updates) => {
   if (!validation.valid) return { ok: false, errors: validation.errors }
 
   eventRepository.update(targetId, nextEvent)
+  reportLinkedEventChange('update', nextEvent)
   notificationStore.notifyEventChange(notificationAction, nextEvent, target)
   addActivity('event:update', `обновил(а) событие «${nextEvent.title}»`, { eventId: targetId, date: nextEvent.date })
   return { ok: true, event: nextEvent }
@@ -113,6 +114,7 @@ const deleteEvent = (id) => {
   const target = eventRepository.findById(eventId)
   eventRepository.delete(eventId)
   if (target) {
+    reportLinkedEventChange('delete', target)
     notificationStore.notifyEventChange('delete', target)
     addActivity('event:delete', `удалил(а) событие «${target.title}»`, { eventId, date: target.date })
   }
@@ -250,6 +252,9 @@ function normalizeEvent(data) {
     repeatWeekdays: Array.isArray(data.repeatWeekdays) ? data.repeatWeekdays.map(Number) : [],
     importance: data.importance || 'normal',
     reminder: data.reminder || 'none',
+    linkedEntityType: data.linkedEntityType || '',
+    linkedEntityId: data.linkedEntityId || '',
+    completedAt: data.completedAt || null,
     createdAt: data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt || new Date().toISOString(),
   }
@@ -339,4 +344,11 @@ function getUpcomingReminders(items) {
     .map((event) => ({ ...event, startsAt: new Date(`${event.date}T${event.startTime}`) }))
     .filter((event) => event.startsAt >= now && event.startsAt <= in24Hours)
     .slice(0, 5)
+}
+
+function reportLinkedEventChange(action, event) {
+  if (typeof window === 'undefined' || !event?.linkedEntityId) return
+  window.dispatchEvent(new CustomEvent('calendar-linked-event-change', {
+    detail: { action, event },
+  }))
 }

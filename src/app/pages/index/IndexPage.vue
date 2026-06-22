@@ -61,13 +61,14 @@
       @update="handleUpdateEvent"
       @delete="handleDeleteEvent"
       @duplicate="handleDuplicateEvent"
+      @open-linked="openLinkedBudget"
     />
   </section>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import CalendarBoard from '../../components/calendar/CalendarBoard.vue'
 import CalendarFilters from '../../components/calendar/CalendarFilters.vue'
 import SmartEventInput from '../../components/calendar/SmartEventInput.vue'
@@ -85,6 +86,7 @@ import { groupEventsByDate } from '../../stores/calendar.store.js'
 import { authStore } from '../../stores/auth.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
+import { budgetStore } from '../../stores/budget.store.js'
 
 const props = defineProps({
   forceCreateToken: { type: Number, default: 0 },
@@ -92,6 +94,7 @@ const props = defineProps({
 const emit = defineEmits(['view-mode-change'])
 
 const route = useRoute()
+const router = useRouter()
 const { defaultMode, holidayCountry } = useCalendarPreferences()
 calendarCollectionStore.ensureWorkspaceCollections()
 const calendars = calendarCollectionStore.activeCollections
@@ -239,6 +242,13 @@ const handleDuplicateEvent = ({ eventId, mode, dates }) => {
     return
   }
   notify(`Создано копий: ${result.events.length}`, 'success')
+}
+
+async function openLinkedBudget(event) {
+  if (!event?.linkedEntityId) return
+  budgetStore.setSelectedMonth(String(event.date).slice(0, 7))
+  closeEventDrawer()
+  await router.push({ name: 'budget', query: { payment: event.linkedEntityId } })
 }
 
 function updateFilter(key, value) {

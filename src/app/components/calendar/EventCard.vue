@@ -3,7 +3,10 @@
     class="event-card"
     :class="[
       `event-card--${event.importance || 'normal'}`,
-      { 'event-card--compact': compact },
+      {
+        'event-card--compact': compact,
+        'event-card--completed': event.completedAt,
+      },
     ]"
     :style="{ '--event-color': calendarColor || accent }"
     draggable="true"
@@ -86,6 +89,14 @@ function handleDragStart(dragEvent) {
 
 .event-card--urgent {
   border-color: rgba(239, 68, 68, 0.48);
+}
+
+.event-card--completed {
+  opacity: 0.62;
+}
+
+.event-card--completed .event-card__content strong {
+  text-decoration: line-through;
 }
 
 .event-card__time {

@@ -9,6 +9,13 @@ function mapKeys(value, mapper) {
     'plannedEventId',
     'eventId',
     'reminderEventId',
+    'categoryId',
+    'recurringRuleId',
+    'calendarEventId',
+    'linkedEntityId',
+    'completedAt',
+    'actualAmount',
+    'paidAt',
   ])
   return Object.fromEntries(
     Object.entries(value || {})

@@ -81,6 +81,9 @@ CREATE TABLE public.events (
   repeat_weekdays ARRAY NOT NULL DEFAULT '{}'::integer[],
   importance text NOT NULL DEFAULT 'normal'::text,
   reminder text NOT NULL DEFAULT 'none'::text,
+  linked_entity_type text,
+  linked_entity_id text,
+  completed_at timestamp with time zone,
   created_by uuid DEFAULT auth.uid(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -89,6 +92,76 @@ CREATE TABLE public.events (
   CONSTRAINT events_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendar_collections(id),
   CONSTRAINT events_responsible_id_fkey FOREIGN KEY (responsible_id) REFERENCES public.profiles(id),
   CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.budget_months (
+  id text NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace_id text NOT NULL,
+  month date NOT NULL,
+  planned_income numeric NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'draft'::text,
+  created_by uuid NOT NULL DEFAULT auth.uid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT budget_months_pkey PRIMARY KEY (id),
+  CONSTRAINT budget_months_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT budget_months_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.budget_categories (
+  id text NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace_id text NOT NULL,
+  budget_month_id text NOT NULL,
+  name text NOT NULL,
+  planned_amount numeric NOT NULL DEFAULT 0,
+  color text NOT NULL DEFAULT '#60a5fa'::text,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT budget_categories_pkey PRIMARY KEY (id),
+  CONSTRAINT budget_categories_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT budget_categories_budget_month_id_fkey FOREIGN KEY (budget_month_id) REFERENCES public.budget_months(id)
+);
+CREATE TABLE public.budget_recurring_rules (
+  id text NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace_id text NOT NULL,
+  title text NOT NULL,
+  category_name text NOT NULL DEFAULT 'Обязательные платежи'::text,
+  default_amount numeric NOT NULL DEFAULT 0,
+  due_day integer NOT NULL,
+  reminder text NOT NULL DEFAULT '1d'::text,
+  calendar_enabled boolean NOT NULL DEFAULT true,
+  active boolean NOT NULL DEFAULT true,
+  created_by uuid NOT NULL DEFAULT auth.uid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT budget_recurring_rules_pkey PRIMARY KEY (id),
+  CONSTRAINT budget_recurring_rules_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT budget_recurring_rules_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.budget_payments (
+  id text NOT NULL DEFAULT (gen_random_uuid())::text,
+  workspace_id text NOT NULL,
+  budget_month_id text NOT NULL,
+  category_id text,
+  recurring_rule_id text,
+  title text NOT NULL,
+  planned_amount numeric NOT NULL DEFAULT 0,
+  actual_amount numeric,
+  due_date date NOT NULL,
+  status text NOT NULL DEFAULT 'planned'::text,
+  paid_at timestamp with time zone,
+  reminder text NOT NULL DEFAULT '1d'::text,
+  calendar_enabled boolean NOT NULL DEFAULT true,
+  calendar_event_id text,
+  created_by uuid NOT NULL DEFAULT auth.uid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT budget_payments_pkey PRIMARY KEY (id),
+  CONSTRAINT budget_payments_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT budget_payments_budget_month_id_fkey FOREIGN KEY (budget_month_id) REFERENCES public.budget_months(id),
+  CONSTRAINT budget_payments_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.budget_categories(id),
+  CONSTRAINT budget_payments_recurring_rule_id_fkey FOREIGN KEY (recurring_rule_id) REFERENCES public.budget_recurring_rules(id),
+  CONSTRAINT budget_payments_calendar_event_id_fkey FOREIGN KEY (calendar_event_id) REFERENCES public.events(id),
+  CONSTRAINT budget_payments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
 );
 CREATE TABLE public.ideas (
   id text NOT NULL DEFAULT (gen_random_uuid())::text,

@@ -42,6 +42,16 @@
         </header>
 
         <form class="event-drawer__form" @submit.prevent="submit">
+          <section v-if="isBudgetLinkedEvent" class="event-drawer__linked-budget card">
+            <div>
+              <span>₽ Управляется бюджетом</span>
+              <p>Название и сумма меняются в бюджете. Дату можно изменить здесь или перетащить событие в календаре.</p>
+            </div>
+            <UiButton type="button" size="sm" variant="secondary" @click="$emit('open-linked', editingEvent)">
+              Открыть в бюджете
+            </UiButton>
+          </section>
+
           <section v-if="!editingEvent" class="event-drawer__templates">
             <span>Шаблоны</span>
             <div>
@@ -62,6 +72,7 @@
             label="Название"
             placeholder="Встреча, врач, тренировка..."
             required
+            :disabled="isBudgetLinkedEvent"
             :error="errors.title"
             @keydown.ctrl.enter="submit"
           />
@@ -311,7 +322,7 @@ const props = defineProps({
   calendars: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'duplicate'])
+const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'duplicate', 'open-linked'])
 
 const titleInputRef = ref(null)
 const errors = reactive({})
@@ -326,6 +337,7 @@ const RESPONSE_OPTIONS = [
   { value: 'declined', label: 'Не смогу' },
 ]
 const categoryMeta = computed(() => getCategoryMeta(form.category))
+const isBudgetLinkedEvent = computed(() => props.editingEvent?.linkedEntityType === 'budget-payment')
 const selectedCalendar = computed(() => props.calendars.find((calendar) => calendar.id === form.calendarId))
 const eventAccent = computed(() => selectedCalendar.value?.color || categoryMeta.value.color || 'var(--accent)')
 const calendarName = computed(() => selectedCalendar.value?.name || '')
@@ -701,6 +713,29 @@ function addMinutesToTime(time, minutes) {
   display: grid;
   gap: 8px;
   padding: 10px;
+}
+
+.event-drawer__linked-budget {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px;
+  border-color: color-mix(in srgb, var(--success) 30%, var(--border-color));
+  background: color-mix(in srgb, var(--success) 7%, var(--control-bg));
+}
+
+.event-drawer__linked-budget span {
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.event-drawer__linked-budget p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 9px;
 }
 
 .event-drawer__collaboration-head span,

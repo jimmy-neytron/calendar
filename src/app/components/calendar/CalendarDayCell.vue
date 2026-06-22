@@ -32,7 +32,10 @@
         v-for="event in visibleEvents"
         :key="event.id"
         class="calendar-day__event"
-        :class="{ 'calendar-day__event--birthday': isBirthdayEvent(event) }"
+        :class="{
+          'calendar-day__event--birthday': isBirthdayEvent(event),
+          'calendar-day__event--completed': event.completedAt,
+        }"
         :style="{ '--event-color': getEventColor(event) }"
         draggable="true"
         @dragstart.stop="handleDragStart(event, $event)"
@@ -282,6 +285,11 @@ function isBirthdayEvent(event) {
   color: color-mix(in srgb, var(--pink) 75%, var(--text-primary));
   background: color-mix(in srgb, var(--pink) 14%, var(--control-bg));
   font-weight: 700;
+}
+
+.calendar-day__event--completed {
+  opacity: 0.58;
+  text-decoration: line-through;
 }
 
 .calendar-day__event b {
