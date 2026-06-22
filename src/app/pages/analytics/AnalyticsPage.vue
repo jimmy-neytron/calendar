@@ -1,207 +1,592 @@
 <template>
-  <section class="analytics-page">
-    <header class="analytics-hero panel">
-      <div>
-        <span>Аналитика пространства</span>
-        <h1>Ритм последних 7 дней</h1>
-        <p>Сколько времени занято, как распределены события и в какие дни календарь был насыщеннее.</p>
+  <section class="analytics-overview">
+    <header class="overview-hero panel">
+      <div class="overview-hero__glow" aria-hidden="true" />
+      <div class="overview-hero__copy">
+        <span class="eyebrow">Аналитика пространства</span>
+        <h1>Всё важное — одним взглядом</h1>
+        <p>Спокойный обзор недели. Подробные графики и динамика находятся внутри каждого раздела.</p>
+        <div class="hero-status">
+          <span><i /> Данные обновляются вместе с пространством</span>
+          <strong>{{ activeDirections }} активных направлений</strong>
+        </div>
       </div>
-      <div class="analytics-hero__score">
-        <strong>{{ weekEventCount }}</strong>
-        <small>{{ pluralize(weekEventCount, ['событие', 'события', 'событий']) }}</small>
+      <div class="pulse">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="pulse__track" cx="60" cy="60" r="52" />
+          <circle
+            class="pulse__value"
+            cx="60"
+            cy="60"
+            r="52"
+            :style="{ '--pulse-progress': pulseScore }"
+          />
+        </svg>
+        <div><strong>{{ pulseScore }}</strong><span>пульс недели</span></div>
       </div>
     </header>
 
-    <section v-if="!hasData" class="analytics-empty panel">
-      <span>▥</span>
-      <div>
-        <small>Пока тихо</small>
-        <h2>Аналитика появится после первых событий</h2>
-        <p>Добавь несколько событий с датой, временем и категорией — здесь появятся графики нагрузки и удобная таблица.</p>
-      </div>
-      <RouterLink :to="{ name: 'calendar' }">Открыть календарь →</RouterLink>
+    <section class="quick-stats">
+      <article v-for="(stat, index) in overviewStats" :key="stat.label" :style="{ '--delay': `${index * 55}ms` }">
+        <UiIcon :name="stat.icon" />
+        <div><strong>{{ stat.value }}</strong><span>{{ stat.label }}</span></div>
+      </article>
     </section>
 
-    <template v-else>
-      <div class="analytics-kpis">
-        <article>
-          <span class="analytics-kpis__icon">◷</span>
-          <div><small>Занято времени</small><strong>{{ busyHours }} ч</strong><p>{{ timedEventCount }} событий с временем</p></div>
-        </article>
-        <article>
-          <span class="analytics-kpis__icon">↑</span>
-          <div><small>Самый активный день</small><strong>{{ busiestDay.fullLabel }}</strong><p>{{ busiestDay.count }} событий</p></div>
-        </article>
-        <article>
-          <span class="analytics-kpis__icon">◒</span>
-          <div><small>Спортивный прогресс</small><strong>{{ weekProgress.percent }}%</strong><p>{{ weekProgress.done }} из {{ weekProgress.total }} выполнено</p></div>
-        </article>
-        <article>
-          <span class="analytics-kpis__icon">◎</span>
-          <div><small>Средняя нагрузка</small><strong>{{ averagePerDay }}</strong><p>событий в день</p></div>
-        </article>
-      </div>
+    <section class="section-heading">
+      <div><span class="eyebrow">Разделы</span><h2>Посмотреть подробнее</h2></div>
+      <p>У каждого направления — своя статистика и понятные графики.</p>
+    </section>
 
-      <div class="analytics-grid">
-        <section class="analytics-card analytics-card--load">
-          <header>
-            <div><small>Нагрузка</small><h2>События по дням</h2></div>
-            <span>{{ dateRangeLabel }}</span>
-          </header>
-          <div class="bar-chart">
-            <div v-for="day in dailyLoad" :key="day.key" :class="{ active: day.count === busiestDay.count }">
-              <div class="bar-chart__track">
-                <span :style="{ height: `${Math.max(4, day.percent)}%` }"><b>{{ day.count }}</b></span>
-              </div>
-              <strong>{{ day.label }}</strong>
-              <small>{{ day.dateLabel }}</small>
-            </div>
-          </div>
-        </section>
-
-        <section class="analytics-card">
-          <header><div><small>Баланс</small><h2>Категории</h2></div></header>
-          <div class="donut-wrap">
-            <div class="donut" :style="{ '--donut': donutGradient }">
-              <div><strong>{{ categoryStats.length }}</strong><small>категорий</small></div>
-            </div>
-            <div class="category-list">
-              <article v-for="category in categoryStats" :key="category.value">
-                <i :style="{ background: category.color }" />
-                <span>{{ category.label }}</span>
-                <strong>{{ category.count }}</strong>
-                <small>{{ Math.round(category.percent) }}%</small>
-              </article>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <section class="analytics-card analytics-table-card">
-        <header>
-          <div><small>Детали</small><h2>События недели</h2></div>
-          <span>{{ weekEventCount }} записей</span>
-        </header>
-        <div class="analytics-table">
-          <div class="analytics-table__head">
-            <span>Событие</span><span>Дата</span><span>Время</span><span>Категория</span><span>Длительность</span>
-          </div>
-          <article v-for="event in tableEvents" :key="event.id">
-            <strong>{{ event.title }}</strong>
-            <span>{{ formatDate(event.date) }}</span>
-            <span>{{ event.allDay ? 'Весь день' : event.startTime || '—' }}</span>
-            <span class="category-cell"><i :style="{ background: categoryMeta(event.category).color }" />{{ categoryMeta(event.category).label }}</span>
-            <span>{{ eventDuration(event) }}</span>
-          </article>
+    <section class="analytics-sections">
+      <RouterLink
+        v-for="(section, index) in sections"
+        :key="section.route"
+        :to="{ name: section.route }"
+        class="section-card"
+        :style="{ '--section-color': section.color, '--delay': `${140 + index * 55}ms` }"
+      >
+        <span class="section-card__icon"><UiIcon :name="section.icon" /></span>
+        <div class="section-card__copy">
+          <small>{{ section.caption }}</small>
+          <h3>{{ section.title }}</h3>
+          <p>{{ section.description }}</p>
         </div>
-      </section>
-    </template>
+        <div class="section-card__metric"><strong>{{ section.value }}</strong><span>{{ section.note }}</span></div>
+        <span class="section-card__arrow"><UiIcon name="right" /></span>
+      </RouterLink>
+    </section>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { calendarStore } from '../../stores/calendar.store.js'
-import { sportStore } from '../../stores/sport.store.js'
-import { EVENT_FORM_CATEGORIES } from '../../utils/constants/calendarConstants.js'
-import { DateHelper } from '../../utils/date/dateHelper.js'
+import UiIcon from '../../components/ui/UiIcon.vue'
+import { useAnalyticsData } from './useAnalyticsData.js'
 
-const weekProgress = sportStore.weekProgress
-const today = new Date()
-const start = DateHelper.addDays(today, -6)
-const end = DateHelper.addDays(today, 1)
-const weekEvents = computed(() => calendarStore.sortedEvents.value.filter((event) => {
-  const date = DateHelper.parseKey(event.date)
-  return date >= start && date < end
-}))
-const hasData = computed(() => weekEvents.value.length > 0)
-const weekEventCount = computed(() => weekEvents.value.length)
-const timedEventCount = computed(() => weekEvents.value.filter((event) => !event.allDay && event.startTime && event.endTime).length)
-const busyHours = computed(() => Math.round(totalMinutes.value / 6) / 10)
-const averagePerDay = computed(() => (weekEventCount.value / 7).toFixed(1))
-const totalMinutes = computed(() => weekEvents.value.reduce((total, event) => total + durationMinutes(event), 0))
-const dateRangeLabel = computed(() => `${formatShortDate(start)} — ${formatShortDate(today)}`)
-const tableEvents = computed(() => [...weekEvents.value].sort((a, b) => b.date.localeCompare(a.date) || (b.startTime || '').localeCompare(a.startTime || '')))
+const analytics = useAnalyticsData()
 
-const dailyLoad = computed(() => {
-  const values = Array.from({ length: 7 }, (_, index) => {
-    const date = DateHelper.addDays(start, index)
-    const key = DateHelper.toKey(date)
-    return {
-      key,
-      label: new Intl.DateTimeFormat('ru-RU', { weekday: 'short' }).format(date).replace('.', ''),
-      fullLabel: new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(date),
-      dateLabel: new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(date),
-      count: weekEvents.value.filter((event) => event.date === key).length,
-    }
-  })
-  const max = Math.max(...values.map((day) => day.count), 1)
-  return values.map((day) => ({ ...day, percent: day.count / max * 100 }))
-})
+const pulseScore = computed(() => Math.min(100, Math.round(
+  Math.min(35, analytics.weekEvents.value.length * 5)
+  + Math.min(25, analytics.weekActivity.value.length * 2)
+  + Math.min(25, analytics.sportProgress.value.percent * .25)
+  + Math.min(15, (analytics.plannedMovies.value + analytics.plannedIdeas.value) * 3)
+)))
 
-const busiestDay = computed(() => dailyLoad.value.reduce(
-  (best, day) => day.count > best.count ? day : best,
-  { fullLabel: '—', count: 0 }
-))
+const overviewStats = computed(() => [
+  { label: 'событий за неделю', value: analytics.weekEvents.value.length, icon: 'calendar' },
+  { label: 'действий за неделю', value: analytics.weekActivity.value.length, icon: 'activity' },
+  { label: 'спортивный прогресс', value: `${analytics.sportProgress.value.percent}%`, icon: 'sport' },
+  { label: 'планов в календаре', value: analytics.plannedMovies.value + analytics.plannedIdeas.value, icon: 'check' },
+])
+const activeDirections = computed(() => overviewStats.value.filter((item) => Number.parseFloat(item.value) > 0).length)
 
-const categoryStats = computed(() => {
-  const total = Math.max(weekEventCount.value, 1)
-  return EVENT_FORM_CATEGORIES.map((category) => {
-    const count = weekEvents.value.filter((event) => event.category === category.value).length
-    return { ...category, count, percent: count / total * 100 }
-  }).filter((category) => category.count)
-})
-
-const donutGradient = computed(() => {
-  let offset = 0
-  const stops = categoryStats.value.map((category) => {
-    const startOffset = offset
-    offset += category.percent
-    return `${category.color} ${startOffset}% ${offset}%`
-  })
-  return `conic-gradient(${stops.join(', ')})`
-})
-
-function categoryMeta(value) {
-  return EVENT_FORM_CATEGORIES.find((category) => category.value === value)
-    || { label: 'Другое', color: 'var(--text-muted)' }
-}
-
-function durationMinutes(event) {
-  if (event.allDay || !event.startTime || !event.endTime) return 0
-  const [sh, sm] = event.startTime.split(':').map(Number)
-  const [eh, em] = event.endTime.split(':').map(Number)
-  return Math.max(0, (eh * 60 + em) - (sh * 60 + sm))
-}
-
-function eventDuration(event) {
-  const minutes = durationMinutes(event)
-  if (!minutes) return event.allDay ? 'Весь день' : '—'
-  if (minutes < 60) return `${minutes} мин`
-  const hours = Math.floor(minutes / 60)
-  const rest = minutes % 60
-  return rest ? `${hours} ч ${rest} мин` : `${hours} ч`
-}
-
-const formatDate = (key) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' }).format(DateHelper.parseKey(key))
-const formatShortDate = (date) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(date)
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
+const sections = computed(() => [
+  {
+    route: 'analytics-calendar', title: 'Календарь', caption: 'Ритм и нагрузка', icon: 'calendar',
+    description: 'Дни недели, категории и занятое время.', value: analytics.weekEvents.value.length,
+    note: 'за 7 дней', color: 'var(--info)',
+  },
+  {
+    route: 'analytics-activity', title: 'Активность', caption: 'История пространства', icon: 'activity',
+    description: 'Динамика действий и самые активные направления.', value: analytics.weekActivity.value.length,
+    note: 'за 7 дней', color: 'var(--cyan)',
+  },
+  {
+    route: 'analytics-sport', title: 'Спорт', caption: 'Личный прогресс', icon: 'sport',
+    description: 'Выполнение программы и ритм тренировок.', value: `${analytics.sportProgress.value.percent}%`,
+    note: 'выполнено', color: 'var(--success)',
+  },
+  {
+    route: 'analytics-movies', title: 'Фильмы', caption: 'Хочу посмотреть', icon: 'movie',
+    description: 'Фильмы, сериалы и планы на просмотр.', value: analytics.watchlist.value.length,
+    note: 'в списке', color: 'var(--pink)',
+  },
+  {
+    route: 'analytics-ideas', title: 'Идеи', caption: 'Планы и вдохновение', icon: 'sparkles',
+    description: 'Что накопилось и что уже попало в календарь.', value: analytics.ideas.value.length,
+    note: 'идей', color: 'var(--warning)',
+  },
+  {
+    route: 'analytics-birthdays', title: 'Дни рождения', caption: 'Важные даты', icon: 'heart',
+    description: 'Ближайшие даты и подготовка подарков.', value: analytics.birthdays.value.length,
+    note: 'человек', color: 'var(--orange)',
+  },
+])
 </script>
 
 <style scoped>
-.analytics-page{display:grid;gap:14px;max-width:1280px;margin:0 auto;padding:14px}.analytics-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:22px}.analytics-hero span,.analytics-card header small,.analytics-empty small,.analytics-kpis small{color:var(--text-muted);font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.analytics-hero h1{margin:3px 0 7px}.analytics-hero p{max-width:670px;margin:0;color:var(--text-secondary)}.analytics-hero__score{display:grid;justify-items:end}.analytics-hero__score strong{font-size:46px;line-height:1}.analytics-hero__score small{color:var(--text-muted)}
-.analytics-empty{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:18px;min-height:230px;padding:28px}.analytics-empty>span{display:grid;place-items:center;width:60px;height:60px;border:1px solid var(--border-color);border-radius:18px;color:var(--info);background:var(--card-soft);font-size:25px}.analytics-empty h2{margin:4px 0 6px;font-size:22px}.analytics-empty p{max-width:630px;margin:0;color:var(--text-secondary)}.analytics-empty a{border:1px solid var(--accent-border);border-radius:var(--radius-pill);padding:9px 14px;color:var(--text-primary);background:var(--accent-soft);text-decoration:none;font-weight:700}
-.analytics-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.analytics-kpis article{display:flex;align-items:center;gap:11px;border:1px solid var(--border-color);border-radius:var(--radius-xl);padding:14px;background:var(--card-solid)}.analytics-kpis__icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;color:var(--info);background:color-mix(in srgb,var(--info) 10%,var(--control-bg))}.analytics-kpis strong,.analytics-kpis p{display:block;margin:0}.analytics-kpis strong{margin:2px 0;font-size:21px}.analytics-kpis p{color:var(--text-muted);font-size:10px}
-.analytics-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);gap:10px}.analytics-card{border:1px solid var(--border-color);border-radius:var(--radius-xl);padding:16px;background:var(--card-solid);box-shadow:var(--shadow-sm)}.analytics-card>header{display:flex;justify-content:space-between;align-items:start;gap:12px}.analytics-card header h2{margin:2px 0 16px}.analytics-card>header>span{color:var(--text-muted);font-size:10px}
-.bar-chart{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;min-height:250px}.bar-chart>div{display:grid;grid-template-rows:190px auto auto;justify-items:center;gap:3px}.bar-chart__track{position:relative;width:100%;height:190px;border-bottom:1px solid var(--border-color);background:linear-gradient(to top,var(--border-color) 1px,transparent 1px);background-size:100% 25%}.bar-chart__track>span{position:absolute;left:18%;right:18%;bottom:0;min-height:7px;border-radius:9px 9px 3px 3px;background:linear-gradient(180deg,var(--info),color-mix(in srgb,var(--info) 40%,transparent));transition:height .4s var(--ease-out)}.bar-chart__track b{position:absolute;top:-20px;left:50%;color:var(--text-secondary);font-size:10px;transform:translateX(-50%)}.bar-chart>div.active .bar-chart__track>span{background:linear-gradient(180deg,var(--pink),color-mix(in srgb,var(--pink) 35%,transparent))}.bar-chart>div>strong{text-transform:capitalize}.bar-chart>div>small{color:var(--text-muted);font-size:9px}
-.donut-wrap{display:grid;place-items:center;gap:20px}.donut{display:grid;place-items:center;width:154px;height:154px;border-radius:50%;background:var(--donut);box-shadow:inset 0 0 0 1px var(--border-color)}.donut>div{display:grid;place-items:center;width:98px;height:98px;border-radius:50%;background:var(--card-solid)}.donut strong{font-size:26px}.donut small{color:var(--text-muted)}.category-list{display:grid;width:100%;gap:8px}.category-list article{display:grid;grid-template-columns:8px minmax(0,1fr) 24px 34px;align-items:center;gap:8px;border-bottom:1px solid var(--border-color);padding-bottom:7px}.category-list i,.category-cell i{width:8px;height:8px;border-radius:50%}.category-list small{color:var(--text-muted);text-align:right}
-.analytics-table-card{overflow:hidden}.analytics-table{overflow-x:auto}.analytics-table__head,.analytics-table article{display:grid;grid-template-columns:minmax(220px,1.5fr) 140px 90px 130px 110px;align-items:center;gap:10px;min-width:750px;padding:10px 8px}.analytics-table__head{border-bottom:1px solid var(--border-strong);color:var(--text-muted);font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.analytics-table article{border-bottom:1px solid var(--border-color);color:var(--text-secondary)}.analytics-table article:last-child{border-bottom:0}.analytics-table article strong{color:var(--text-primary)}.category-cell{display:flex;align-items:center;gap:7px}
-@media(max-width:1050px){.analytics-kpis{grid-template-columns:repeat(2,1fr)}.analytics-grid{grid-template-columns:1fr}}@media(max-width:650px){.analytics-page{padding:10px}.analytics-hero,.analytics-empty{grid-template-columns:1fr;padding:16px}.analytics-hero__score{justify-items:start}.analytics-kpis{grid-template-columns:1fr}.bar-chart{gap:4px}.bar-chart__track>span{left:12%;right:12%}.analytics-empty a{justify-self:start}}
+.analytics-overview {
+  display: grid;
+  gap: 16px;
+  max-width: 1160px;
+  margin: 0 auto;
+  animation: pageReveal .55s var(--ease-out) both;
+}
+
+.overview-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 154px;
+  align-items: center;
+  min-height: 250px;
+  overflow: hidden;
+  padding: 34px 38px;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.055), transparent 36%),
+    radial-gradient(circle at 82% 40%, rgba(96,165,250,.17), transparent 25%),
+    linear-gradient(145deg, var(--bg-card) 0%, var(--bg-panel) 62%, var(--bg-secondary) 100%);
+  isolation: isolate;
+}
+
+.overview-hero::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .35;
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, transparent, #000 55%, #000);
+  content: "";
+  animation: gridDrift 14s linear infinite;
+}
+
+.overview-hero__glow {
+  position: absolute;
+  top: -110px;
+  right: -70px;
+  z-index: -1;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96,165,250,.24), rgba(34,211,238,.07) 45%, transparent 70%);
+  filter: blur(5px);
+  animation: glowFloat 6s ease-in-out infinite;
+}
+
+.overview-hero__copy {
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--info);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  width: 18px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.overview-hero h1 {
+  max-width: 700px;
+  margin: 10px 0 12px;
+  font-size: clamp(34px, 5vw, 58px);
+  line-height: .98;
+  letter-spacing: -.055em;
+}
+
+.overview-hero p {
+  max-width: 600px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.hero-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px 18px;
+  margin-top: 24px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.hero-status span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hero-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 5px rgba(34,197,94,.08);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.hero-status strong {
+  color: var(--text-secondary);
+}
+
+.pulse {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: rgba(5,5,5,.3);
+  box-shadow: 0 24px 70px rgba(0,0,0,.35);
+  backdrop-filter: blur(12px);
+  animation: pulseEnter .75s .12s var(--ease-out) both;
+}
+
+.pulse svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.pulse circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.pulse__track {
+  stroke: rgba(255,255,255,.07);
+}
+
+.pulse__value {
+  stroke: var(--info);
+  stroke-linecap: round;
+  stroke-dasharray: 327;
+  stroke-dashoffset: calc(327 - (327 * var(--pulse-progress)) / 100);
+  filter: drop-shadow(0 0 7px rgba(96,165,250,.55));
+  animation: drawPulse 1.1s .2s var(--ease-out) both;
+}
+
+.pulse > div {
+  display: grid;
+  place-items: center;
+}
+
+.pulse strong {
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -.06em;
+}
+
+.pulse span {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.quick-stats article {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  min-height: 78px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  background: linear-gradient(145deg, var(--bg-card), var(--bg-panel));
+  box-shadow: var(--shadow-sm);
+  animation: cardReveal .5s var(--delay) var(--ease-out) both;
+  transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
+}
+
+.quick-stats article::after {
+  position: absolute;
+  right: -28px;
+  bottom: -45px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.025);
+  content: "";
+}
+
+.quick-stats article:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.quick-stats svg {
+  width: 38px;
+  height: 38px;
+  padding: 10px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: var(--control-bg);
+}
+
+.quick-stats strong,
+.quick-stats span {
+  display: block;
+}
+
+.quick-stats strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.quick-stats span {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 3px 2px;
+}
+
+.section-heading h2 {
+  margin: 5px 0 0;
+  font-size: 24px;
+}
+
+.section-heading p {
+  margin: 0 0 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.analytics-sections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.section-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 22px;
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 14px 12px;
+  overflow: hidden;
+  min-height: 190px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 18px;
+  color: inherit;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--section-color) 13%, transparent), transparent 42%),
+    linear-gradient(145deg, var(--bg-card), var(--bg-panel));
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  animation: cardReveal .55s var(--delay) var(--ease-out) both;
+  transition: transform .3s var(--ease-out), border-color .3s var(--ease-out), box-shadow .3s var(--ease-out);
+}
+
+.section-card::before {
+  position: absolute;
+  inset: auto 18px 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--section-color);
+  box-shadow: 0 0 18px var(--section-color);
+  content: "";
+  transform: scaleX(.18);
+  transform-origin: left;
+  opacity: .55;
+  transition: transform .35s var(--ease-out), opacity .35s;
+}
+
+.section-card::after {
+  position: absolute;
+  top: -55px;
+  right: -45px;
+  width: 130px;
+  height: 130px;
+  border: 1px solid color-mix(in srgb, var(--section-color) 18%, transparent);
+  border-radius: 50%;
+  content: "";
+  transition: transform .5s var(--ease-out);
+}
+
+.section-card:hover {
+  border-color: color-mix(in srgb, var(--section-color) 42%, var(--border-color));
+  box-shadow: 0 18px 45px rgba(0,0,0,.24);
+  transform: translateY(-5px);
+}
+
+.section-card:hover::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.section-card:hover::after {
+  transform: scale(1.18) translate(-5px, 5px);
+}
+
+.section-card__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--section-color) 18%, transparent);
+  border-radius: 14px;
+  color: var(--section-color);
+  background: color-mix(in srgb, var(--section-color) 11%, var(--bg-card));
+  font-size: 21px;
+  transition: transform .35s var(--ease-out);
+}
+
+.section-card:hover .section-card__icon {
+  transform: rotate(-5deg) scale(1.08);
+}
+
+.section-card__copy {
+  position: relative;
+  z-index: 1;
+}
+
+.section-card small {
+  color: var(--section-color);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.section-card h3 {
+  margin: 4px 0 6px;
+  font-size: 18px;
+}
+
+.section-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.section-card__metric {
+  grid-column: 1 / 3;
+  align-self: end;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.section-card__metric strong {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.section-card__metric span {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.section-card__arrow {
+  position: relative;
+  z-index: 1;
+  grid-column: 3;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--control-bg);
+  transition: transform .25s var(--ease-out), color .25s, background .25s;
+}
+
+.section-card:hover .section-card__arrow {
+  color: var(--text-inverse);
+  background: var(--section-color);
+  transform: translateX(3px);
+}
+
+@keyframes pageReveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(22px) scale(.97); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@keyframes pulseEnter {
+  from { opacity: 0; transform: scale(.72); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@keyframes drawPulse {
+  from { stroke-dashoffset: 327; }
+}
+
+@keyframes glowFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-22px, 16px, 0) scale(1.08); }
+}
+
+@keyframes gridDrift {
+  to { background-position: 34px 34px; }
+}
+
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(34,197,94,.07); }
+  50% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+}
+
+@media (max-width: 1000px) {
+  .analytics-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .overview-hero { grid-template-columns: minmax(0, 1fr) 110px; padding: 25px; }
+  .pulse { width: 108px; height: 108px; }
+  .pulse strong { font-size: 32px; }
+  .quick-stats { grid-template-columns: repeat(2, 1fr); }
+  .section-heading p { display: none; }
+}
+
+@media (max-width: 560px) {
+  .overview-hero { grid-template-columns: 1fr; min-height: 0; padding: 22px; }
+  .overview-hero h1 { font-size: 36px; }
+  .pulse { position: absolute; top: 18px; right: 18px; width: 76px; height: 76px; }
+  .pulse strong { font-size: 24px; }
+  .pulse span { display: none; }
+  .overview-hero__copy { padding-top: 72px; }
+  .hero-status strong { display: none; }
+  .analytics-sections { grid-template-columns: 1fr; }
+  .section-card { min-height: 170px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-overview,
+  .quick-stats article,
+  .section-card,
+  .pulse,
+  .overview-hero::before,
+  .overview-hero__glow,
+  .hero-status i,
+  .pulse__value {
+    animation: none;
+  }
+}
 </style>

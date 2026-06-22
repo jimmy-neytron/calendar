@@ -8,6 +8,7 @@ const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
 const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
+const AnalyticsDetailPage = () => import('../pages/analytics/AnalyticsDetailPage.vue')
 const IdeasPage = () => import('../pages/ideas/IdeasPage.vue')
 const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
@@ -21,6 +22,12 @@ export const routes = [
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
+  { path: '/analytics/calendar', name: 'analytics-calendar', component: AnalyticsDetailPage, meta: { title: 'Аналитика календаря', analyticsSection: 'calendar' } },
+  { path: '/analytics/activity', name: 'analytics-activity', component: AnalyticsDetailPage, meta: { title: 'Аналитика активности', analyticsSection: 'activity' } },
+  { path: '/analytics/sport', name: 'analytics-sport', component: AnalyticsDetailPage, meta: { title: 'Аналитика спорта', analyticsSection: 'sport' } },
+  { path: '/analytics/movies', name: 'analytics-movies', component: AnalyticsDetailPage, meta: { title: 'Аналитика фильмов', analyticsSection: 'movies' } },
+  { path: '/analytics/ideas', name: 'analytics-ideas', component: AnalyticsDetailPage, meta: { title: 'Аналитика идей', analyticsSection: 'ideas' } },
+  { path: '/analytics/birthdays', name: 'analytics-birthdays', component: AnalyticsDetailPage, meta: { title: 'Аналитика дней рождения', analyticsSection: 'birthdays' } },
   { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность' } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
