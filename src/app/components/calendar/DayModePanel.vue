@@ -4,6 +4,9 @@
       <div>
         <p>Режим дня</p>
         <h2>{{ dayTitle }}</h2>
+        <p v-if="holidays.length" class="day-mode__holiday">
+          ✦ {{ holidayNames }}
+        </p>
         <span>{{ events.length }} {{ eventWord }}</span>
       </div>
 
@@ -87,6 +90,7 @@ const props = defineProps({
   selectedDateKey: { type: String, required: true },
   events: { type: Array, default: () => [] },
   members: { type: Array, default: () => [] },
+  holidays: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['create-event', 'edit-event', 'move-event', 'resize-event'])
@@ -100,6 +104,7 @@ const nextEvent = computed(() => {
 })
 
 const dayTitle = computed(() => `${formatWeekday(props.selectedDateKey)}, ${formatDateShort(props.selectedDateKey)}`)
+const holidayNames = computed(() => props.holidays.map((holiday) => holiday.name).join(' · '))
 const eventWord = computed(() => pluralize(props.events.length, ['событие', 'события', 'событий']))
 const nextEventLabel = computed(() => {
   if (!nextEvent.value) return 'Можно добавить план на этот день'
@@ -151,6 +156,21 @@ function pluralize(value, words) {
 .day-mode {
   display: grid;
   gap: 12px;
+}
+
+.day-mode__holiday {
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(620px, 100%);
+  margin: 7px 0 5px;
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border-color));
+  border-radius: var(--radius-pill);
+  padding: 4px 8px;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
 }
 
 .day-mode__hero {

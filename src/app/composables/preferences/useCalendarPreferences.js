@@ -1,7 +1,7 @@
 import { computed, watch } from 'vue'
 import { APP_CONFIG } from '../../config/app.config.js'
 import { useLocalStorage } from '../storage/useLocalStorage.js'
-import { DEFAULT_PREFERENCES, THEME_OPTIONS } from '../../utils/constants/calendarConstants.js'
+import { DEFAULT_PREFERENCES, HOLIDAY_COUNTRY_OPTIONS, THEME_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const PREFERENCES_KEY = `${APP_CONFIG.storageKey}:preferences`
 const { state: preferences } = useLocalStorage(PREFERENCES_KEY, DEFAULT_PREFERENCES)
@@ -10,6 +10,9 @@ const normalizePreferences = (value = {}) => ({
   ...DEFAULT_PREFERENCES,
   ...value,
   theme: THEME_OPTIONS.some((theme) => theme.value === value.theme) ? value.theme : DEFAULT_PREFERENCES.theme,
+  holidayCountry: HOLIDAY_COUNTRY_OPTIONS.some((country) => country.value === value.holidayCountry)
+    ? value.holidayCountry
+    : DEFAULT_PREFERENCES.holidayCountry,
 })
 
 const updatePreferences = (updates) => {
@@ -34,12 +37,14 @@ watch(
 
 const defaultMode = computed(() => preferences.value.defaultMode || DEFAULT_PREFERENCES.defaultMode)
 const activeTheme = computed(() => preferences.value.theme || DEFAULT_PREFERENCES.theme)
+const holidayCountry = computed(() => preferences.value.holidayCountry || DEFAULT_PREFERENCES.holidayCountry)
 
 export function useCalendarPreferences() {
   return {
     preferences,
     defaultMode,
     activeTheme,
+    holidayCountry,
     themeOptions: THEME_OPTIONS,
     updatePreferences,
     applyTheme,

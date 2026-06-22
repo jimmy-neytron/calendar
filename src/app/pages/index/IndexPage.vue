@@ -19,6 +19,7 @@
         :period-key="periodKey"
         :calendar-transition-name="calendarTransitionName"
         :members="members"
+        :holidays-by-date="holidaysByDate"
         @update:mode="mode = $event"
         @previous="goPrevious"
         @next="goNext"
@@ -67,6 +68,7 @@ import EventDrawer from '../../components/calendar/EventDrawer.vue'
 import { useCalendarView } from '../../composables/calendar/useCalendarView.js'
 import { useCalendarEvents } from '../../composables/calendar/useCalendarEvents.js'
 import { useFamilyMembers } from '../../composables/calendar/useFamilyMembers.js'
+import { usePublicHolidays } from '../../composables/calendar/usePublicHolidays.js'
 import { useModal } from '../../composables/ui/useModal.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
@@ -81,7 +83,7 @@ const props = defineProps({
 const emit = defineEmits(['view-mode-change'])
 
 const route = useRoute()
-const { defaultMode } = useCalendarPreferences()
+const { defaultMode, holidayCountry } = useCalendarPreferences()
 calendarCollectionStore.ensureWorkspaceCollections()
 const calendars = calendarCollectionStore.activeCollections
 const visibleCalendarIds = calendarCollectionStore.visibleCollectionIds
@@ -113,6 +115,11 @@ const filters = reactive({ ...DEFAULT_FILTERS })
 const selectedEvents = computed(() => filteredEventsByDate.value[selectedDateKey.value] || [])
 const filteredEvents = computed(() => sortedEvents.value.filter(matchesFilters))
 const filteredEventsByDate = computed(() => groupEventsByDate(filteredEvents.value))
+const visibleHolidayYears = computed(() => {
+  const days = mode.value === CALENDAR_MODES.MONTH ? monthGrid.value : weekRange.value
+  return [...new Set(days.map((day) => day.date.getFullYear()))]
+})
+const { holidaysByDate } = usePublicHolidays(holidayCountry, visibleHolidayYears)
 
 function toggleDayMonthView() {
   mode.value = mode.value === CALENDAR_MODES.DAY ? CALENDAR_MODES.MONTH : CALENDAR_MODES.DAY

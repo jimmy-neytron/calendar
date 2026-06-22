@@ -120,6 +120,33 @@
           </div>
         </article>
 
+        <article class="setting-card">
+          <div class="setting-card__head">
+            <span class="setting-card__icon"><UiIcon name="globe" /></span>
+            <div>
+              <strong>Страна праздников</strong>
+              <small>Официальные выходные в календаре</small>
+            </div>
+          </div>
+
+          <div class="country-setting">
+            <UiSelect
+              :model-value="preferences.holidayCountry"
+              aria-label="Страна праздничного календаря"
+              @update:model-value="setPreference('holidayCountry', $event)"
+            >
+              <option
+                v-for="country in holidayCountryOptions"
+                :key="country.value"
+                :value="country.value"
+              >
+                {{ country.label }}
+              </option>
+            </UiSelect>
+            <p>Праздники выбранной страны автоматически появятся в режимах месяца, недели и дня.</p>
+          </div>
+        </article>
+
         <article class="setting-card setting-card--switches">
           <div class="setting-card__head">
             <span class="setting-card__icon"><UiIcon name="filter" /></span>
@@ -162,11 +189,13 @@
 import { onBeforeUnmount, ref } from 'vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
+import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
+import { HOLIDAY_COUNTRY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const { notify } = useNotification()
 const { preferences, themeOptions } = useCalendarPreferences()
@@ -193,6 +222,7 @@ const densityOptions = [
   { value: 'compact', label: 'Компактная', description: 'Больше событий на экране' },
   { value: 'normal', label: 'Обычная', description: 'Больше воздуха между элементами' },
 ]
+const holidayCountryOptions = HOLIDAY_COUNTRY_OPTIONS
 
 function setPreference(key, value) {
   preferences.value[key] = value
@@ -232,5 +262,6 @@ onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 .segmented-control{display:grid;grid-template-columns:1fr 1fr;gap:4px;border:1px solid var(--border-color);border-radius:11px;padding:4px;background:var(--control-bg)}.segmented-control button{min-height:38px;border:0;border-radius:8px;color:var(--text-muted);background:transparent;font-size:10px;font-weight:750;transition:.18s var(--ease-out)}.segmented-control button.active{color:var(--text-inverse);background:var(--accent);box-shadow:var(--shadow-sm)}
 .density-options{display:grid;gap:6px}.density-options button{display:grid;grid-template-columns:66px minmax(0,1fr) 22px;align-items:center;gap:10px;border:1px solid var(--border-color);border-radius:11px;padding:9px;color:var(--text-secondary);background:var(--control-bg);text-align:left}.density-options button.active{color:var(--text-primary);border-color:var(--border-strong);background:var(--control-bg-hover)}.density-options button>svg{color:transparent}.density-options button.active>svg{color:var(--success)}.density-options strong,.density-options small{display:block}.density-options small{color:var(--text-muted);font-size:9px}.density-preview{display:grid;align-content:center;gap:4px;height:42px;border:1px solid var(--border-color);border-radius:8px;padding:7px;background:var(--bg-primary)}.density-preview i{display:block;height:4px;border-radius:3px;background:var(--text-muted)}.density-preview i:nth-child(2){width:72%}.density-preview--normal{gap:7px}
 .theme-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}.theme-options button{display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:9px;border:1px solid var(--border-color);border-radius:11px;padding:9px;color:var(--text-secondary);background:var(--control-bg);text-align:left}.theme-options button.active{border-color:var(--border-strong);color:var(--text-primary)}.theme-options button>span{display:grid;grid-template-columns:13px 1fr;grid-template-rows:1fr 1fr;gap:3px;width:42px;height:34px;border-radius:7px;padding:4px;overflow:hidden}.theme-options button>span i{border-radius:3px}.theme-options button>span i:first-child{grid-row:1/-1}.theme-option--black>span{background:#050505}.theme-option--black>span i{background:#242424}.theme-option--black>span i:first-child{background:#111}.theme-option--light>span{background:#f4f1ea}.theme-option--light>span i{background:#ddd5c8}.theme-option--light>span i:first-child{background:#fffaf1}.theme-options button>svg{color:transparent}.theme-options button.active>svg{color:var(--success)}
+.country-setting{display:grid;gap:8px}.country-setting :deep(.ui-select){width:100%}.country-setting p{margin:0;color:var(--text-muted);font-size:9px;line-height:1.5}
 .setting-card--switches{gap:10px}.setting-switch{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--border-color);padding:13px 2px 3px;cursor:pointer}.setting-switch strong,.setting-switch small{display:block}.setting-switch small{max-width:680px;margin-top:2px;color:var(--text-muted);font-size:9px}@keyframes savedPop{from{opacity:0;transform:translateY(-5px) scale(.94)}to{opacity:1;transform:none}}@media(max-width:720px){.settings-hero{align-items:flex-start;padding:19px}.settings-hero__actions{display:grid}.calendar-settings{padding:15px}.settings-grid{grid-template-columns:1fr}.setting-card--large,.setting-card--switches{grid-column:auto}.view-options{grid-template-columns:1fr}.view-options button{min-height:92px;grid-template-columns:42px minmax(0,1fr);align-items:center}.view-options button>span{grid-row:1/3;margin:0}.theme-options{grid-template-columns:1fr}}@media(max-width:480px){.settings-hero{display:grid}.settings-hero__actions{grid-template-columns:auto auto}.calendar-settings__header{align-items:flex-start}.setting-switch{align-items:flex-start}}
 </style>

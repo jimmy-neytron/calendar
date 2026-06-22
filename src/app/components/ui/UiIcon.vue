@@ -46,6 +46,7 @@ const icons = {
   star: { paths: ['M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3z'] },
   key: { paths: ['M14 7a5 5 0 11-1.5 3.6L21 19v2h-3v-2h-2v-2h-2l-2.1-2.1', 'M7 7h.01'] },
   help: { paths: ['M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4', 'M12 18h.01'], circles: [{ cx: 12, cy: 12, r: 9 }] },
+  globe: { paths: ['M3 12h18', 'M12 3a15 15 0 010 18', 'M12 3a15 15 0 000 18'], circles: [{ cx: 12, cy: 12, r: 9 }] },
   warning: { paths: ['M12 3L2.8 20h18.4L12 3z', 'M12 9v4', 'M12 17h.01'] },
   play: { paths: ['M8 5l11 7-11 7V5z'] },
   grid: { paths: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'] },

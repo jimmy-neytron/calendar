@@ -133,8 +133,13 @@ export const DEFAULT_PREFERENCES = {
   density: 'compact',
   theme: 'black',
   hidePastEvents: false,
+  holidayCountry: 'RU',
 }
 
+export const HOLIDAY_COUNTRY_OPTIONS = [
+  { value: 'RU', label: 'Россия' },
+  { value: 'BY', label: 'Беларусь' },
+]
 
 export const THEME_OPTIONS = [
   { value: 'black', label: 'Черная' },

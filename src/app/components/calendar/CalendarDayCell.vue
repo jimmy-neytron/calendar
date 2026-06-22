@@ -7,6 +7,7 @@
       'calendar-day--selected': selected,
       'calendar-day--drag-over': isDragOver,
       'calendar-day--birthday': hasBirthday,
+      'calendar-day--holiday': holidays.length,
     }"
     type="button"
     @click="$emit('select', day.key)"
@@ -17,9 +18,14 @@
   >
     <header class="calendar-day__header">
       <span>{{ day.date.getDate() }}</span>
-      <small v-if="hasBirthday" class="calendar-day__birthday-label">♡ День рождения</small>
-      <small v-else-if="day.isToday">Сегодня</small>
+      <small v-if="day.isToday" class="calendar-day__today-label">Сегодня</small>
+      <small v-else-if="hasBirthday" class="calendar-day__birthday-label">♡ День рождения</small>
     </header>
+
+    <p v-if="holidays.length" class="calendar-day__holiday">
+      <span aria-hidden="true">✦</span>
+      {{ holidayNames }}
+    </p>
 
     <div class="calendar-day__events">
       <span
@@ -50,6 +56,7 @@ const props = defineProps({
   events: { type: Array, default: () => [] },
   members: { type: Array, default: () => [] },
   selected: { type: Boolean, default: false },
+  holidays: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['select', 'edit-event', 'move-event'])
@@ -60,6 +67,7 @@ const visibleEvents = computed(() => [...props.events]
   .slice(0, 3))
 const hiddenCount = computed(() => Math.max(0, props.events.length - visibleEvents.value.length))
 const hasBirthday = computed(() => props.events.some(isBirthdayEvent))
+const holidayNames = computed(() => props.holidays.map((holiday) => holiday.name).join(' · '))
 
 function handleDragStart(event, dragEvent) {
   dragEvent.dataTransfer.effectAllowed = 'copyMove'
@@ -116,11 +124,39 @@ function isBirthdayEvent(event) {
 }
 
 .calendar-day--today {
+  position: relative;
   border-color: var(--accent-border);
   background: var(--accent-soft);
+  box-shadow:
+    inset 0 0 0 2px var(--accent-border),
+    0 0 0 3px color-mix(in srgb, var(--accent-hover) 8%, transparent),
+    0 10px 28px color-mix(in srgb, var(--accent-hover) 9%, transparent);
 }
 
-.calendar-day--selected {
+.calendar-day--today::before {
+  position: absolute;
+  top: -1px;
+  right: 8px;
+  left: 8px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: var(--accent-hover);
+  content: '';
+}
+
+.calendar-day--holiday {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--warning) 13%, transparent), transparent 54%),
+    var(--control-bg);
+}
+
+.calendar-day--today.calendar-day--holiday {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--warning) 15%, transparent), transparent 52%),
+    var(--accent-soft);
+}
+
+.calendar-day--selected:not(.calendar-day--today) {
   box-shadow: inset 0 0 0 1px var(--accent-hover);
 }
 
@@ -172,6 +208,31 @@ function isBirthdayEvent(event) {
   color: var(--pink);
   letter-spacing: .02em;
   text-transform: none;
+}
+
+.calendar-day__header .calendar-day__today-label {
+  border-radius: var(--radius-pill);
+  padding: 3px 6px;
+  color: var(--text-inverse);
+  background: var(--accent);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent-hover) 16%, transparent);
+  letter-spacing: .04em;
+}
+
+.calendar-day__holiday {
+  display: -webkit-box;
+  margin: -1px 0 0;
+  overflow: hidden;
+  color: var(--warning);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.calendar-day__holiday span {
+  color: var(--warning);
 }
 
 .calendar-day__events {
