@@ -6,6 +6,7 @@ import { loadWorkspaceData } from '../services/backend/workspaceData.service.js'
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
+const BudgetPage = () => import('../pages/budget/BudgetPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
 const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
 const AnalyticsDetailPage = () => import('../pages/analytics/AnalyticsDetailPage.vue')
@@ -16,7 +17,7 @@ const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
-  IndexPage, SettingsPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
+  IndexPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
   IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage,
 ]
 let pagesPreloaded = false
@@ -24,6 +25,7 @@ let pagesPreloaded = false
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
+  { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет' } },
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },

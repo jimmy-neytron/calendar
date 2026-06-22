@@ -41,6 +41,7 @@ const groups = [
     label: 'Планирование',
     items: [
       { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: 'calendar' },
+      { name: 'budget', label: 'Бюджет', description: 'Доходы и план расходов', icon: 'wallet' },
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
       { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: 'sparkles' },
       { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport' },
