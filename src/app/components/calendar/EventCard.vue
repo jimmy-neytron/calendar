@@ -1,13 +1,23 @@
 <template>
   <article
     class="event-card"
-    :class="[`event-card--${event.importance || 'normal'}`]"
+    :class="[
+      `event-card--${event.importance || 'normal'}`,
+      { 'event-card--compact': compact },
+    ]"
     :style="{ '--event-color': calendarColor || accent }"
     draggable="true"
     @dragstart="handleDragStart"
     @dblclick="$emit('edit', event)"
   >
-    <div class="event-card__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
+    <div class="event-card__meta">
+      <div class="event-card__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
+      <EventMemberAvatars
+        :member-ids="event.memberIds"
+        :members="members"
+        :compact="compact"
+      />
+    </div>
     <div class="event-card__content">
       <strong>
         <span v-if="importanceIcon" class="event-card__importance">{{ importanceIcon }}</span>
@@ -29,10 +39,12 @@ import { formatTimeRange } from '../../utils/formatters/dateFormatter.js'
 import { getCategoryMeta, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { IMPORTANCE_OPTIONS } from '../../utils/constants/calendarConstants.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
+import EventMemberAvatars from './EventMemberAvatars.vue'
 
 const props = defineProps({
   event: { type: Object, required: true },
   members: { type: Array, default: () => [] },
+  compact: { type: Boolean, default: false },
 })
 
 defineEmits(['edit'])
@@ -109,5 +121,58 @@ function handleDragStart(dragEvent) {
 .event-card__content small {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.event-card__meta {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.event-card--compact {
+  grid-template-columns: 1fr;
+  gap: 3px;
+  padding: 7px 6px;
+}
+
+.event-card--compact .event-card__time {
+  overflow: hidden;
+  color: var(--event-color);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-card--compact .event-card__meta {
+  align-items: center;
+}
+
+.event-card--compact .event-card__content {
+  min-width: 0;
+}
+
+.event-card--compact .event-card__content strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.event-card--compact .event-card__content > span {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-card--compact .event-card__content small {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

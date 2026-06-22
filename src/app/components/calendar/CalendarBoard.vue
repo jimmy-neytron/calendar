@@ -39,7 +39,7 @@
         </template>
 
         <template v-else>
-          <div class="calendar-board__weekdays">
+          <div v-if="mode === CALENDAR_MODES.MONTH" class="calendar-board__weekdays">
             <span v-for="day in WEEK_DAYS" :key="day">{{ day }}</span>
           </div>
 
@@ -58,40 +58,18 @@
             />
           </transition-group>
 
-          <div v-else class="calendar-board__week">
-            <div
-              v-for="day in weekRange"
-              :key="day.key"
-              class="calendar-board__week-day"
-              :class="{
-                'calendar-board__week-day--today': day.isToday,
-                'calendar-board__week-day--selected': day.key === selectedDateKey,
-                'calendar-board__week-day--birthday': hasBirthday(eventsByDate[day.key] || []),
-                'calendar-board__week-day--holiday': (holidaysByDate[day.key] || []).length,
-              }"
-              @click="$emit('select-date', day.key)"
-              @dragover.prevent
-              @drop.stop="handleWeekDrop(day.key, $event)"
-            >
-              <div class="calendar-board__week-date">
-                <span>{{ day.date.getDate() }}</span>
-                <b>{{ WEEK_DAYS[day.date.getDay()] }}</b>
-                <small v-if="day.isToday" class="calendar-board__today-label">Сегодня</small>
-                <small v-if="hasBirthday(eventsByDate[day.key] || [])">♡ Праздник</small>
-              </div>
-              <p v-if="(holidaysByDate[day.key] || []).length" class="calendar-board__holiday">
-                {{ formatHolidayNames(holidaysByDate[day.key]) }}
-              </p>
-              <EventCard
-                v-for="event in eventsByDate[day.key] || []"
-                :key="event.id"
-                :event="event"
-                :members="members"
-                @edit="$emit('edit-event', event)"
-              />
-              <p v-if="!(eventsByDate[day.key] || []).length" class="calendar-board__empty">Свободный день</p>
-            </div>
-          </div>
+          <WeekModePanel
+            v-else
+            :week-range="weekRange"
+            :events-by-date="eventsByDate"
+            :selected-date-key="selectedDateKey"
+            :members="members"
+            :holidays-by-date="holidaysByDate"
+            @select-date="$emit('select-date', $event)"
+            @edit-event="$emit('edit-event', $event)"
+            @create-event="$emit('create-event', $event)"
+            @move-event="$emit('move-event', $event)"
+          />
         </template>
       </div>
     </Transition>
@@ -104,8 +82,8 @@ import UiIconButton from '../ui/UiIconButton.vue'
 import MemberPill from '../family/MemberPill.vue'
 import CalendarShortcutsHelp from './CalendarShortcutsHelp.vue'
 import CalendarDayCell from './CalendarDayCell.vue'
-import EventCard from './EventCard.vue'
 import DayModePanel from './DayModePanel.vue'
+import WeekModePanel from './WeekModePanel.vue'
 import { CALENDAR_MODES, WEEK_DAYS } from '../../utils/constants/calendarConstants.js'
 
 defineProps({
@@ -123,19 +101,6 @@ defineProps({
 
 const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-date', 'edit-event', 'create-event', 'move-event', 'resize-event'])
 
-function handleWeekDrop(date, dropEvent) {
-  const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
-  if (!eventId) return
-  emit('move-event', { eventId, date, copy: dropEvent.altKey })
-}
-
-function hasBirthday(events) {
-  return events.some((event) => event.category === 'birthday' && /^день рождения:/i.test(event.title || ''))
-}
-
-function formatHolidayNames(holidays) {
-  return holidays.map((holiday) => holiday.name).join(' · ')
-}
 </script>
 
 <style scoped>
@@ -227,122 +192,6 @@ function formatHolidayNames(holidays) {
 
 .calendar-board__weekdays span {
   padding-left: 6px;
-}
-
-.calendar-board__week {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.calendar-board__week-day {
-  min-height: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 12px;
-  background: var(--control-bg);
-}
-
-.calendar-board__week-day--today,
-.calendar-board__week-day--selected {
-  border-color: var(--accent-border);
-  background: var(--accent-soft);
-}
-
-.calendar-board__week-day--today {
-  position: relative;
-  border-color: var(--accent-hover);
-  box-shadow:
-    inset 0 0 0 2px var(--accent-border),
-    0 0 0 3px color-mix(in srgb, var(--accent-hover) 8%, transparent),
-    0 12px 32px color-mix(in srgb, var(--accent-hover) 10%, transparent);
-}
-
-.calendar-board__week-day--today::before {
-  position: absolute;
-  top: -1px;
-  right: 14px;
-  left: 14px;
-  height: 3px;
-  border-radius: 0 0 4px 4px;
-  background: var(--accent-hover);
-  content: '';
-}
-
-.calendar-board__week-day--holiday {
-  background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--warning) 12%, transparent), transparent 48%),
-    var(--control-bg);
-}
-
-.calendar-board__week-day--today.calendar-board__week-day--holiday {
-  background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--warning) 14%, transparent), transparent 48%),
-    var(--accent-soft);
-}
-
-.calendar-board__week-day--birthday {
-  border-color: color-mix(in srgb, var(--pink) 40%, var(--border-color));
-  background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--pink) 16%, transparent), transparent 48%),
-    color-mix(in srgb, var(--pink) 5%, var(--control-bg));
-}
-
-.calendar-board__week-date {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.calendar-board__week-date span {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--field-bg-focus);
-  font-weight: 700;
-}
-
-.calendar-board__week-date small {
-  margin-left: auto;
-  color: var(--pink);
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.calendar-board__week-date .calendar-board__today-label {
-  margin-left: auto;
-  border-radius: var(--radius-pill);
-  padding: 3px 6px;
-  color: var(--text-inverse);
-  background: var(--accent);
-}
-
-.calendar-board__week-date .calendar-board__today-label + small {
-  margin-left: 0;
-}
-
-.calendar-board__holiday {
-  margin: -1px 0 3px;
-  border-left: 2px solid var(--warning);
-  padding-left: 6px;
-  color: var(--warning);
-  font-size: 9px;
-  font-weight: 750;
-  line-height: 1.35;
-}
-
-.calendar-board__empty {
-  margin: auto 0;
-  color: var(--text-muted);
-  text-align: center;
 }
 
 @media (max-width: 980px) {

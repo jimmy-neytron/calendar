@@ -1,5 +1,5 @@
 <template>
-  <section class="index-page">
+  <section class="index-page" :class="{ 'index-page--week': mode === CALENDAR_MODES.WEEK }">
     <div class="index-page__main">
       <CalendarFilters
         :filters="filters"
@@ -39,6 +39,7 @@
     </div>
 
     <TodayRail
+      v-if="mode !== CALENDAR_MODES.WEEK"
       :selected-date-key="selectedDateKey"
       :selected-events="selectedEvents"
       :members="members"
@@ -138,7 +139,8 @@ function toggleDayMonthView() {
   mode.value = mode.value === CALENDAR_MODES.DAY ? CALENDAR_MODES.MONTH : CALENDAR_MODES.DAY
 }
 
-const createEvent = () => {
+const createEvent = (dateKey = '') => {
+  if (dateKey) selectDate(dateKey)
   editingEvent.value = null
   quickStartTime.value = ''
   openEventDrawer()
@@ -320,6 +322,10 @@ defineExpose({
   align-content: start;
   gap: 10px;
   min-width: 0;
+}
+
+.index-page--week {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (max-width: 1100px) {

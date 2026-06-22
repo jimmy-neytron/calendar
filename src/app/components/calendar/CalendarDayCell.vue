@@ -38,8 +38,15 @@
         @dragstart.stop="handleDragStart(event, $event)"
         @click.stop="$emit('edit-event', event)"
       >
-        <b>{{ isBirthdayEvent(event) ? '🎁' : event.allDay ? 'Весь день' : event.startTime }}</b>
-        {{ event.title }}
+        <span class="calendar-day__event-copy">
+          <b>{{ isBirthdayEvent(event) ? '🎁' : event.allDay ? 'Весь день' : event.startTime }}</b>
+          {{ event.title }}
+        </span>
+        <EventMemberAvatars
+          :member-ids="event.memberIds"
+          :members="members"
+          compact
+        />
       </span>
       <span v-if="hiddenCount" class="calendar-day__more">+{{ hiddenCount }} ещё</span>
     </div>
@@ -50,6 +57,7 @@
 import { computed, ref } from 'vue'
 import { getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
+import EventMemberAvatars from './EventMemberAvatars.vue'
 
 const props = defineProps({
   day: { type: Object, required: true },
@@ -241,6 +249,10 @@ function isBirthdayEvent(event) {
 }
 
 .calendar-day__event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
   overflow: hidden;
   border-left: 3px solid var(--event-color);
   border-radius: 6px;
@@ -252,6 +264,13 @@ function isBirthdayEvent(event) {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: grab;
+}
+
+.calendar-day__event-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .calendar-day__event:active {
