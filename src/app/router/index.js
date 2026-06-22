@@ -14,6 +14,7 @@ const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
+const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, SettingsPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
   IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage,
@@ -41,7 +42,7 @@ export const routes = [
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/ideas' },
   { path: '/lists', redirect: '/' },
-  { path: '/:pathMatch(.*)*', redirect: '/' },
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundPage, meta: { title: 'Страница не найдена' } },
 ]
 
 export const router = createRouter({
