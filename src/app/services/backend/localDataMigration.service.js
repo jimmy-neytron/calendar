@@ -75,7 +75,7 @@ export async function migrateLocalDataToSupabase() {
   }
 
   localStorage.setItem(marker, new Date().toISOString())
-  await loadWorkspaceData(workspaceId)
+  await loadWorkspaceData(workspaceId, { force: true })
   return {
     ok: true,
     counts,

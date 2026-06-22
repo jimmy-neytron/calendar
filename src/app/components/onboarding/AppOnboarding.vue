@@ -1,9 +1,10 @@
 <template>
   <Teleport to="body">
-    <Transition name="onboarding-prompt">
+    <Transition :name="isLaunching ? 'prompt-handoff' : 'onboarding-prompt'">
       <section
           v-if="isPromptOpen"
           class="learning-prompt"
+          :class="{ 'learning-prompt--launching': isLaunching }"
           role="dialog"
           aria-modal="true"
           aria-labelledby="learning-prompt-title"
@@ -19,10 +20,10 @@
             <span><UiIcon name="activity"/> около 2 минут</span>
           </div>
           <div class="learning-prompt__actions">
-            <button type="button" class="prompt-button prompt-button--secondary" @click="declinePrompt">
+            <button type="button" class="prompt-button prompt-button--secondary" :disabled="isLaunching" @click="declinePrompt">
               Не сейчас
             </button>
-            <button type="button" class="prompt-button prompt-button--primary" @click="acceptPrompt">
+            <button type="button" class="prompt-button prompt-button--primary" :disabled="isLaunching" @click="launchTour">
               Пройти обучение <UiIcon name="right"/>
             </button>
           </div>
@@ -35,6 +36,7 @@
       <section
           v-if="isOpen"
           class="onboarding"
+          :class="{ 'onboarding--from-prompt': isLaunching }"
           :style="{ '--step-color': currentStep.color }"
           role="dialog"
           aria-modal="true"
@@ -143,7 +145,7 @@
 </template>
 
 <script setup>
-import {onBeforeUnmount, watch} from 'vue'
+import {onBeforeUnmount, ref, watch} from 'vue'
 import UiIcon from '../ui/UiIcon.vue'
 import {useOnboarding} from '../../composables/onboarding/useOnboarding.js'
 
@@ -151,6 +153,21 @@ const {
   steps, isOpen, isPromptOpen, currentIndex, currentStep, progress, direction,
   isFirst, isLast, next, previous, goTo, close, acceptPrompt, declinePrompt,
 } = useOnboarding()
+
+const isLaunching = ref(false)
+let launchTimer = null
+let launchResetTimer = null
+
+function launchTour() {
+  if (isLaunching.value) return
+  isLaunching.value = true
+  launchTimer = window.setTimeout(() => {
+    acceptPrompt()
+    launchResetTimer = window.setTimeout(() => {
+      isLaunching.value = false
+    }, 700)
+  }, 850)
+}
 
 function handleKeydown(event) {
   if (!isOpen.value) return
@@ -169,6 +186,8 @@ watch([isOpen, isPromptOpen], ([tourOpen, promptOpen]) => {
 onBeforeUnmount(() => {
   document.documentElement.style.overflow = ''
   window.removeEventListener('keydown', handleKeydown)
+  window.clearTimeout(launchTimer)
+  window.clearTimeout(launchResetTimer)
 })
 </script>
 
@@ -340,12 +359,45 @@ onBeforeUnmount(() => {
   box-shadow: 0 14px 38px rgba(255, 255, 255, .1);
 }
 
+.prompt-button:disabled {
+  cursor: default;
+  pointer-events: none;
+}
+
 .learning-prompt__card > small {
   position: relative;
   z-index: 1;
   margin-top: 14px;
   color: #5f5f5f;
   font-size: 8px;
+}
+
+.learning-prompt--launching {
+  pointer-events: none;
+}
+
+.learning-prompt--launching .learning-prompt__backdrop {
+  animation: promptBackdropDeepen .82s cubic-bezier(.4, 0, .2, 1) both;
+}
+
+.learning-prompt--launching .learning-prompt__card {
+  animation: promptMorphFullscreen .86s cubic-bezier(.65, 0, .2, 1) both;
+}
+
+.learning-prompt--launching .learning-prompt__card > :not(.learning-prompt__orb) {
+  animation: promptContentAway .32s cubic-bezier(.4, 0, .6, 1) both;
+}
+
+.learning-prompt--launching .learning-prompt__orb {
+  animation: promptOrbLaunch .68s .08s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.learning-prompt--launching .learning-prompt__card::before {
+  animation: promptGlowExpand .78s .06s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.learning-prompt--launching .learning-prompt__card::after {
+  animation: promptGridExpand .76s .07s var(--ease-out) both;
 }
 
 .onboarding-prompt-enter-active {
@@ -362,6 +414,47 @@ onBeforeUnmount(() => {
 
 .onboarding-prompt-leave-active .learning-prompt__card {
   animation: promptCardOut .24s ease-in both;
+}
+
+.prompt-handoff-leave-active {
+  z-index: 1002;
+  transition: opacity .48s cubic-bezier(.4, 0, 1, 1);
+}
+
+.prompt-handoff-leave-to {
+  opacity: 0;
+}
+
+.prompt-handoff-leave-active .learning-prompt__card {
+  width: 100vw;
+  min-height: 100vh;
+  border-color: transparent;
+  border-radius: 0;
+  padding: 0;
+  background: #050505;
+  box-shadow: none;
+  animation: none;
+}
+
+.prompt-handoff-leave-active .learning-prompt__card::before,
+.prompt-handoff-leave-active .learning-prompt__card::after,
+.prompt-handoff-leave-active .learning-prompt__card > * {
+  opacity: 0;
+}
+
+.onboarding-shell-enter-active.onboarding--from-prompt {
+  animation: tourRevealFromMorph .68s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.onboarding--from-prompt .onboarding__header,
+.onboarding--from-prompt .onboarding__progress,
+.onboarding--from-prompt .onboarding__steps,
+.onboarding--from-prompt .onboarding__footer {
+  animation: tourChromeReveal .52s .12s var(--ease-out) both;
+}
+
+.onboarding--from-prompt .onboarding__content {
+  animation: tourContentReveal .6s .18s var(--ease-out) both;
 }
 
 .onboarding {
@@ -990,6 +1083,135 @@ onBeforeUnmount(() => {
   50% {
     transform: translateY(-5px) rotate(4deg);
     box-shadow: 0 24px 60px rgba(96, 165, 250, .2);
+  }
+}
+
+@keyframes promptBackdropDeepen {
+  to {
+    background: #050505;
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes promptMorphFullscreen {
+  0% {
+    width: min(100%, 520px);
+    min-height: 0;
+    border-radius: 26px;
+    transform: scale(1);
+  }
+  28% {
+    width: min(100%, 520px);
+    min-height: 0;
+    border-radius: 26px;
+    transform: scale(.985);
+  }
+  72% {
+    width: 88vw;
+    min-height: 82vh;
+    border-radius: 30px;
+    transform: scale(1);
+  }
+  100% {
+    width: 100vw;
+    min-height: 100vh;
+    border-color: transparent;
+    border-radius: 0;
+    padding: 0;
+    background: #050505;
+    box-shadow: none;
+  }
+}
+
+@keyframes promptContentAway {
+  0% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+  70% {
+    opacity: 0;
+    transform: translateY(-10px) scale(.98);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(.97);
+    filter: blur(5px);
+  }
+}
+
+@keyframes promptOrbLaunch {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.18) rotate(6deg);
+    box-shadow: 0 0 72px rgba(96, 165, 250, .36);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.2) rotate(18deg);
+    filter: blur(10px);
+  }
+}
+
+@keyframes promptGlowExpand {
+  0% {
+    width: 390px;
+    height: 300px;
+    opacity: 1;
+  }
+  to {
+    width: 120vw;
+    height: 120vh;
+    opacity: .22;
+    transform: translate(-50%, 18%) scale(1.25);
+  }
+}
+
+@keyframes promptGridExpand {
+  to {
+    opacity: .08;
+    background-size: 46px 46px;
+  }
+}
+
+@keyframes tourRevealFromMorph {
+  from {
+    opacity: .82;
+    background: #050505;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tourChromeReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@keyframes tourContentReveal {
+  from {
+    opacity: 0;
+    transform: scale(.94) translateY(18px);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
   }
 }
 

@@ -36,8 +36,16 @@
       <UiIconButton icon="close" label="Закрыть" @click="randomIdea = null" />
     </div>
 
-    <div class="idea-grid">
-      <article v-for="idea in filteredIdeas" :key="idea.id" class="idea-card" :class="{ 'idea-card--planned': idea.plannedEventId }">
+    <CollectionViewControls
+      v-model:view-mode="viewMode"
+      v-model:page-size="pageSize"
+      :total="filteredIdeas.length"
+      :range-start="rangeStart"
+      :range-end="rangeEnd"
+    />
+
+    <div v-if="viewMode === 'cards'" class="idea-grid">
+      <article v-for="idea in pagedIdeas" :key="idea.id" class="idea-card" :class="{ 'idea-card--planned': idea.plannedEventId }">
         <header>
           <span>{{ typeMeta(idea.type).icon }}</span>
           <small>{{ typeMeta(idea.type).label }}</small>
@@ -57,6 +65,30 @@
       </div>
     </div>
 
+    <div v-else-if="filteredIdeas.length" class="idea-table-wrap">
+      <table class="idea-table">
+        <thead><tr><th>Тип</th><th>Идея</th><th>Заметка</th><th>Статус</th><th>Действия</th></tr></thead>
+        <tbody>
+          <tr v-for="idea in pagedIdeas" :key="idea.id">
+            <td><span class="idea-table__type">{{ typeMeta(idea.type).icon }} {{ typeMeta(idea.type).label }}</span></td>
+            <td><strong>{{ idea.title }}</strong></td>
+            <td><span class="idea-table__note">{{ idea.note || 'Без заметки' }}</span></td>
+            <td><span :class="['idea-table__status', { planned: idea.plannedEventId }]">{{ idea.plannedEventId ? 'В календаре' : 'Не запланирована' }}</span></td>
+            <td>
+              <div class="idea-table__actions">
+                <UiButton v-if="!idea.plannedEventId" size="sm" variant="secondary" @click="openPlanner(idea)">В календарь</UiButton>
+                <UiButton v-else size="sm" variant="ghost" @click="removeFromCalendar(idea)">Убрать</UiButton>
+                <UiIconButton icon="trash" label="Удалить идею" size="sm" variant="danger" @click="ideaStore.removeIdea(idea.id)" />
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-else class="ideas-empty"><span>✦</span><strong>Здесь пока пусто</strong><p>Запиши первую идею — даже самую маленькую.</p></div>
+
+    <CollectionPagination :page="page" :page-count="pageCount" @change="goToPage" />
+
     <UiModal v-model="isPlannerOpen" title="Запланировать идею" eyebrow="Копилка идей" width="420px">
       <div class="idea-planner">
         <strong>{{ planningIdea?.title }}</strong>
@@ -68,7 +100,9 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import CollectionPagination from '../../components/collections/CollectionPagination.vue'
+import CollectionViewControls from '../../components/collections/CollectionViewControls.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiModal from '../../components/ui/UiModal.vue'
@@ -77,6 +111,7 @@ import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { ideaStore } from '../../stores/idea.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'
+import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
 
 const IDEA_TYPES = [
   { value: 'place', label: 'Место', icon: '⌖' },
@@ -98,7 +133,13 @@ const planDate = ref(DateHelper.toKey(new Date()))
 const planTime = ref('12:00')
 const filters = computed(() => [{ value: 'all', label: 'Все' }, ...IDEA_TYPES.filter((type) => ideas.value.some((idea) => idea.type === type.value))])
 const filteredIdeas = computed(() => activeFilter.value === 'all' ? ideas.value : ideas.value.filter((idea) => idea.type === activeFilter.value))
+const {
+  viewMode, pageSize, page, pageCount, pagedItems: pagedIdeas,
+  rangeStart, rangeEnd, goToPage, resetPage,
+} = usePaginatedView(filteredIdeas, 'ideas')
 const ideaWord = computed(() => pluralize(ideas.value.length, ['идея', 'идеи', 'идей']))
+
+watch(activeFilter, resetPage)
 
 function createIdea() {
   const result = ideaStore.addIdea(form)
@@ -153,5 +194,6 @@ function pluralize(value, words) {
 .random-idea{display:grid;grid-template-columns:46px minmax(0,1fr) auto 26px;align-items:center;gap:12px;padding:14px;border-color:var(--accent-border)}.random-idea>span{display:grid;place-items:center;width:46px;height:46px;border-radius:13px;color:var(--text-inverse);background:var(--accent);font-size:20px}.random-idea small,.random-idea p{color:var(--text-muted)}.random-idea strong{display:block;font-size:17px}.random-idea p{margin:2px 0 0}.random-idea>button{border:0;color:var(--text-muted);background:transparent;font-size:20px}
 .idea-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.idea-card{display:grid;align-content:start;gap:8px;min-height:180px;border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:12px;background:var(--card-solid);transition:transform .18s var(--ease-out),border-color .18s var(--ease-out)}.idea-card:hover{transform:translateY(-2px);border-color:var(--border-strong)}.idea-card--planned{border-color:color-mix(in srgb,var(--success) 30%,var(--border-color))}.idea-card header{display:grid;grid-template-columns:28px minmax(0,1fr) 24px;align-items:center;gap:6px}.idea-card header>span{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--control-bg)}.idea-card header small{color:var(--text-muted)}.idea-card header button{border:0;color:var(--danger);background:transparent;font-size:17px}.idea-card>strong{font-size:15px}.idea-card>p{margin:0;color:var(--text-secondary)}.idea-card footer{display:flex;align-items:center;gap:7px;margin-top:auto}.idea-card footer>span{color:var(--success);font-size:10px;font-weight:800}.idea-card footer>button{border:0;padding:0;color:var(--text-muted);background:transparent;font-size:10px}
 .ideas-empty{grid-column:1/-1;display:grid;place-items:center;gap:5px;min-height:220px;border:1px dashed var(--border-color);border-radius:var(--radius-xl);color:var(--text-muted);text-align:center}.ideas-empty span{font-size:26px}.ideas-empty p{margin:0}.idea-planner{display:grid;gap:14px}.idea-planner>strong{font-size:17px}.idea-planner>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.idea-planner footer{display:flex;justify-content:flex-end;gap:7px}
+.idea-table-wrap{overflow:auto;border:1px solid var(--border-color);border-radius:var(--radius-xl);background:var(--card-solid)}.idea-table{width:100%;min-width:850px;border-collapse:collapse}.idea-table th{padding:11px 13px;color:var(--text-muted);background:var(--card-soft);font-size:9px;letter-spacing:.08em;text-align:left;text-transform:uppercase}.idea-table td{border-top:1px solid var(--border-color);padding:11px 13px;color:var(--text-secondary);vertical-align:middle}.idea-table tbody tr{transition:background .16s}.idea-table tbody tr:hover{background:var(--control-bg)}.idea-table__type{white-space:nowrap}.idea-table__note{display:block;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.idea-table__status{display:inline-flex;border-radius:var(--radius-pill);padding:4px 7px;color:var(--text-muted);background:var(--control-bg);font-size:9px;font-weight:750;white-space:nowrap}.idea-table__status.planned{color:var(--success);background:color-mix(in srgb,var(--success) 9%,var(--control-bg))}.idea-table__actions{display:flex;justify-content:flex-end;gap:5px;white-space:nowrap}
 @media(max-width:960px){.idea-create,.idea-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.ideas-page{padding:10px}.ideas-hero,.idea-create,.idea-grid,.random-idea{grid-template-columns:1fr}.ideas-hero{padding:14px}.idea-filters__random{margin-left:0}}
 </style>

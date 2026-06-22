@@ -40,8 +40,16 @@
       </article>
     </section>
 
-    <div class="birthday-grid">
-      <article v-for="birthday in birthdays" :key="birthday.id" class="birthday-card">
+    <CollectionViewControls
+      v-model:view-mode="viewMode"
+      v-model:page-size="pageSize"
+      :total="birthdays.length"
+      :range-start="rangeStart"
+      :range-end="rangeEnd"
+    />
+
+    <div v-if="viewMode === 'cards'" class="birthday-grid">
+      <article v-for="birthday in pagedBirthdays" :key="birthday.id" class="birthday-card">
         <header>
           <span class="birthday-card__avatar">{{ initials(birthday.name) }}</span>
           <div>
@@ -98,6 +106,25 @@
       </div>
     </div>
 
+    <div v-else-if="birthdays.length" class="birthday-table-wrap">
+      <table class="birthday-table">
+        <thead><tr><th>Человек</th><th>Дата рождения</th><th>Возраст</th><th>До события</th><th>Подарки</th><th>Действия</th></tr></thead>
+        <tbody>
+          <tr v-for="birthday in pagedBirthdays" :key="birthday.id">
+            <td><div class="birthday-table__person"><span>{{ initials(birthday.name) }}</span><strong>{{ birthday.name }}</strong></div></td>
+            <td>{{ formatBirthday(birthday.birthDate) }}</td>
+            <td>{{ birthday.age }} → {{ birthday.turningAge }}</td>
+            <td><strong class="birthday-table__countdown">{{ countdownLabel(birthday.daysUntil) }}</strong></td>
+            <td><span class="birthday-table__gifts">{{ purchasedCount(birthday) }}/{{ birthday.giftIdeas.length }} куплено</span></td>
+            <td><div class="birthday-table__actions"><UiButton size="sm" variant="secondary" @click="openEdit(birthday)">Изменить</UiButton><UiIconButton icon="trash" label="Удалить день рождения" size="sm" variant="danger" @click="birthdayStore.removeBirthday(birthday.id)" /></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-else class="birthdays-empty"><span>♡</span><strong>Добавь первый день рождения</strong><p>Он сразу появится в календаре и будет повторяться каждый год.</p></div>
+
+    <CollectionPagination :page="page" :page-count="pageCount" @change="goToPage" />
+
     <UiModal v-model="isEditOpen" title="Изменить день рождения" eyebrow="Дни рождения" width="440px">
       <div class="birthday-edit">
         <UiInput v-model="editForm.name" label="Имя" />
@@ -124,6 +151,8 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import CollectionPagination from '../../components/collections/CollectionPagination.vue'
+import CollectionViewControls from '../../components/collections/CollectionViewControls.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiModal from '../../components/ui/UiModal.vue'
@@ -132,6 +161,7 @@ import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { birthdayStore } from '../../stores/birthday.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'
+import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
 
 const { notify } = useNotification()
 const birthdays = birthdayStore.birthdays
@@ -147,6 +177,10 @@ const giftInputs = reactive({})
 const isEditOpen = ref(false)
 const editingId = ref('')
 const editForm = reactive({ name: '', birthDate: '', reminderDays: 7, note: '' })
+const {
+  viewMode, pageSize, page, pageCount, pagedItems: pagedBirthdays,
+  rangeStart, rangeEnd, goToPage,
+} = usePaginatedView(birthdays, 'birthdays')
 
 async function createBirthday() {
   const result = await birthdayStore.addBirthday(form)
@@ -213,5 +247,6 @@ function pluralize(value, words) {
 .gift-section{display:grid;gap:7px;padding-top:9px;border-top:1px solid var(--border-color)}.gift-section>header{display:flex;justify-content:space-between}.gift-section>header small{color:var(--text-muted)}.gift-list{display:grid;gap:4px}.gift-list button{display:grid;grid-template-columns:20px minmax(0,1fr) 20px;align-items:center;gap:6px;border:1px solid var(--border-color);border-radius:8px;padding:6px;color:var(--text-secondary);background:var(--control-bg);text-align:left}.gift-list button>span{display:grid;place-items:center;width:18px;height:18px;border:1px solid var(--border-color);border-radius:50%;color:var(--success)}.gift-list i{color:var(--danger);font-style:normal;text-align:center}.gift-list .purchased{opacity:.65}.gift-add{display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:5px}.gift-add input{min-width:0;border:1px solid var(--border-color);border-radius:8px;padding:7px;color:var(--text-primary);background:var(--field-bg);outline:0}.gift-add button{border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);background:var(--control-bg)}.birthday-card>footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto}.birthday-card>footer span{color:var(--success);font-size:9px}.birthday-card>footer button{border:0;color:var(--text-secondary);background:transparent;font-size:10px;font-weight:800}
 .gift-list article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;border:1px solid var(--border-color);border-radius:8px;padding:3px;background:var(--control-bg)}.gift-list article>button{grid-template-columns:20px minmax(0,1fr);min-width:0;border:0;padding:3px;background:transparent}.gift-add{grid-template-columns:minmax(0,1fr) 34px}
 .birthdays-empty{grid-column:1/-1;display:grid;place-items:center;gap:5px;min-height:230px;border:1px dashed var(--border-color);border-radius:var(--radius-xl);color:var(--text-muted);text-align:center}.birthdays-empty>span{font-size:28px;color:var(--pink)}.birthdays-empty p{margin:0}.birthday-edit{display:grid;gap:10px}.birthday-edit>footer{display:flex;justify-content:flex-end;gap:7px}
+.birthday-table-wrap{overflow:auto;border:1px solid var(--border-color);border-radius:var(--radius-xl);background:var(--card-solid)}.birthday-table{width:100%;min-width:920px;border-collapse:collapse}.birthday-table th{padding:11px 13px;color:var(--text-muted);background:var(--card-soft);font-size:9px;letter-spacing:.08em;text-align:left;text-transform:uppercase}.birthday-table td{border-top:1px solid var(--border-color);padding:10px 13px;color:var(--text-secondary);vertical-align:middle}.birthday-table tbody tr{transition:background .16s}.birthday-table tbody tr:hover{background:var(--control-bg)}.birthday-table__person{display:flex;align-items:center;gap:9px;color:var(--text-primary)}.birthday-table__person>span{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;background:var(--pink);font-size:10px;font-weight:900}.birthday-table__countdown{color:var(--pink);white-space:nowrap}.birthday-table__gifts{display:inline-flex;border-radius:var(--radius-pill);padding:4px 7px;color:var(--text-muted);background:var(--control-bg);font-size:9px;white-space:nowrap}.birthday-table__actions{display:flex;justify-content:flex-end;gap:5px;white-space:nowrap}
 @media(max-width:1100px){.birthday-create{grid-template-columns:repeat(2,1fr)}.birthday-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.birthdays-page{padding:10px}.birthdays-hero,.birthday-create,.birthday-grid{grid-template-columns:1fr}.birthdays-hero{display:grid;padding:14px}.birthdays-hero__next{min-width:0}}
 </style>
