@@ -43,7 +43,7 @@
       >
         <span class="calendar-day__event-copy">
           <b>{{ isBirthdayEvent(event) ? '🎁' : event.allDay ? 'Весь день' : event.startTime }}</b>
-          {{ event.title }}
+          {{ formatEventTitle(event) }}
         </span>
         <EventMemberAvatars
           :member-ids="event.memberIds"
@@ -58,7 +58,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { getEventAccent } from '../../utils/formatters/calendarFormatter.js'
+import { formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
 

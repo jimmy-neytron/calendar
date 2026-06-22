@@ -33,3 +33,15 @@ export function getEventAccent(memberIds, members) {
   const member = members.find((item) => memberIds?.includes(item.id))
   return member?.color || 'var(--accent)'
 }
+
+/**
+ * Returns a clean event title. Older budget events used a currency prefix.
+ * @param {{ title?: string, linkedEntityType?: string }} event
+ * @returns {string}
+ */
+export function formatEventTitle(event) {
+  const title = String(event?.title || '').trim()
+  return event?.linkedEntityType === 'budget-payment'
+    ? title.replace(/^₽\s*/, '')
+    : title
+}

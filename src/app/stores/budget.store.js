@@ -687,7 +687,7 @@ async function ensureRulePayment(rule, preparedCategory = null) {
 
 async function createPaymentEvent(payment, category) {
   const result = await calendarStore.addEventAndWait({
-    title: `₽ ${payment.title}`,
+    title: payment.title,
     date: payment.dueDate,
     startTime: '09:00',
     endTime: '09:30',

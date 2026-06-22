@@ -11,7 +11,7 @@
     <section class="today-rail__overview">
       <article>
         <span>Дальше</span>
-        <strong>{{ nextEvent?.title || 'Свободное время' }}</strong>
+        <strong>{{ nextEvent ? formatEventTitle(nextEvent) : 'Свободное время' }}</strong>
         <small>{{ nextEvent ? nextEventTime : 'Можно запланировать важное' }}</small>
       </article>
       <article>
@@ -65,6 +65,7 @@ import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import EventCard from './EventCard.vue'
 import { formatDateShort, formatWeekday } from '../../utils/formatters/dateFormatter.js'
+import { formatEventTitle } from '../../utils/formatters/calendarFormatter.js'
 import { sportStore } from '../../stores/sport.store.js'
 
 const props = defineProps({

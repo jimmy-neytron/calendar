@@ -59,7 +59,10 @@
               >
                 <div class="day-mode__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
                 <div class="day-mode__event-body">
-                  <h4>{{ event.title }}</h4>
+                  <h4>
+                    {{ formatEventTitle(event) }}
+                    <small v-if="event.linkedEntityType === 'budget-payment'" class="day-mode__source">Бюджет</small>
+                  </h4>
                   <p>{{ formatEventMembers(event.memberIds, members) }}</p>
                   <small v-if="event.location">{{ event.location }}</small>
                 </div>
@@ -83,7 +86,7 @@ import UiButton from '../ui/UiButton.vue'
 import EventCard from './EventCard.vue'
 import { DAY_TIMELINE_HOURS } from '../../utils/constants/calendarConstants.js'
 import { formatDateShort, formatTimeRange, formatWeekday } from '../../utils/formatters/dateFormatter.js'
-import { formatEventMembers, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
+import { formatEventMembers, formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const props = defineProps({
@@ -319,6 +322,18 @@ function pluralize(value, words) {
 
 .day-mode__event-body h4 {
   font-size: 12px;
+}
+
+.day-mode__event-body .day-mode__source {
+  display: inline-block;
+  margin-left: 5px;
+  border-radius: var(--radius-pill);
+  padding: 2px 5px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  font-size: 8px;
+  font-weight: 800;
+  vertical-align: middle;
 }
 
 .day-mode__event-body p,

@@ -22,13 +22,15 @@
       />
     </div>
     <div class="event-card__content">
-      <strong>
-        <span v-if="importanceIcon" class="event-card__importance">{{ importanceIcon }}</span>
-        {{ event.title }}
-      </strong>
+      <strong>{{ formatEventTitle(event) }}</strong>
       <span v-if="event.location">{{ event.location }}</span>
       <small>
+        <b v-if="isBudgetEvent" class="event-card__source">Бюджет</b>
+        <template v-if="isBudgetEvent"> · </template>
         {{ category.label }}
+        <template v-if="importanceLabel">
+          · <b class="event-card__priority">{{ importanceLabel }}</b>
+        </template>
         <template v-if="event.repeat && event.repeat !== 'none'"> · ↻</template>
         <template v-if="event.reminder && event.reminder !== 'none'"> · ⏰</template>
       </small>
@@ -39,8 +41,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatTimeRange } from '../../utils/formatters/dateFormatter.js'
-import { getCategoryMeta, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
-import { IMPORTANCE_OPTIONS } from '../../utils/constants/calendarConstants.js'
+import { formatEventTitle, getCategoryMeta, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
 
@@ -54,7 +55,11 @@ defineEmits(['edit'])
 
 const accent = computed(() => getEventAccent(props.event.memberIds, props.members))
 const category = computed(() => getCategoryMeta(props.event.category))
-const importanceIcon = computed(() => IMPORTANCE_OPTIONS.find((item) => item.value === props.event.importance)?.icon || '')
+const isBudgetEvent = computed(() => props.event.linkedEntityType === 'budget-payment')
+const importanceLabel = computed(() => ({
+  important: 'Важное',
+  urgent: 'Срочное',
+})[props.event.importance] || '')
 const calendarColor = computed(() => calendarCollectionStore.getCollection(props.event.calendarId)?.color || '')
 
 function handleDragStart(dragEvent) {
@@ -66,6 +71,7 @@ function handleDragStart(dragEvent) {
 
 <style scoped>
 .event-card {
+  position: relative;
   display: grid;
   grid-template-columns: 54px 1fr;
   gap: 8px;
@@ -84,11 +90,13 @@ function handleDragStart(dragEvent) {
 }
 
 .event-card--important {
-  border-color: rgba(234, 179, 8, 0.42);
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--border-color));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--warning) 72%, transparent);
 }
 
 .event-card--urgent {
-  border-color: rgba(239, 68, 68, 0.48);
+  border-color: color-mix(in srgb, var(--danger) 48%, var(--border-color));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--danger) 78%, transparent);
 }
 
 .event-card--completed {
@@ -115,17 +123,23 @@ function handleDragStart(dragEvent) {
   font-size: 11px;
 }
 
-.event-card__importance {
-  display: inline-grid;
-  place-items: center;
-  min-width: 15px;
-  height: 15px;
-  margin-right: 4px;
-  border-radius: 50%;
-  background: var(--danger);
-  color: #fff;
-  font-size: 9px;
-  line-height: 1;
+.event-card__priority {
+  color: var(--warning);
+  font-size: inherit;
+  font-weight: 800;
+}
+
+.event-card__source {
+  border-radius: var(--radius-pill);
+  padding: 2px 5px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.event-card--urgent .event-card__priority {
+  color: var(--danger);
 }
 
 .event-card__content span,
@@ -171,6 +185,10 @@ function handleDragStart(dragEvent) {
   line-height: 1.3;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.event-card--compact .event-card__priority {
+  display: none;
 }
 
 .event-card--compact .event-card__content > span {
