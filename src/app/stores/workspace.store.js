@@ -134,7 +134,14 @@ async function createWorkspace(name) {
   const title = String(name || '').trim()
   if (!title) return { ok: false, message: 'Укажи название пространства' }
   const { data, error: createError } = await workspacesApi.create(title)
-  if (createError) return { ok: false, message: createError.message }
+  if (createError) {
+    return {
+      ok: false,
+      message: createError.code === '42702'
+        ? 'Функция создания пространства требует обновления. Выполни миграцию 20260622_fix_workspace_creation.sql в Supabase.'
+        : createError.message,
+    }
+  }
   await initialize(true)
   activeWorkspaceId.value = data
   const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
@@ -192,10 +199,21 @@ function getCurrentUserRole() {
 
 async function deleteWorkspace(workspaceId) {
   const { error: removeError } = await workspacesApi.remove(workspaceId)
-  if (removeError) return false
+  if (removeError) {
+    return {
+      ok: false,
+      message: removeError.code === '42883'
+        ? 'Выполни миграцию 20260622_delete_workspace.sql в Supabase.'
+        : removeError.message,
+    }
+  }
   await initialize(true)
   activeWorkspaceId.value = workspaces.value[0]?.id || null
-  return true
+  if (activeWorkspaceId.value) {
+    const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
+    await loadWorkspaceData(activeWorkspaceId.value, { force: true })
+  }
+  return { ok: true, workspaceId: activeWorkspaceId.value }
 }
 
 export const workspaceStore = {

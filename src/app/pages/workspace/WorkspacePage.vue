@@ -2,26 +2,22 @@
   <section class="workspace-page">
     <header class="workspace-page__hero panel">
       <div>
-        <span>Совместная работа</span>
+        <span>Пространство</span>
         <h1>{{ activeWorkspace?.name || 'Пространство' }}</h1>
-        <p>Участники, роли, приглашения и история изменений собраны отдельно от персональных настроек.</p>
+        <p>{{ activeWorkspaceMembers.length }} участников · {{ roleLabel(currentUserRole) }}</p>
       </div>
-      <div class="workspace-page__stats">
-        <article><strong>{{ activeWorkspaceMembers.length }}</strong><span>участников</span></article>
-        <article><strong>{{ activeWorkspaceInvites.length }}</strong><span>приглашений</span></article>
-        <article><strong>{{ roleLabel(currentUserRole) }}</strong><span>ваша роль</span></article>
-      </div>
+      <RouterLink class="workspace-page__activity" :to="{ name: 'activity' }">История изменений →</RouterLink>
     </header>
 
     <div class="workspace-page__grid">
       <SettingsSectionCard
         icon="◇"
         eyebrow="Пространство"
-        title="Основные параметры"
-        description="Переключай пространства, меняй название текущего или создавай новое."
+        title="Управление"
+        description="Выбери пространство, измени его название или создай новое."
         tone="accent"
       >
-        <div class="workspace-fields">
+        <div class="workspace-manage">
           <label class="workspace-field">
             <span>Активное пространство</span>
             <UiSelect :model-value="activeWorkspace?.id" @update:model-value="switchWorkspace">
@@ -30,20 +26,22 @@
               </option>
             </UiSelect>
           </label>
-          <UiInput v-model="workspaceName" label="Название текущего" />
-          <UiInput v-model="newWorkspaceName" label="Новое пространство" placeholder="Например: Работа" />
+          <div class="workspace-inline">
+            <UiInput v-model="workspaceName" label="Название" />
+            <UiButton @click="saveWorkspace">Сохранить</UiButton>
+          </div>
+          <div class="workspace-inline">
+            <UiInput v-model="newWorkspaceName" label="Создать новое" placeholder="Например: Работа" @keydown.enter="createWorkspace" />
+            <UiButton variant="secondary" @click="createWorkspace">Создать</UiButton>
+          </div>
         </div>
-        <template #actions>
-          <UiButton @click="saveWorkspace">Сохранить название</UiButton>
-          <UiButton variant="secondary" @click="createWorkspace">Создать пространство</UiButton>
-        </template>
       </SettingsSectionCard>
 
       <SettingsSectionCard
         icon="◎"
         eyebrow="Команда"
         title="Участники и роли"
-        description="Роли определяют доступ к управлению общим пространством."
+        description="Участники и их доступ к общим данным."
         tone="success"
       >
         <div class="member-list">
@@ -65,7 +63,7 @@
             </UiSelect>
             <span v-else class="member-card__role">{{ roleLabel(member.role) }}</span>
             <button
-              v-if="member.id !== activeWorkspace?.ownerId"
+              v-if="member.id !== activeWorkspace?.ownerId && canManageRoles"
               type="button"
               @click="removeMember(member.id)"
             >
@@ -78,8 +76,8 @@
       <SettingsSectionCard
         icon="◈"
         eyebrow="Календари"
-        title="Цветные слои"
-        description="Разделяй семейные, личные, рабочие и спортивные события."
+        title="Календари"
+        description="Цветные слои событий внутри пространства."
         tone="warning"
       >
         <div class="calendar-list">
@@ -113,8 +111,8 @@
       <SettingsSectionCard
         icon="+"
         eyebrow="Доступ"
-        title="Приглашения"
-        description="Создай код для участника или подключись к другому пространству."
+        title="Доступ по коду"
+        description="Пригласи участника или присоединись к другому пространству."
       >
         <div class="invite-grid">
           <div class="invite-card">
@@ -138,27 +136,30 @@
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        icon="↺"
-        eyebrow="Активность"
-        title="Последние изменения"
-        description="Короткая история действий в текущем пространстве."
+        v-if="currentUserRole === 'owner'"
+        icon="!"
+        eyebrow="Опасная зона"
+        title="Удаление пространства"
+        description="Все общие события, идеи, дни рождения, фильмы и история этого пространства будут удалены."
+        tone="warning"
       >
-        <div class="activity-list">
-          <article v-for="entry in recentActivity" :key="entry.id">
-            <span class="activity-list__dot" />
-            <div>
-              <strong>{{ entry.userName }}</strong>
-              <p>{{ entry.text }}</p>
-            </div>
-            <small>{{ formatActivityDate(entry.createdAt) }}</small>
-          </article>
-          <p v-if="!recentActivity.length" class="workspace-page__empty">История пока пуста.</p>
+        <div class="danger-zone">
+          <div><strong>{{ activeWorkspace?.name }}</strong><span>Это действие нельзя отменить.</span></div>
+          <UiButton variant="danger" @click="openDeleteWorkspace">Удалить пространство</UiButton>
         </div>
-        <template #actions>
-          <RouterLink class="activity-link" :to="{ name: 'activity' }">Открыть всю историю →</RouterLink>
-        </template>
       </SettingsSectionCard>
     </div>
+
+    <UiModal v-model="isDeleteWorkspaceOpen" title="Удалить пространство?" eyebrow="Необратимое действие" width="460px" :close-on-overlay="!deletingWorkspace">
+      <div class="workspace-delete">
+        <p>Будут удалены пространство <strong>«{{ activeWorkspace?.name }}»</strong> и связанные с ним данные.</p>
+        <UiInput v-model="deleteConfirmation" :label="`Введи «${activeWorkspace?.name || ''}» для подтверждения`" />
+        <footer>
+          <UiButton variant="secondary" :disabled="deletingWorkspace" @click="isDeleteWorkspaceOpen = false">Отмена</UiButton>
+          <UiButton variant="danger" :loading="deletingWorkspace" :disabled="deleteConfirmation !== activeWorkspace?.name" @click="confirmDeleteWorkspace">Удалить навсегда</UiButton>
+        </footer>
+      </div>
+    </UiModal>
   </section>
 </template>
 
@@ -170,20 +171,20 @@ import UiInput from '../../components/ui/UiInput.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiColorPicker from '../../components/ui/UiColorPicker.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
+import UiModal from '../../components/ui/UiModal.vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const { notify } = useNotification()
-const { workspaceActivity, addActivity } = useActivityLog()
+const { addActivity } = useActivityLog()
 const activeWorkspace = workspaceStore.activeWorkspace
 const currentUserSpaces = workspaceStore.currentUserSpaces
 const activeWorkspaceMembers = workspaceStore.activeWorkspaceMembers
 const activeWorkspaceInvites = workspaceStore.activeWorkspaceInvites
 const currentUserRole = computed(() => workspaceStore.getCurrentUserRole())
 const canManageRoles = computed(() => currentUserRole.value === 'owner')
-const recentActivity = computed(() => workspaceActivity.value.slice(0, 15))
 calendarCollectionStore.ensureWorkspaceCollections()
 const calendars = calendarCollectionStore.activeCollections
 
@@ -194,6 +195,9 @@ const joinCode = ref('')
 const lastInviteCode = ref('')
 const newCalendarName = ref('')
 const newCalendarColor = ref('#60a5fa')
+const isDeleteWorkspaceOpen = ref(false)
+const deleteConfirmation = ref('')
+const deletingWorkspace = ref(false)
 
 watch(activeWorkspace, (workspace) => {
   workspaceName.value = workspace?.name || ''
@@ -271,33 +275,46 @@ function removeCalendar(id) {
   notify(removed ? 'Календарь удалён' : 'Нельзя удалить последний календарь', removed ? 'success' : 'warning')
 }
 
+function openDeleteWorkspace() {
+  deleteConfirmation.value = ''
+  isDeleteWorkspaceOpen.value = true
+}
+
+async function confirmDeleteWorkspace() {
+  const workspace = activeWorkspace.value
+  if (!workspace || deleteConfirmation.value !== workspace.name || currentUserRole.value !== 'owner') return
+  deletingWorkspace.value = true
+  const result = await workspaceStore.deleteWorkspace(workspace.id)
+  deletingWorkspace.value = false
+  if (!result.ok) {
+    notify(result.message || 'Не удалось удалить пространство', 'danger')
+    return
+  }
+  isDeleteWorkspaceOpen.value = false
+  deleteConfirmation.value = ''
+  notify('Пространство удалено', 'success')
+}
+
 function roleLabel(role) {
   return { owner: 'Владелец', admin: 'Админ', member: 'Участник', viewer: 'Просмотр' }[role] || 'Участник'
 }
 
-function formatActivityDate(value) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
 </script>
 
 <style scoped>
 .workspace-page {
   display: grid;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  width: min(100%, 1040px);
+  margin: 0 auto;
 }
 
 .workspace-page__hero {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: center;
   gap: 18px;
-  padding: 20px;
+  padding: 18px 20px;
 }
 
 .workspace-page__hero > div:first-child > span,
@@ -316,41 +333,46 @@ function formatActivityDate(value) {
 }
 
 .workspace-page__hero p {
-  max-width: 680px;
   margin: 0;
-  color: var(--text-secondary);
-}
-
-.workspace-page__stats {
-  display: flex;
-  gap: 8px;
-}
-
-.workspace-page__stats article {
-  display: grid;
-  min-width: 96px;
-  border: 1px solid var(--border-color);
-  border-radius: 11px;
-  padding: 9px;
-  background: var(--card-soft);
-}
-
-.workspace-page__stats span {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11px;
+}
+
+.workspace-page__activity {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  font-size: 10px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: .18s var(--ease-out);
+}
+
+.workspace-page__activity:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .workspace-page__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
   align-items: start;
 }
 
-.workspace-fields {
+.workspace-manage {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
+  gap: 10px;
+}
+
+.workspace-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
 }
 
 .workspace-field {
@@ -358,8 +380,7 @@ function formatActivityDate(value) {
   gap: 6px;
 }
 
-.member-list,
-.activity-list {
+.member-list {
   display: grid;
   gap: 7px;
 }
@@ -371,8 +392,8 @@ function formatActivityDate(value) {
   gap: 9px;
   border: 1px solid var(--border-color);
   border-radius: 11px;
-  padding: 8px;
-  background: var(--card-soft);
+  padding: 9px 10px;
+  background: var(--control-bg);
 }
 
 .member-card__avatar {
@@ -462,7 +483,7 @@ function formatActivityDate(value) {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 11px;
-  background: var(--card-soft);
+  background: var(--control-bg);
 }
 
 .invite-code,
@@ -489,80 +510,69 @@ function formatActivityDate(value) {
   background: var(--bg-primary);
 }
 
-.activity-list article {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  gap: 9px;
-  align-items: start;
-  border-bottom: 1px solid var(--border-color);
-  padding: 8px 2px;
-}
-
-.activity-list__dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: var(--info);
-}
-
-.activity-list p,
-.activity-list small {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.workspace-page__empty {
-  border: 1px dashed var(--border-color);
+.danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid color-mix(in srgb, var(--danger) 18%, var(--border-color));
   border-radius: 12px;
-  padding: 24px;
-  text-align: center;
+  padding: 13px 14px;
+  background: color-mix(in srgb, var(--danger) 4%, var(--control-bg));
 }
 
-.activity-link {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  padding: 8px 13px;
-  color: var(--text-primary);
-  background: var(--control-bg);
-  text-decoration: none;
-  font-weight: 700;
+.danger-zone strong,
+.danger-zone span {
+  display: block;
+}
+
+.danger-zone span {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.workspace-delete {
+  display: grid;
+  gap: 15px;
+}
+
+.workspace-delete p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.workspace-delete footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
 }
 
 @media (max-width: 1080px) {
-  .workspace-page__grid,
-  .workspace-fields {
-    grid-template-columns: 1fr;
-  }
+  .workspace-page { width: 100%; }
 }
 
 @media (max-width: 720px) {
-  .workspace-page {
-    padding: 10px;
-  }
-
-  .workspace-page__hero,
-  .workspace-page__stats {
-    display: grid;
-  }
-
   .workspace-page__hero {
-    padding: 14px;
-  }
-
-  .workspace-page__stats {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .workspace-page__stats article {
-    min-width: 0;
+    display: grid;
   }
 
   .invite-grid,
   .member-card,
   .calendar-list article,
-  .calendar-create {
+  .calendar-create,
+  .workspace-inline {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-page__activity {
+    width: max-content;
+  }
+
+  .danger-zone,
+  .workspace-delete footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

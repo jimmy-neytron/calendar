@@ -22,7 +22,7 @@ export const workspacesApi = {
   },
 
   remove(id) {
-    return requireSupabase().from('workspaces').delete().eq('id', id)
+    return requireSupabase().rpc('delete_workspace', { p_workspace_id: id })
   },
 
   listInvites(workspaceId) {
