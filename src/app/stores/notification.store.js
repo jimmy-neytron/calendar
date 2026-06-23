@@ -1,12 +1,15 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
+import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
 import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { authStore } from './auth.store.js'
 import { workspaceStore } from './workspace.store.js'
 
 const STORAGE_KEY = `${APP_CONFIG.storageKey}:notifications`
+const CLEARED_AT_KEY = `${APP_CONFIG.storageKey}:notifications-cleared-at`
 const MAX_USER_NOTIFICATIONS = 60
+const { state: clearedAtByScope } = useLocalStorage(CLEARED_AT_KEY, {})
 
 const repository = new SyncedCollectionRepository(STORAGE_KEY, [], 'notifications', {
   toRow: (item) => {
@@ -40,8 +43,13 @@ const currentUserNotifications = computed(() => {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   if (!userId || !workspaceId) return []
 
+  const clearedAt = clearedAtByScope.value[notificationScope(userId, workspaceId)] || ''
   return notifications.value
-    .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId)
+    .filter((notification) => (
+      notification.userId === userId
+      && notification.workspaceId === workspaceId
+      && (!clearedAt || notification.updatedAt > clearedAt)
+    ))
     .sort((first, second) => new Date(second.updatedAt) - new Date(first.updatedAt))
 })
 
@@ -159,9 +167,19 @@ function removeNotification(id) {
 function clearCurrentWorkspaceNotifications() {
   const userId = authStore.currentUserId.value
   const workspaceId = workspaceStore.activeWorkspaceId.value
-  notifications.value
+  if (!userId || !workspaceId) return
+  const now = new Date().toISOString()
+  const currentNotifications = notifications.value
     .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId)
-    .forEach((notification) => repository.delete(notification.id))
+
+  currentNotifications.forEach((notification) => {
+    if (!notification.readAt) repository.update(notification.id, { readAt: now })
+  })
+  clearedAtByScope.value = {
+    ...clearedAtByScope.value,
+    [notificationScope(userId, workspaceId)]: now,
+  }
+  currentNotifications.forEach((notification) => repository.delete(notification.id))
 }
 
 function ingestRemoteRow(row) {
@@ -188,6 +206,10 @@ function importanceLabel(value) {
     important: 'важная',
     urgent: 'срочная',
   }[value] || 'обычная'
+}
+
+function notificationScope(userId, workspaceId) {
+  return `${userId}:${workspaceId}`
 }
 
 export const notificationStore = {

@@ -200,6 +200,7 @@
             <UiToggle
               :model-value="localRemindersEnabled"
               label="Напоминания на устройстве"
+              :disabled="pushNotificationsLoading"
               @update:model-value="toggleLocalReminders"
             />
           </label>
@@ -222,7 +223,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
@@ -246,8 +247,10 @@ const {
 const { start: startOnboarding } = useOnboarding()
 const {
   enabled: localRemindersEnabled,
+  loading: pushNotificationsLoading,
   enable: enableLocalReminders,
   disable: disableLocalReminders,
+  refresh: refreshPushNotifications,
 } = usePushNotifications()
 
 const preferencesSaved = ref(false)
@@ -323,6 +326,7 @@ async function logout() {
 }
 
 onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
+onMounted(() => refreshPushNotifications())
 </script>
 
 <style scoped>

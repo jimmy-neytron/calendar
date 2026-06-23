@@ -55,6 +55,14 @@
       </span>
       <span v-if="hiddenCount" class="calendar-day__more">+{{ hiddenCount }} ещё</span>
     </div>
+    <div v-if="events.length" class="calendar-day__mobile-dots" aria-hidden="true">
+      <i
+        v-for="event in mobileDotEvents"
+        :key="event.id"
+        :style="{ '--event-color': getEventColor(event) }"
+      />
+      <b v-if="events.length > mobileDotEvents.length">+{{ events.length - mobileDotEvents.length }}</b>
+    </div>
   </button>
 </template>
 
@@ -81,6 +89,7 @@ const visibleEvents = computed(() => [...props.events]
   .sort((first, second) => Number(isBirthdayEvent(second)) - Number(isBirthdayEvent(first)))
   .slice(0, 3))
 const hiddenCount = computed(() => Math.max(0, props.events.length - visibleEvents.value.length))
+const mobileDotEvents = computed(() => props.events.slice(0, 3))
 const hasBirthday = computed(() => props.events.some(isBirthdayEvent))
 const holidayNames = computed(() => props.holidays.map((holiday) => holiday.name).join(' · '))
 
@@ -316,15 +325,70 @@ function isBirthdayEvent(event) {
   font-weight: 600;
 }
 
+.calendar-day__mobile-dots {
+  display: none;
+}
+
 @media (max-width: 720px) {
   .calendar-day {
-    min-height: 86px;
-    padding: 7px;
-    border-radius: 12px;
+    min-height: 72px;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 6px 4px 7px;
+    border-radius: 11px;
+    touch-action: manipulation;
   }
 
-  .calendar-day__event b {
+  .calendar-day__header {
+    justify-content: center;
+  }
+
+  .calendar-day__header span {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .calendar-day__header small,
+  .calendar-day__holiday,
+  .calendar-day__events {
     display: none;
+  }
+
+  .calendar-day__mobile-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 12px;
+    gap: 3px;
+  }
+
+  .calendar-day__mobile-dots i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--event-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-color) 14%, transparent);
+  }
+
+  .calendar-day__mobile-dots b {
+    color: var(--text-muted);
+    font-size: 8px;
+  }
+
+  .calendar-day--selected {
+    transform: translateY(-1px);
+    border-color: var(--accent-hover);
+    background: color-mix(in srgb, var(--accent) 12%, var(--control-bg));
+  }
+
+  .calendar-day--muted {
+    opacity: .28;
+  }
+
+  .calendar-day--birthday::after {
+    top: 5px;
+    right: 5px;
   }
 }
 </style>

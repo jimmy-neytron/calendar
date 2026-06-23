@@ -222,7 +222,7 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
 
 @media (max-width: 720px) {
   .calendar-board {
-    padding: 12px;
+    padding: 10px 6px 12px;
     border-radius: 16px;
   }
 
@@ -241,7 +241,18 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
 
   .calendar-board__weekdays,
   .calendar-board__grid {
-    gap: 5px;
+    gap: 3px;
+  }
+
+  .calendar-board__weekdays {
+    margin-bottom: 4px;
+    font-size: 9px;
+    text-align: center;
+    letter-spacing: 0;
+  }
+
+  .calendar-board__weekdays span {
+    padding-left: 0;
   }
 }
 </style>
