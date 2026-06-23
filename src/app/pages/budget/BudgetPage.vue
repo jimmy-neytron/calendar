@@ -1108,6 +1108,178 @@ onMounted(async () => {
     transition-duration: .01ms;
   }
 }
+@media (min-width: 621px) and (max-width: 1180px) {
+  .budget-page {
+    gap: 8px;
+    width: 100%;
+  }
+
+  .budget-command {
+    grid-template-columns: minmax(0, 1fr) 190px;
+    gap: 10px 14px;
+    padding: 13px;
+  }
+
+  .budget-command__heading h1 {
+    margin: 2px 0 3px;
+    font-size: 21px;
+  }
+
+  .budget-command__heading p {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .budget-command__balance {
+    min-width: 0;
+    padding: 9px 11px;
+  }
+
+  .budget-command__balance strong {
+    font-size: 18px;
+  }
+
+  .budget-command__controls {
+    grid-template-columns: minmax(310px, 1.2fr) minmax(190px, .8fr);
+    gap: 8px;
+    padding-top: 9px;
+  }
+
+  .budget-period {
+    gap: 3px;
+  }
+
+  .budget-period__actions {
+    gap: 5px;
+  }
+
+  .budget-month-picker {
+    max-width: 310px;
+  }
+
+  .budget-summary {
+    gap: 7px;
+  }
+
+  .budget-stat {
+    min-height: 65px;
+    padding: 9px 11px;
+  }
+
+  .budget-stat strong {
+    margin-top: 1px;
+    font-size: 17px;
+  }
+
+  .budget-stat small {
+    font-size: 8px;
+  }
+
+  .budget-rules,
+  .budget-plan {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .budget-rules > header,
+  .budget-plan__header {
+    gap: 10px;
+  }
+
+  .budget-rules h2,
+  .budget-plan__header h2 {
+    margin-block: 1px 2px;
+    font-size: 16px;
+  }
+
+  .budget-rules p,
+  .budget-plan__header p {
+    font-size: 9px;
+    line-height: 1.35;
+  }
+
+  .budget-rule-create {
+    grid-template-columns: minmax(140px, 1fr) 120px 100px minmax(130px, .8fr) auto;
+    gap: 5px;
+    padding: 8px;
+  }
+
+  .budget-rule-list {
+    gap: 5px;
+  }
+
+  .budget-rule-list article {
+    grid-template-columns: 30px minmax(0, 1fr) auto auto;
+    gap: 7px;
+    padding: 7px 8px;
+  }
+
+  .budget-rule__date {
+    height: 32px !important;
+  }
+
+  .budget-category-create {
+    grid-template-columns: minmax(180px, 1fr) minmax(130px, .45fr) auto;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .budget-categories {
+    gap: 6px;
+  }
+
+  .budget-category {
+    grid-template-columns: 26px minmax(120px, 1fr) minmax(105px, 135px) 58px auto 30px;
+    gap: 6px;
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+
+  .budget-category__number {
+    width: 23px;
+    height: 23px;
+  }
+
+  .budget-category__amount {
+    padding-inline: 6px;
+  }
+
+  .budget-category__amount input {
+    min-height: 28px;
+  }
+
+  .budget-payment {
+    min-height: 40px;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .budget-empty {
+    min-height: 150px;
+  }
+
+  .budget-note {
+    padding: 4px;
+  }
+
+  .budget-page :deep(.ui-input) {
+    gap: 3px;
+  }
+
+  .budget-page :deep(.ui-input__label) {
+    font-size: 9px;
+  }
+
+  .budget-page :deep(.ui-input__control) {
+    min-height: 32px;
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+
+  .budget-page :deep(.ui-button) {
+    min-height: 32px;
+  }
+}
 @media(max-width:900px){.budget-rule-create{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-rule-create :deep(.ui-button){grid-column:1/-1}}
 @media(max-width:800px){.budget-command{grid-template-columns:1fr}.budget-command__balance{min-width:0;text-align:left}.budget-command__controls{grid-template-columns:1fr}.budget-hero,.budget-setup,.budget-plan__header{grid-template-columns:1fr;display:grid}.budget-rules>header{align-items:stretch;display:grid}.budget-rules__actions{justify-content:flex-start}.budget-hero__balance{min-width:0;text-align:left}.budget-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.budget-category{grid-template-columns:30px minmax(0,1fr) 130px auto 28px}.budget-category>small{display:none}}
 @media(max-width:620px){.budget-command{padding:16px}.budget-command__controls{grid-template-columns:minmax(0,1fr)}.budget-period__actions{align-items:stretch;flex-direction:column}.budget-month-picker{max-width:none}.budget-period__actions :deep(.ui-button){width:100%}.budget-summary{grid-template-columns:1fr}.budget-rules,.budget-plan{padding:14px}}

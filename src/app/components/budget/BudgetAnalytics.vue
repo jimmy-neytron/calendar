@@ -438,6 +438,68 @@ function pluralize(value, words) {
   to { opacity: 1; transform: none; }
 }
 
+@media (min-width: 821px) and (max-width: 1180px) {
+  .budget-analytics {
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .budget-analytics__header h2 {
+    margin-top: 1px;
+    font-size: 16px;
+  }
+
+  .budget-analytics__status {
+    padding: 4px 8px;
+    font-size: 8px;
+  }
+
+  .budget-analytics__content {
+    grid-template-columns: minmax(280px, .8fr) minmax(330px, 1.2fr);
+    gap: 8px;
+  }
+
+  .budget-analytics__overview {
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .budget-analytics__ring {
+    width: 88px;
+  }
+
+  .budget-analytics__ring::before {
+    width: 66px;
+  }
+
+  .budget-analytics__ring strong {
+    font-size: 18px;
+  }
+
+  .budget-analytics__metrics article {
+    gap: 6px;
+    padding: 5px 0;
+  }
+
+  .budget-analytics__categories {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .budget-analytics__bars {
+    gap: 6px;
+  }
+
+  .budget-analytics__bars article {
+    gap-block: 3px;
+  }
+
+  .budget-analytics__bar {
+    height: 4px;
+  }
+}
+
 @media (max-width: 820px) {
   .budget-analytics__content {
     grid-template-columns: 1fr;
