@@ -4,6 +4,8 @@ import { authStore } from '../../stores/auth.store.js'
 
 const enabled = ref(localStorage.getItem('workspace-calendar:push-notifications') === 'true')
 const loading = ref(false)
+const status = ref('')
+const statusType = ref('info')
 const DEVICE_ID_KEY = 'workspace-calendar:push-device-id'
 const supported = computed(() => (
   typeof window !== 'undefined'
@@ -16,19 +18,30 @@ export function usePushNotifications() {
   async function enable() {
     if (loading.value) return { ok: false, message: 'Подожди завершения настройки' }
     loading.value = true
+    setStatus('Проверяем поддержку push…')
     try {
-      if (!supported.value) return { ok: false, message: getUnsupportedMessage() }
+      if (!supported.value) {
+        const result = { ok: false, message: getUnsupportedMessage() }
+        setStatus(result.message, 'warning')
+        return result
+      }
       if (!import.meta.env.VITE_VAPID_PUBLIC_KEY) {
-        return { ok: false, message: 'На сайте не настроен публичный VAPID-ключ' }
+        const result = { ok: false, message: 'На сайте не настроен публичный VAPID-ключ' }
+        setStatus(result.message, 'danger')
+        return result
       }
 
+      setStatus('Ждём разрешение iPhone…')
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         enabled.value = false
         persist()
-        return { ok: false, message: 'Разрешение на уведомления не выдано' }
+        const result = { ok: false, message: 'Разрешение на уведомления не выдано' }
+        setStatus(result.message, 'danger')
+        return result
       }
 
+      setStatus('Подключаем устройство к push…')
       const registration = await navigator.serviceWorker.ready
       const existing = await registration.pushManager.getSubscription()
       const subscription = existing || await registration.pushManager.subscribe({
@@ -36,20 +49,29 @@ export function usePushNotifications() {
         applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY),
       })
 
-      if (!authStore.currentUserId.value) return { ok: false, message: 'Сначала войди в аккаунт' }
+      if (!authStore.currentUserId.value) {
+        const result = { ok: false, message: 'Сначала войди в аккаунт' }
+        setStatus(result.message, 'danger')
+        return result
+      }
+      setStatus('Сохраняем устройство в Supabase…')
       const { error } = await savePushSubscription({
         deviceId: getDeviceId(),
         subscription,
       })
-      if (error) return { ok: false, message: `Supabase: ${error.message}` }
+      if (error) throw new Error(`Supabase: ${error.message}`)
 
       enabled.value = true
       persist()
-      return { ok: true, message: 'Push-напоминания включены на этом устройстве' }
+      const result = { ok: true, message: 'Push-напоминания включены на этом устройстве' }
+      setStatus(result.message, 'success')
+      return result
     } catch (error) {
       enabled.value = false
       persist()
-      return { ok: false, message: getPushErrorMessage(error) }
+      const result = { ok: false, message: getPushErrorMessage(error) }
+      setStatus(result.message, 'danger')
+      return result
     } finally {
       loading.value = false
     }
@@ -68,9 +90,13 @@ export function usePushNotifications() {
       }
       enabled.value = false
       persist()
-      return { ok: true, message: 'Push-уведомления выключены на этом устройстве' }
+      const result = { ok: true, message: 'Push-уведомления выключены на этом устройстве' }
+      setStatus(result.message)
+      return result
     } catch (error) {
-      return { ok: false, message: getPushErrorMessage(error) }
+      const result = { ok: false, message: getPushErrorMessage(error) }
+      setStatus(result.message, 'danger')
+      return result
     } finally {
       loading.value = false
     }
@@ -80,6 +106,7 @@ export function usePushNotifications() {
     if (!supported.value) {
       enabled.value = false
       persist()
+      setStatus(getUnsupportedMessage(), 'warning')
       return false
     }
     try {
@@ -87,15 +114,19 @@ export function usePushNotifications() {
       const subscription = await registration.pushManager.getSubscription()
       enabled.value = Notification.permission === 'granted' && Boolean(subscription)
       persist()
+      if (enabled.value) setStatus('Push-напоминания активны на этом устройстве', 'success')
+      else if (Notification.permission === 'denied') setStatus('Уведомления запрещены в настройках iPhone', 'danger')
+      else setStatus('Push-напоминания выключены')
       return enabled.value
-    } catch {
+    } catch (error) {
       enabled.value = false
       persist()
+      setStatus(getPushErrorMessage(error), 'danger')
       return false
     }
   }
 
-  return { enabled, loading, supported, enable, disable, refresh }
+  return { enabled, loading, status, statusType, supported, enable, disable, refresh }
 }
 
 function getDeviceId() {
@@ -124,6 +155,11 @@ function getPushErrorMessage(error) {
 function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches
     || window.navigator.standalone === true
+}
+
+function setStatus(message, type = 'info') {
+  status.value = message
+  statusType.value = type
 }
 
 function persist() {

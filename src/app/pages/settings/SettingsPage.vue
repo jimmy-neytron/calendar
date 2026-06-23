@@ -196,6 +196,13 @@
             <span>
               <strong>Напоминания на устройстве</strong>
               <small>Получать уведомления о событиях, даже если вкладка свёрнута.</small>
+              <small
+                v-if="pushNotificationsStatus"
+                class="setting-switch__status"
+                :class="`setting-switch__status--${pushNotificationsStatusType}`"
+              >
+                {{ pushNotificationsStatus }}
+              </small>
             </span>
             <UiToggle
               :model-value="localRemindersEnabled"
@@ -248,6 +255,8 @@ const { start: startOnboarding } = useOnboarding()
 const {
   enabled: localRemindersEnabled,
   loading: pushNotificationsLoading,
+  status: pushNotificationsStatus,
+  statusType: pushNotificationsStatusType,
   enable: enableLocalReminders,
   disable: disableLocalReminders,
   refresh: refreshPushNotifications,
@@ -339,5 +348,5 @@ onMounted(() => refreshPushNotifications())
 .density-options{display:grid;gap:6px}.density-options button{display:grid;grid-template-columns:66px minmax(0,1fr) 22px;align-items:center;gap:10px;border:1px solid var(--border-color);border-radius:11px;padding:9px;color:var(--text-secondary);background:var(--control-bg);text-align:left}.density-options button.active{color:var(--text-primary);border-color:var(--border-strong);background:var(--control-bg-hover)}.density-options button>svg{color:transparent}.density-options button.active>svg{color:var(--success)}.density-options strong,.density-options small{display:block}.density-options small{color:var(--text-muted);font-size:9px}.density-preview{display:grid;align-content:center;gap:4px;height:42px;border:1px solid var(--border-color);border-radius:8px;padding:7px;background:var(--bg-primary)}.density-preview i{display:block;height:4px;border-radius:3px;background:var(--text-muted)}.density-preview i:nth-child(2){width:72%}.density-preview--normal{gap:7px}
 .theme-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}.theme-options button{display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:9px;border:1px solid var(--border-color);border-radius:11px;padding:9px;color:var(--text-secondary);background:var(--control-bg);text-align:left}.theme-options button.active{border-color:var(--border-strong);color:var(--text-primary)}.theme-options button>span{display:grid;grid-template-columns:13px 1fr;grid-template-rows:1fr 1fr;gap:3px;width:42px;height:34px;border-radius:7px;padding:4px;overflow:hidden}.theme-options button>span i{border-radius:3px}.theme-options button>span i:first-child{grid-row:1/-1}.theme-option--black>span{background:#050505}.theme-option--black>span i{background:#242424}.theme-option--black>span i:first-child{background:#111}.theme-option--light>span{background:#f4f1ea}.theme-option--light>span i{background:#ddd5c8}.theme-option--light>span i:first-child{background:#fffaf1}.theme-options button>svg{color:transparent}.theme-options button.active>svg{color:var(--success)}
 .country-setting{display:grid;gap:8px}.country-setting :deep(.ui-select){width:100%}.country-setting p{margin:0;color:var(--text-muted);font-size:9px;line-height:1.5}
-.setting-card--switches{gap:10px}.setting-switch{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--border-color);padding:13px 2px 3px;cursor:pointer}.setting-switch strong,.setting-switch small{display:block}.setting-switch small{max-width:680px;margin-top:2px;color:var(--text-muted);font-size:9px}@keyframes savedPop{from{opacity:0;transform:translateY(-5px) scale(.94)}to{opacity:1;transform:none}}@media(max-width:720px){.settings-hero{align-items:flex-start;padding:19px}.settings-hero__actions{display:grid}.calendar-settings{padding:15px}.settings-grid{grid-template-columns:1fr}.setting-card--large,.setting-card--switches{grid-column:auto}.view-options{grid-template-columns:1fr}.view-options button{min-height:92px;grid-template-columns:42px minmax(0,1fr);align-items:center}.view-options button>span{grid-row:1/3;margin:0}.theme-options{grid-template-columns:1fr}}@media(max-width:480px){.settings-hero{display:grid}.settings-hero__actions{grid-template-columns:auto auto}.profile-settings{align-items:stretch;display:grid}.profile-settings :deep(.ui-button){width:100%}.calendar-settings__header{align-items:flex-start}.setting-switch{align-items:flex-start}}
+.setting-card--switches{gap:10px}.setting-switch{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--border-color);padding:13px 2px 3px;cursor:pointer}.setting-switch strong,.setting-switch small{display:block}.setting-switch small{max-width:680px;margin-top:2px;color:var(--text-muted);font-size:9px}.setting-switch .setting-switch__status{margin-top:6px;color:var(--info);font-weight:750}.setting-switch .setting-switch__status--success{color:var(--success)}.setting-switch .setting-switch__status--warning{color:var(--warning)}.setting-switch .setting-switch__status--danger{color:var(--danger)}@keyframes savedPop{from{opacity:0;transform:translateY(-5px) scale(.94)}to{opacity:1;transform:none}}@media(max-width:720px){.settings-hero{align-items:flex-start;padding:19px}.settings-hero__actions{display:grid}.calendar-settings{padding:15px}.settings-grid{grid-template-columns:1fr}.setting-card--large,.setting-card--switches{grid-column:auto}.view-options{grid-template-columns:1fr}.view-options button{min-height:92px;grid-template-columns:42px minmax(0,1fr);align-items:center}.view-options button>span{grid-row:1/3;margin:0}.theme-options{grid-template-columns:1fr}}@media(max-width:480px){.settings-hero{display:grid}.settings-hero__actions{grid-template-columns:auto auto}.profile-settings{align-items:stretch;display:grid}.profile-settings :deep(.ui-button){width:100%}.calendar-settings__header{align-items:flex-start}.setting-switch{align-items:flex-start}}
 </style>
