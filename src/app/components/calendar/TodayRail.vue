@@ -180,7 +180,14 @@ function difference(start, end) {
 .today-rail__free-windows small { color: var(--text-muted); font-size: 9px; }
 
 @media (max-width: 1100px) {
-  .today-rail { position: static; }
+  .today-rail {
+    position: static;
+    gap: 7px;
+    padding: 9px;
+  }
+
+  .today-rail__overview article { padding: 6px; }
+  .today-rail__section { gap: 6px; padding-top: 7px; }
 }
 
 @media (max-width: 520px) {

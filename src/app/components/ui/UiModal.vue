@@ -102,4 +102,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   padding: 16px;
   overflow: auto;
 }
+
+@media (min-width: 600px) and (max-width: 1180px), (min-width: 600px) and (max-height: 900px) {
+  .ui-modal { padding: 8px; }
+  .ui-modal__dialog { max-height: calc(100dvh - 16px); border-radius: var(--radius-lg); }
+  .ui-modal__header { padding: 11px 12px 8px; }
+  .ui-modal__header h2 { font-size: 16px; }
+  .ui-modal__eyebrow { margin-bottom: 1px; font-size: 8px; }
+  .ui-modal__body { padding: 11px 12px; }
+}
 </style>

@@ -116,3 +116,69 @@ h3 {
     background: var(--bg-primary);
   }
 }
+
+@media (pointer: coarse) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  .ui-button,
+  .ui-icon-button {
+    min-height: 32px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button:hover,
+  a:hover {
+    transform: none;
+  }
+}
+
+.calendar-touch-dragging {
+  user-select: none;
+  overscroll-behavior: none;
+}
+
+.calendar-touch-dragging * {
+  cursor: grabbing !important;
+}
+
+.calendar-touch-drop-target {
+  position: relative;
+  z-index: 3;
+  outline: 2px solid var(--accent-hover) !important;
+  outline-offset: -3px;
+  background-color: var(--accent-soft) !important;
+}
+
+.calendar-touch-drag-label {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  left: 0;
+  max-width: 220px;
+  overflow: hidden;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill);
+  padding: 7px 11px;
+  color: var(--text-inverse);
+  background: var(--accent);
+  box-shadow: var(--shadow-lg);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform;
+}

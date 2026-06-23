@@ -194,6 +194,26 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
   padding-left: 6px;
 }
 
+@media (min-width: 600px) and (max-width: 1180px) {
+  .calendar-board {
+    padding: 11px;
+  }
+
+  .calendar-board__toolbar {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .calendar-board__toolbar h1 {
+    font-size: 22px;
+  }
+
+  .calendar-board__members {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+}
+
 @media (max-width: 980px) {
   .calendar-board__toolbar {
     display: grid;

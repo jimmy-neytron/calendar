@@ -33,6 +33,15 @@
       >
         {{ viewMode === 'day' ? 'Месяц' : 'День' }}
       </UiButton>
+      <RouterLink
+        v-if="isCalendarRoute"
+        class="app-header__display"
+        :to="{ name: 'day-display' }"
+        title="Открыть экран дня"
+      >
+        <UiIcon name="grid" />
+        <span>Экран дня</span>
+      </RouterLink>
       <NotificationBell />
       <RouterLink class="app-header__user" :to="{ name: 'settings' }" :title="currentUser?.email">
         {{ currentUser?.avatar || '?' }}
@@ -44,6 +53,7 @@
 <script setup>
 import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
+import UiIcon from '../ui/UiIcon.vue'
 import NotificationBell from '../notifications/NotificationBell.vue'
 import { networkActivityStore } from '../../stores/networkActivity.store.js'
 
@@ -142,6 +152,48 @@ const requestLabel = computed(() => networkActivityStore.activeRequests.value > 
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
+}
+
+.app-header__display {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  text-decoration: none;
+  transition: border-color .18s var(--ease-out), background .18s var(--ease-out);
+}
+
+.app-header__display:hover {
+  border-color: var(--accent-border);
+  background: var(--control-bg-hover);
+}
+
+@media (max-width: 1040px) {
+  .app-header__display span {
+    display: none;
+  }
+
+  .app-header__display {
+    width: 38px;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 1180px), (min-width: 600px) and (max-height: 900px) {
+  .app-header {
+    min-height: 48px;
+    padding-block: 5px;
+  }
+
+  .app-header__brand strong { font-size: 11px; }
+  .app-header__brand small { font-size: 8px; }
+  .app-header__date { min-width: 108px; padding-block: 2px; }
 }
 
 .app-header__network {

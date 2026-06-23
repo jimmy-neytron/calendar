@@ -11,6 +11,7 @@
     :style="{ '--event-color': calendarColor || accent }"
     draggable="true"
     @dragstart="handleDragStart"
+    @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
     @dblclick="$emit('edit', event)"
   >
     <div class="event-card__meta">
@@ -44,6 +45,7 @@ import { formatTimeRange } from '../../utils/formatters/dateFormatter.js'
 import { formatEventTitle, getCategoryMeta, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
+import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
 const props = defineProps({
   event: { type: Object, required: true },
@@ -51,7 +53,8 @@ const props = defineProps({
   compact: { type: Boolean, default: false },
 })
 
-defineEmits(['edit'])
+const emit = defineEmits(['edit', 'move-event'])
+const { beginTouchDrag } = useTouchEventDrag()
 
 const accent = computed(() => getEventAccent(props.event.memberIds, props.members))
 const category = computed(() => getCategoryMeta(props.event.category))
@@ -66,6 +69,10 @@ function handleDragStart(dragEvent) {
   dragEvent.dataTransfer.effectAllowed = 'copyMove'
   dragEvent.dataTransfer.setData('text/calendar-event-id', props.event.id)
   dragEvent.dataTransfer.setData('text/plain', props.event.id)
+}
+
+function moveEvent(payload) {
+  emit('move-event', payload)
 }
 </script>
 

@@ -1,5 +1,5 @@
 <template>
-  <RouterView v-if="isAuthRoute" v-slot="{ Component }">
+  <RouterView v-if="isStandaloneRoute" v-slot="{ Component }">
     <transition name="page-shift" mode="out-in">
       <component :is="Component" :key="$route.name" />
     </transition>
@@ -108,6 +108,7 @@ useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const isAuthRoute = computed(() => route.name === 'login')
+const isStandaloneRoute = computed(() => isAuthRoute.value || route.meta.standalone)
 let onboardingTimer = null
 const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
   members: workspaceStore.activeWorkspaceMembers.value,

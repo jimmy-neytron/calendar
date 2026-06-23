@@ -923,6 +923,134 @@ function addMinutesToTime(time, minutes) {
   opacity: 0;
 }
 
+@media (min-width: 600px) and (max-width: 1180px), (min-width: 600px) and (max-height: 900px) {
+  .event-drawer {
+    top: 6px;
+    right: 6px;
+    bottom: 6px;
+    width: min(640px, calc(100vw - 18px));
+    border-radius: 17px;
+  }
+
+  .event-drawer__hero {
+    min-height: 118px;
+    justify-content: center;
+    gap: 7px;
+    padding: 14px 54px 12px 18px;
+  }
+
+  .event-drawer__hero::after { height: 34px; }
+  .event-drawer__hero-orbit { right: 24px; width: 112px; height: 112px; }
+  .event-drawer__hero-orbit i:nth-child(2) { inset: 18px; }
+  .event-drawer__hero-orbit i:nth-child(3) { inset: 36px; }
+
+  .event-drawer__hero-content {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .event-drawer__hero-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 19px;
+  }
+
+  .event-drawer__hero-copy p { margin-bottom: 2px; font-size: 8px; }
+  .event-drawer__hero-copy h2 { max-width: 470px; font-size: clamp(18px, 2.4vw, 25px); }
+  .event-drawer__hero-copy > div { gap: 4px 9px; margin-top: 5px; }
+  .event-drawer__hero-copy > div span { font-size: 8px; }
+  .event-drawer__hero-badges { gap: 4px; }
+  .event-drawer__hero-badges span { padding: 3px 7px; font-size: 7px; }
+  .event-drawer__hero-close { top: 9px; right: 9px; }
+
+  .event-drawer__form {
+    gap: 8px;
+    padding: 12px 16px 0;
+  }
+
+  .event-drawer__templates,
+  .event-drawer__duplicate,
+  .event-drawer__repeat,
+  .event-drawer__collaboration {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .event-drawer__linked-budget { gap: 9px; padding: 8px; }
+  .event-drawer__linked-budget p { margin-top: 1px; line-height: 1.35; }
+  .event-drawer__grid { gap: 7px; }
+
+  .event-drawer__select,
+  .event-drawer__members,
+  .event-drawer__weekdays {
+    gap: 3px;
+  }
+
+  .event-drawer__select span,
+  .event-drawer__members > span,
+  .event-drawer__collaboration-head span,
+  .event-drawer__responses > span {
+    font-size: 9px;
+  }
+
+  .event-drawer__templates > span,
+  .event-drawer__duplicate > span {
+    margin-bottom: 1px;
+    font-size: 8px;
+  }
+
+  .event-drawer__templates div,
+  .event-drawer__weekdays div,
+  .event-drawer__members div {
+    gap: 4px;
+  }
+
+  .event-drawer__templates button,
+  .event-drawer__weekdays button,
+  .event-drawer__responses button {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .event-drawer__toggle {
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .event-drawer__comments article p { font-size: 9px; }
+
+  .event-drawer__footer {
+    gap: 6px;
+    margin: 5px -16px 0;
+    padding: 9px 16px;
+  }
+
+  .event-drawer__form :deep(.ui-input) { gap: 3px; }
+  .event-drawer__form :deep(.ui-input__label) { font-size: 9px; }
+
+  .event-drawer__form :deep(.ui-input__control) {
+    min-height: 32px;
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+
+  .event-drawer__form :deep(.ui-input__control--textarea) {
+    min-height: 52px;
+    padding-top: 7px;
+  }
+
+  .event-drawer__form :deep(.ui-select__trigger) {
+    min-height: 32px;
+    padding-block: 5px;
+    font-size: 11px;
+  }
+
+  .event-drawer__form :deep(.ui-button) { min-height: 32px; }
+}
+
 @media (max-width: 560px) {
   .event-drawer {
     inset: 0;

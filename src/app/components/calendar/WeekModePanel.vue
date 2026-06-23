@@ -4,6 +4,7 @@
       v-for="day in weekRange"
       :key="day.key"
       class="week-mode__day"
+      :data-calendar-drop-date="day.key"
       :class="{
         'week-mode__day--today': day.isToday,
         'week-mode__day--selected': day.key === selectedDateKey,
@@ -35,6 +36,7 @@
           :members="members"
           compact
           @edit="$emit('edit-event', event)"
+          @move-event="$emit('move-event', $event)"
         />
       </div>
 

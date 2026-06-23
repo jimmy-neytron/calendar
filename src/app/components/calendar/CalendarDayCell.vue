@@ -1,6 +1,7 @@
 <template>
   <button
     class="calendar-day"
+    :data-calendar-drop-date="day.key"
     :class="{
       'calendar-day--muted': !day.isCurrentMonth,
       'calendar-day--today': day.isToday,
@@ -39,7 +40,8 @@
         :style="{ '--event-color': getEventColor(event) }"
         draggable="true"
         @dragstart.stop="handleDragStart(event, $event)"
-        @click.stop="$emit('edit-event', event)"
+        @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
+        @click.stop="handleEventClick(event)"
       >
         <span class="calendar-day__event-copy">
           <b>{{ isBirthdayEvent(event) ? '🎁' : event.allDay ? 'Весь день' : event.startTime }}</b>
@@ -61,6 +63,7 @@ import { computed, ref } from 'vue'
 import { formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
+import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
 const props = defineProps({
   day: { type: Object, required: true },
@@ -72,6 +75,7 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'edit-event', 'move-event'])
 const isDragOver = ref(false)
+const { beginTouchDrag, shouldSuppressEventClick } = useTouchEventDrag()
 
 const visibleEvents = computed(() => [...props.events]
   .sort((first, second) => Number(isBirthdayEvent(second)) - Number(isBirthdayEvent(first)))
@@ -91,6 +95,15 @@ function handleDrop(dropEvent) {
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
   emit('move-event', { eventId, date: props.day.key, copy: dropEvent.altKey })
+}
+
+function moveEvent(payload) {
+  emit('move-event', payload)
+}
+
+function handleEventClick(event) {
+  if (shouldSuppressEventClick()) return
+  emit('edit-event', event)
 }
 
 function getEventColor(event) {

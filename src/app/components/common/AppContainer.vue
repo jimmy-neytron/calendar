@@ -17,4 +17,10 @@
     padding: 10px;
   }
 }
+
+@media (min-width: 600px) and (max-width: 1180px) {
+  .app-container {
+    padding: 9px;
+  }
+}
 </style>

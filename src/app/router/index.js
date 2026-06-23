@@ -15,16 +15,18 @@ const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
+const DayDisplayPage = () => import('../pages/display/DayDisplayPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage,
+  IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage,
 ]
 let pagesPreloaded = false
 
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
+  { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
   { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет' } },
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },

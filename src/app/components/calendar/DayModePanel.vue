@@ -20,7 +20,13 @@
       </div>
     </header>
 
-    <div v-if="allDayEvents.length" class="day-mode__all-day" @dragover.prevent @drop="handleDayDrop">
+    <div
+      v-if="allDayEvents.length"
+      class="day-mode__all-day"
+      :data-calendar-drop-date="selectedDateKey"
+      @dragover.prevent
+      @drop="handleDayDrop"
+    >
       <span>Весь день</span>
       <EventCard
         v-for="event in allDayEvents"
@@ -42,6 +48,8 @@
           v-for="hour in DAY_TIMELINE_HOURS"
           :key="hour"
           class="day-mode__hour"
+          :data-calendar-drop-date="selectedDateKey"
+          :data-calendar-drop-time="`${String(hour).padStart(2, '0')}:00`"
           @dragover.prevent
           @drop="handleHourDrop(hour, $event)"
         >
@@ -55,6 +63,7 @@
                 :style="{ '--event-color': getEventColor(event) }"
                 draggable="true"
                 @dragstart="handleDragStart(event, $event)"
+                @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
                 @dblclick="$emit('edit-event', event)"
               >
                 <div class="day-mode__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
@@ -88,6 +97,7 @@ import { DAY_TIMELINE_HOURS } from '../../utils/constants/calendarConstants.js'
 import { formatDateShort, formatTimeRange, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventMembers, formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
+import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
 const props = defineProps({
   selectedDateKey: { type: String, required: true },
@@ -97,6 +107,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['create-event', 'edit-event', 'move-event', 'resize-event'])
+const { beginTouchDrag } = useTouchEventDrag()
 
 const timedEvents = computed(() => props.events.filter((event) => !event.allDay))
 const allDayEvents = computed(() => props.events.filter((event) => event.allDay))
@@ -139,6 +150,10 @@ function handleHourDrop(hour, dropEvent) {
   const eventId = dropEvent.dataTransfer.getData('text/calendar-event-id') || dropEvent.dataTransfer.getData('text/plain')
   if (!eventId) return
   emit('move-event', { eventId, date: props.selectedDateKey, time: `${String(hour).padStart(2, '0')}:00`, copy: dropEvent.altKey })
+}
+
+function moveEvent(payload) {
+  emit('move-event', payload)
 }
 
 function getEventColor(event) {
