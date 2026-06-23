@@ -134,8 +134,7 @@ function parseDuration(source) {
 function parseReminder(source) {
   if (/напомни\s+за\s+(?:1\s*)?(?:день|дня)/i.test(source)) return '1d'
   if (/напомни\s+за\s+(?:1\s*)?(?:час|часа)/i.test(source)) return '1h'
-  if (/напомни\s+за\s+15\s*(?:мин|минут)/i.test(source)) return '15m'
-  if (/напомни\s+за\s+5\s*(?:мин|минут)/i.test(source)) return '5m'
+  if (/напомни\s+за\s+\d+\s*(?:мин|минут)/i.test(source)) return '1h'
   return 'none'
 }
 

@@ -67,8 +67,6 @@ export const IMPORTANCE_OPTIONS = [
 
 export const REMINDER_OPTIONS = [
   { value: 'none', label: 'Не напоминать', minutes: null },
-  { value: '5m', label: 'За 5 минут', minutes: 5 },
-  { value: '15m', label: 'За 15 минут', minutes: 15 },
   { value: '1h', label: 'За 1 час', minutes: 60 },
   { value: '1d', label: 'За 1 день', minutes: 1440 },
 ]
@@ -88,7 +86,7 @@ export const EVENT_TEMPLATES = [
     category: 'work',
     duration: 30,
     importance: 'normal',
-    reminder: '15m',
+    reminder: '1h',
   },
   {
     id: 'training',

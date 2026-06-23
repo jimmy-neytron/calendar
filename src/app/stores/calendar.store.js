@@ -25,7 +25,9 @@ const eventRepository = new SyncedCollectionRepository(STORAGE_KEY, defaultWorks
 const { expandRecurringEvents } = useRecurringEvents()
 const { addActivity } = useActivityLog()
 
-const events = computed(() => eventRepository.items.value.filter((event) => event.workspaceId === workspaceStore.activeWorkspaceId.value))
+const events = computed(() => eventRepository.items.value
+  .filter((event) => event.workspaceId === workspaceStore.activeWorkspaceId.value)
+  .map(normalizeEvent))
 const visibleEvents = computed(() => expandRecurringEvents(events.value))
 const sortedEvents = computed(() => [...visibleEvents.value].sort(compareEvents))
 const todayEvents = computed(() => {
@@ -251,13 +253,18 @@ function normalizeEvent(data) {
     repeatUnit: data.repeatUnit || 'week',
     repeatWeekdays: Array.isArray(data.repeatWeekdays) ? data.repeatWeekdays.map(Number) : [],
     importance: data.importance || 'normal',
-    reminder: data.reminder || 'none',
+    reminder: normalizeReminder(data.reminder),
     linkedEntityType: data.linkedEntityType || '',
     linkedEntityId: data.linkedEntityId || '',
     completedAt: data.completedAt || null,
     createdAt: data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt || new Date().toISOString(),
   }
+}
+
+function normalizeReminder(value) {
+  if (value === '5m' || value === '15m') return '1h'
+  return ['none', '1h', '1d'].includes(value) ? value : 'none'
 }
 
 function addComment(id, text) {

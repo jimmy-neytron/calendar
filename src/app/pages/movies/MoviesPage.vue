@@ -161,7 +161,6 @@
             <span>Напоминание</span>
             <UiSelect v-model="planReminder">
               <option value="none">Не напоминать</option>
-              <option value="15m">За 15 минут</option>
               <option value="1h">За 1 час</option>
               <option value="1d">За 1 день</option>
             </UiSelect>

@@ -6,6 +6,7 @@
   "description": "Семейный workspace-календарь на Vue 3 с Supabase Auth, RLS и синхронизацией данных.",
   "scripts": {
     "dev": "vite",
+    "vapid:generate": "node scripts/generate-vapid-keys.mjs",
     "icons:pwa": "powershell -ExecutionPolicy Bypass -File scripts/generate-pwa-icons.ps1",
     "prebuild": "powershell -ExecutionPolicy Bypass -File scripts/generate-pwa-icons.ps1",
     "build": "vite build",

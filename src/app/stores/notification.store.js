@@ -164,6 +164,13 @@ function clearCurrentWorkspaceNotifications() {
     .forEach((notification) => repository.delete(notification.id))
 }
 
+function ingestRemoteRow(row) {
+  if (!row?.id) return null
+  const notification = repository.fromRow(row)
+  repository.mergeById([notification])
+  return notification
+}
+
 function formatDate(dateKey) {
   if (!dateKey) return 'день без даты'
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(new Date(`${dateKey}T12:00:00`))
@@ -193,5 +200,6 @@ export const notificationStore = {
   markAllAsRead,
   removeNotification,
   clearCurrentWorkspaceNotifications,
+  ingestRemoteRow,
   loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
 }

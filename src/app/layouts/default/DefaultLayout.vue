@@ -90,8 +90,9 @@ import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
-import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
+import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
+import { showSystemEventReminder } from '../../services/systemNotification.service.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 
@@ -105,7 +106,10 @@ const paletteQuery = ref('')
 const { notifications, dismiss, notify } = useNotification()
 const { start: startOnboarding } = useOnboarding()
 const { runDailyAutoBackup } = useAutoBackup()
-const { start: startLocalReminders, stop: stopLocalReminders } = useLocalReminders()
+const {
+  start: startRealtimeNotifications,
+  stop: stopRealtimeNotifications,
+} = useRealtimeNotifications({ onEventReminder: showEventReminder })
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
@@ -192,6 +196,19 @@ function runNotificationAction(notification) {
   dismiss(notification.id)
 }
 
+async function showEventReminder(reminder) {
+  if (reminder.workspaceId !== workspaceStore.activeWorkspaceId.value) return
+  const eventId = reminder.eventDate
+    ? `${reminder.eventId}::${reminder.eventDate}`
+    : reminder.eventId
+  await showSystemEventReminder(reminder)
+  notify(reminder.message || 'Скоро событие', reminder.severity || 'warning', {
+    duration: 12000,
+    actionLabel: 'Открыть событие',
+    action: () => openEventById(eventId),
+  })
+}
+
 function handleGlobalKeydown(event) {
   const target = event.target
   const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable
@@ -227,15 +244,18 @@ function handleBackendSyncComplete() {
 
 onMounted(() => {
   runDailyAutoBackup()
-  startLocalReminders()
   document.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('backend-sync-error', handleBackendSyncError)
   window.addEventListener('backend-sync-complete', handleBackendSyncComplete)
 })
 
-watch([currentUser, isAuthRoute], ([user, authRoute]) => {
+watch([currentUser, isAuthRoute], async ([user, authRoute]) => {
   window.clearTimeout(onboardingTimer)
-  if (!user || authRoute) return
+  if (!user || authRoute) {
+    await stopRealtimeNotifications()
+    return
+  }
+  await startRealtimeNotifications()
   onboardingTimer = window.setTimeout(() => startOnboarding(), 650)
 }, { immediate: true })
 
@@ -243,7 +263,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('backend-sync-error', handleBackendSyncError)
   window.removeEventListener('backend-sync-complete', handleBackendSyncComplete)
-  stopLocalReminders()
+  stopRealtimeNotifications()
   window.clearTimeout(onboardingTimer)
 })
 </script>

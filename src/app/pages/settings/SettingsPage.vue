@@ -228,7 +228,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
-import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
+import { usePushNotifications } from '../../composables/notifications/usePushNotifications.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
@@ -248,7 +248,7 @@ const {
   enabled: localRemindersEnabled,
   enable: enableLocalReminders,
   disable: disableLocalReminders,
-} = useLocalReminders()
+} = usePushNotifications()
 
 const preferencesSaved = ref(false)
 const isLoggingOut = ref(false)
@@ -285,8 +285,11 @@ function markPreferencesSaved() {
 
 async function toggleLocalReminders(enabled) {
   if (!enabled) {
-    disableLocalReminders()
-    notify('Уведомления выключены', 'info')
+    const result = await disableLocalReminders()
+    notify(
+      result.message || 'Push-уведомления выключены на этом устройстве',
+      result.ok ? 'info' : 'danger',
+    )
     return
   }
   const result = await enableLocalReminders()
@@ -310,6 +313,7 @@ async function logout() {
   if (isLoggingOut.value) return
   isLoggingOut.value = true
   try {
+    if (localRemindersEnabled.value) await disableLocalReminders()
     await authStore.logout()
     await router.replace({ name: 'login' })
   } catch {

@@ -297,6 +297,9 @@ watch(
   (query) => {
     if (query.mode === 'day') enableDayMode()
     if (query.today) goToday()
+    if (query.event) {
+      editEventById(query.eventDate ? `${query.event}::${query.eventDate}` : query.event)
+    }
   },
   { immediate: true }
 )

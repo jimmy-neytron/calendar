@@ -23,6 +23,32 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
+self.addEventListener('push', (event) => {
+  const payload = readPushPayload(event)
+  event.waitUntil(self.registration.showNotification(payload.title || 'Скоро событие', {
+    body: payload.body || '',
+    icon: payload.icon || '/icons/icon-192.png',
+    badge: payload.badge || '/icons/icon-192.png',
+    tag: payload.tag || 'event-reminder',
+    data: payload.data || { url: '/' },
+  }))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients.find((client) => client.url.startsWith(self.location.origin))
+      if (existing) {
+        await existing.navigate(targetUrl)
+        return existing.focus()
+      }
+      return self.clients.openWindow(targetUrl)
+    })
+  )
+})
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
@@ -70,4 +96,14 @@ async function cacheFirstAsset(request) {
 function isStaticAsset(request, url) {
   return ['script', 'style', 'font', 'image', 'worker'].includes(request.destination)
     || /\.(?:js|css|woff2?|png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname)
+}
+
+function readPushPayload(event) {
+  if (!event.data) return {}
+  const value = event.data.text()
+  try {
+    return JSON.parse(value)
+  } catch {
+    return { body: value }
+  }
 }
