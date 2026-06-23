@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { authStore } from '../stores/auth.store.js'
 import { workspaceStore } from '../stores/workspace.store.js'
 import { loadWorkspaceData } from '../services/backend/workspaceData.service.js'
+import { readActivityLogSetting } from '../composables/preferences/useActivityLogSettings.js'
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
@@ -33,12 +34,12 @@ export const routes = [
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
   { path: '/analytics/calendar', name: 'analytics-calendar', component: AnalyticsDetailPage, meta: { title: 'Аналитика календаря', analyticsSection: 'calendar' } },
-  { path: '/analytics/activity', name: 'analytics-activity', component: AnalyticsDetailPage, meta: { title: 'Аналитика активности', analyticsSection: 'activity' } },
+  { path: '/analytics/activity', name: 'analytics-activity', component: AnalyticsDetailPage, meta: { title: 'Аналитика активности', analyticsSection: 'activity', requiresActivityLog: true } },
   { path: '/analytics/sport', name: 'analytics-sport', component: AnalyticsDetailPage, meta: { title: 'Аналитика спорта', analyticsSection: 'sport' } },
   { path: '/analytics/movies', name: 'analytics-movies', component: AnalyticsDetailPage, meta: { title: 'Аналитика фильмов', analyticsSection: 'movies' } },
   { path: '/analytics/ideas', name: 'analytics-ideas', component: AnalyticsDetailPage, meta: { title: 'Аналитика идей', analyticsSection: 'ideas' } },
   { path: '/analytics/birthdays', name: 'analytics-birthdays', component: AnalyticsDetailPage, meta: { title: 'Аналитика дней рождения', analyticsSection: 'birthdays' } },
-  { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность' } },
+  { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
   { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы' } },
@@ -63,6 +64,10 @@ router.beforeEach(async (to) => {
   await authStore.initialize()
   if (!to.meta.public && !authStore.isAuthenticated.value) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresActivityLog && !readActivityLogSetting()) {
+    return { name: 'settings' }
   }
 
   if (to.name === 'login' && authStore.isAuthenticated.value) {

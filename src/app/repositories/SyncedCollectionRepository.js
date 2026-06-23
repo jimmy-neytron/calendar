@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { createCollectionApi } from '../api/supabase/collections.api.js'
 import { fromDatabaseRow, toDatabaseRow } from '../api/supabase/entityMapper.js'
+import { isSyncTableEnabled } from '../config/featureFlags.js'
 import { LocalCollectionRepository } from './LocalCollectionRepository.js'
 
 const QUEUE_KEY = 'workspace-calendar:sync-queue'
@@ -15,12 +16,17 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   constructor(key, initialValue, table, options = {}) {
     super(key, initialValue)
     this.table = table
+    this.isEnabled = options.isEnabled || (() => options.enabled ?? isSyncTableEnabled(table))
     this.api = createCollectionApi(table)
     this.toRow = options.toRow || toDatabaseRow
     this.fromRow = options.fromRow || fromDatabaseRow
     this.getEntityId = options.getEntityId || ((item) => item.id)
     this.lastError = ref('')
     this.pendingCount = ref(0)
+    if (!this.isEnabled()) {
+      removeTableOperations(table)
+    }
+
     repositories.set(table, this)
     installConnectivityListeners()
     updatePendingCounts()
@@ -29,6 +35,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
 
   async loadWorkspace(workspaceId) {
     if (!workspaceId) return []
+    if (!this.isEnabled()) return []
     const localItems = this.items.value.filter((item) => item.workspaceId === workspaceId)
     if (!isOnline()) return localItems
 
@@ -65,12 +72,14 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   }
 
   create(item) {
+    if (!this.isEnabled()) return item
     super.create(item)
     this.syncOperation({ type: 'create', entityId: this.getEntityId(item), payload: this.toRow(item) })
     return item
   }
 
   async createAndWait(item) {
+    if (!this.isEnabled()) return { ok: true, disabled: true, item }
     super.create(item)
     const result = await this.syncOperation(
       { type: 'create', entityId: this.getEntityId(item), payload: this.toRow(item) },
@@ -82,6 +91,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   }
 
   update(id, updates) {
+    if (!this.isEnabled()) return null
     const previous = this.findLocal(id)
     const updated = this.updateLocal(id, updates)
     if (updated) {
@@ -94,6 +104,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   }
 
   async updateAndWait(id, updates) {
+    if (!this.isEnabled()) return { ok: true, disabled: true }
     const previous = this.findLocal(id)
     const updated = this.updateLocal(id, updates)
     if (!updated) return { ok: false, message: 'Запись не найдена' }
@@ -108,6 +119,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   }
 
   delete(id) {
+    if (!this.isEnabled()) return
     const previous = this.findLocal(id)
     this.deleteLocal(id)
     this.syncOperation(
@@ -117,6 +129,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   }
 
   async deleteAndWait(id) {
+    if (!this.isEnabled()) return { ok: true, disabled: true }
     const previous = this.findLocal(id)
     this.deleteLocal(id)
     const result = await this.syncOperation(
@@ -129,12 +142,14 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   }
 
   async upsert(items) {
+    if (!this.isEnabled()) return { ok: true, disabled: true }
     if (!items.length) return { ok: true }
     const payload = items.map(this.toRow)
     return this.syncOperation({ type: 'upsert', entityId: '', payload }, { wait: true })
   }
 
   async syncOperation(operation, options = {}) {
+    if (!this.isEnabled()) return { ok: true, disabled: true }
     const queuedOperation = createQueueOperation(this.table, operation)
 
     if (!isOnline()) {
@@ -212,6 +227,11 @@ async function flushSyncQueue() {
       const operation = syncQueue[0]
       const repository = repositories.get(operation.table)
       if (!repository) break
+      if (!repository.isEnabled()) {
+        syncQueue.shift()
+        persistQueue()
+        continue
+      }
 
       repository.pendingCount.value += 1
       try {
@@ -349,10 +369,27 @@ function readQueue() {
   if (typeof localStorage === 'undefined') return []
   try {
     const stored = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]')
-    return Array.isArray(stored) ? stored : []
+    if (!Array.isArray(stored)) return []
+    const enabledOperations = stored.filter((operation) => isSyncTableEnabled(operation.table))
+    if (enabledOperations.length !== stored.length) {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(enabledOperations))
+    }
+    return enabledOperations
   } catch {
     return []
   }
+}
+
+function removeTableOperations(table) {
+  const nextQueue = syncQueue.filter((operation) => operation.table !== table)
+  if (nextQueue.length === syncQueue.length) return
+  syncQueue = nextQueue
+  persistQueue()
+  updatePendingCounts()
+}
+
+export function discardSyncOperations(table) {
+  removeTableOperations(table)
 }
 
 function persistQueue() {

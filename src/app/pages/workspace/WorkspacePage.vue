@@ -6,7 +6,13 @@
         <h1>{{ activeWorkspace?.name || 'Пространство' }}</h1>
         <p>{{ activeWorkspaceMembers.length }} участников · {{ roleLabel(currentUserRole) }}</p>
       </div>
-      <RouterLink class="workspace-page__activity" :to="{ name: 'activity' }">История изменений →</RouterLink>
+      <RouterLink
+        v-if="activityLogEnabled"
+        class="workspace-page__activity"
+        :to="{ name: 'activity' }"
+      >
+        История изменений →
+      </RouterLink>
     </header>
 
     <div class="workspace-page__grid">
@@ -175,10 +181,12 @@ import UiModal from '../../components/ui/UiModal.vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
+import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 
 const { notify } = useNotification()
 const { addActivity } = useActivityLog()
+const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 const activeWorkspace = workspaceStore.activeWorkspace
 const currentUserSpaces = workspaceStore.currentUserSpaces
 const activeWorkspaceMembers = workspaceStore.activeWorkspaceMembers

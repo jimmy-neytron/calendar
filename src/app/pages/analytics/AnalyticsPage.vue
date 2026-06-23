@@ -62,9 +62,11 @@
 <script setup>
 import { computed } from 'vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
+import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useAnalyticsData } from './useAnalyticsData.js'
 
 const analytics = useAnalyticsData()
+const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 
 const pulseScore = computed(() => Math.min(100, Math.round(
   Math.min(35, analytics.weekEvents.value.length * 5)
@@ -75,7 +77,9 @@ const pulseScore = computed(() => Math.min(100, Math.round(
 
 const overviewStats = computed(() => [
   { label: 'событий за неделю', value: analytics.weekEvents.value.length, icon: 'calendar' },
-  { label: 'действий за неделю', value: analytics.weekActivity.value.length, icon: 'activity' },
+  ...(activityLogEnabled.value
+    ? [{ label: 'действий за неделю', value: analytics.weekActivity.value.length, icon: 'activity' }]
+    : []),
   { label: 'спортивный прогресс', value: `${analytics.sportProgress.value.percent}%`, icon: 'sport' },
   { label: 'планов в календаре', value: analytics.plannedMovies.value + analytics.plannedIdeas.value, icon: 'check' },
 ])
@@ -87,11 +91,11 @@ const sections = computed(() => [
     description: 'Дни недели, категории и занятое время.', value: analytics.weekEvents.value.length,
     note: 'за 7 дней', color: 'var(--info)',
   },
-  {
+  ...(activityLogEnabled.value ? [{
     route: 'analytics-activity', title: 'Активность', caption: 'История пространства', icon: 'activity',
     description: 'Динамика действий и самые активные направления.', value: analytics.weekActivity.value.length,
     note: 'за 7 дней', color: 'var(--cyan)',
-  },
+  }] : []),
   {
     route: 'analytics-sport', title: 'Спорт', caption: 'Личный прогресс', icon: 'sport',
     description: 'Выполнение программы и ритм тренировок.', value: `${analytics.sportProgress.value.percent}%`,

@@ -1,4 +1,5 @@
 import { requireAuthenticatedSupabase, requireSupabase } from './client.js'
+import { readActivityLogSetting } from '../../composables/preferences/useActivityLogSettings.js'
 
 export async function listActivity({
   workspaceId,
@@ -8,6 +9,7 @@ export async function listActivity({
   userId = 'all',
   query = '',
 }) {
+  if (!readActivityLogSetting()) return { data: [], count: 0, error: null }
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
   let request = requireSupabase()
@@ -24,6 +26,7 @@ export async function listActivity({
 }
 
 export async function deleteActivity({ workspaceId, entryIds = null }) {
+  if (!readActivityLogSetting()) return { data: 0, error: null }
   const client = await requireAuthenticatedSupabase()
   return client.rpc('delete_workspace_activity', {
     p_workspace_id: workspaceId,

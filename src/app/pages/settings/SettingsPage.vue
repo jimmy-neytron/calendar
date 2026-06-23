@@ -203,6 +203,18 @@
               @update:model-value="toggleLocalReminders"
             />
           </label>
+
+          <label class="setting-switch">
+            <span>
+              <strong>Журнал активности</strong>
+              <small>Сохранять историю изменений в Supabase. Когда выключено, раздел «Активность» скрыт и база не заполняется.</small>
+            </span>
+            <UiToggle
+              :model-value="activityLogEnabled"
+              label="Журнал активности"
+              @update:model-value="toggleActivityLog"
+            />
+          </label>
         </article>
       </div>
     </section>
@@ -218,6 +230,7 @@ import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
 import { useLocalReminders } from '../../composables/notifications/useLocalReminders.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
+import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { HOLIDAY_COUNTRY_OPTIONS } from '../../utils/constants/calendarConstants.js'
@@ -226,6 +239,10 @@ import { authStore } from '../../stores/auth.store.js'
 const { notify } = useNotification()
 const router = useRouter()
 const { preferences, themeOptions } = useCalendarPreferences()
+const {
+  isEnabled: activityLogEnabled,
+  setEnabled: setActivityLogEnabled,
+} = useActivityLogSettings()
 const { start: startOnboarding } = useOnboarding()
 const {
   enabled: localRemindersEnabled,
@@ -274,6 +291,15 @@ async function toggleLocalReminders(enabled) {
   }
   const result = await enableLocalReminders()
   notify(result.message, result.ok ? 'success' : 'warning')
+}
+
+function toggleActivityLog(enabled) {
+  setActivityLogEnabled(enabled)
+  markPreferencesSaved()
+  notify(
+    enabled ? 'Журнал активности включён' : 'Журнал активности выключен',
+    enabled ? 'success' : 'info',
+  )
 }
 
 function openOnboarding() {

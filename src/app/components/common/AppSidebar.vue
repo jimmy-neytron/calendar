@@ -8,7 +8,7 @@
       </div>
     </div>
 
-    <nav v-for="group in groups" :key="group.label" class="app-sidebar__group">
+    <nav v-for="group in visibleGroups" :key="group.label" class="app-sidebar__group">
       <span class="app-sidebar__label">{{ group.label }}</span>
       <RouterLink
         v-for="item in group.items"
@@ -31,9 +31,11 @@
 <script setup>
 import { computed } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
+import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace
+const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
 
 const groups = [
@@ -58,6 +60,11 @@ const groups = [
     ],
   },
 ]
+
+const visibleGroups = computed(() => groups.map((group) => ({
+  ...group,
+  items: group.items.filter((item) => item.name !== 'activity' || activityLogEnabled.value),
+})))
 </script>
 
 <style scoped>

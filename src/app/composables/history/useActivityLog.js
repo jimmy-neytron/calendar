@@ -1,12 +1,18 @@
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { APP_CONFIG } from '../../config/app.config.js'
-import { SyncedCollectionRepository } from '../../repositories/SyncedCollectionRepository.js'
+import {
+  discardSyncOperations,
+  SyncedCollectionRepository,
+} from '../../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../../utils/helpers/idGenerator.js'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
+import { useActivityLogSettings } from '../preferences/useActivityLogSettings.js'
 
 const ACTIVITY_KEY = `${APP_CONFIG.storageKey}:activity`
+const { isEnabled } = useActivityLogSettings()
 const repository = new SyncedCollectionRepository(ACTIVITY_KEY, [], 'activity_entries', {
+  isEnabled: () => isEnabled.value,
   toRow: (item) => ({
     id: item.id,
     workspace_id: item.workspaceId,
@@ -28,7 +34,7 @@ const repository = new SyncedCollectionRepository(ACTIVITY_KEY, [], 'activity_en
   }),
 })
 
-const activity = computed(() => repository.items.value)
+const activity = computed(() => isEnabled.value ? repository.items.value : [])
 const workspaceActivity = computed(() => {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   return activity.value
@@ -37,6 +43,7 @@ const workspaceActivity = computed(() => {
 })
 
 function addActivity(action, text, payload = {}) {
+  if (!isEnabled.value) return null
   const user = authStore.currentUser.value
   const workspace = workspaceStore.activeWorkspace.value
   if (!workspace) return null
@@ -57,6 +64,7 @@ function addActivity(action, text, payload = {}) {
 }
 
 function forgetActivity(workspaceId, entryIds = null) {
+  if (!isEnabled.value) return
   const ids = entryIds?.length ? new Set(entryIds) : null
   repository.items.value = repository.items.value.filter((entry) => (
     entry.workspaceId !== workspaceId || (ids && !ids.has(entry.id))
@@ -69,6 +77,14 @@ export function useActivityLog() {
     workspaceActivity,
     addActivity,
     forgetActivity,
-    loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
+    loadWorkspace: (workspaceId) => isEnabled.value
+      ? repository.loadWorkspace(workspaceId)
+      : Promise.resolve([]),
   }
 }
+
+watch(isEnabled, (enabled) => {
+  if (enabled) return
+  repository.replaceAll([])
+  discardSyncOperations('activity_entries')
+})
