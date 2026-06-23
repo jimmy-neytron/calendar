@@ -1,18 +1,23 @@
 import { computed } from 'vue'
-import { createCollectionApi } from '../api/supabase/collections.api.js'
 import { APP_CONFIG } from '../config/app.config.js'
-import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
+import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import type { MovieMedia, WatchlistMovie } from '../types/movie'
 import { calendarStore } from './calendar.store.js'
 import { calendarCollectionStore } from './calendarCollection.store.js'
 import { workspaceStore } from './workspace.store.js'
 import { useActivityLog } from '../composables/history/useActivityLog.js'
 
-const { state: savedMovies } = useLocalStorage(
+const repository = new SyncedCollectionRepository(
   `${APP_CONFIG.storageKey}:movie-watchlist`,
   [] as WatchlistMovie[],
+  'movie_watchlist',
+  {
+    toRow: toDatabaseRow,
+    fromRow: fromDatabaseRow,
+    getEntityId: (movie: WatchlistMovie) => getRecordId(movie.workspaceId, movie),
+  },
 )
-const api = createCollectionApi('movie_watchlist')
+const savedMovies = repository.items
 const { addActivity } = useActivityLog()
 
 const watchlist = computed(() => savedMovies.value
@@ -40,18 +45,13 @@ async function add(movie: MovieMedia) {
     addedAt: new Date().toISOString(),
     plannedEventId: '',
   }
-  try {
-    const { error } = await api.create(toDatabaseRow(savedMovie))
-    if (error) return { ok: false, message: getDatabaseMessage(error) }
-    savedMovies.value = [...savedMovies.value, savedMovie]
-    addActivity('movie:save', `добавил(а) «${savedMovie.title}» в список «Хочу посмотреть»`, {
-      tmdbId: savedMovie.id,
-      mediaType: savedMovie.mediaType,
-    })
-    return { ok: true, movie: savedMovie }
-  } catch (error) {
-    return { ok: false, message: getErrorMessage(error) }
-  }
+  const result = await repository.createAndWait(savedMovie)
+  if (!result.ok) return { ok: false, message: getDatabaseMessage({ message: result.message }) }
+  addActivity('movie:save', `добавил(а) «${savedMovie.title}» в список «Хочу посмотреть»`, {
+    tmdbId: savedMovie.id,
+    mediaType: savedMovie.mediaType,
+  })
+  return { ok: true, movie: savedMovie }
 }
 
 async function remove(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
@@ -59,15 +59,8 @@ async function remove(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
   const saved = getSaved(movie)
   if (!saved) return { ok: true }
-  try {
-    const { error } = await api.remove(getRecordId(workspaceId, movie))
-    if (error) return { ok: false, message: getDatabaseMessage(error) }
-  } catch (error) {
-    return { ok: false, message: getErrorMessage(error) }
-  }
-  savedMovies.value = savedMovies.value.filter((item) => !(
-    item.workspaceId === workspaceId && getKey(item) === getKey(movie)
-  ))
+  const result = await repository.deleteAndWait(getRecordId(workspaceId, movie))
+  if (!result.ok) return { ok: false, message: getDatabaseMessage({ message: result.message }) }
   addActivity('movie:remove', `убрал(а) «${saved.title}» из списка «Хочу посмотреть»`, {
     tmdbId: saved.id,
     mediaType: saved.mediaType,
@@ -161,42 +154,15 @@ async function unplanMovie(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
 }
 
 async function loadWorkspace(workspaceId: string) {
-  if (!workspaceId) return []
-  const localMovies = savedMovies.value.filter((movie) => movie.workspaceId === workspaceId)
-  try {
-    const { data, error } = await api.list(workspaceId)
-    if (error) return null
-    const remoteMovies = (data || []).map(fromDatabaseRow)
-    const remoteKeys = new Set(remoteMovies.map(getKey))
-    const localOnly = localMovies.filter((movie) => !remoteKeys.has(getKey(movie)))
-    if (localOnly.length) {
-      const migrated = await api.upsert(localOnly.map(toDatabaseRow))
-      if (migrated.error) return null
-    }
-    const mergedMovies = [...remoteMovies, ...localOnly]
-    const otherWorkspaces = savedMovies.value.filter((movie) => movie.workspaceId !== workspaceId)
-    savedMovies.value = [...otherWorkspaces, ...mergedMovies]
-    return mergedMovies
-  } catch {
-    return null
-  }
+  return repository.loadWorkspace(workspaceId)
 }
 
 async function updateSavedMovie(movie: WatchlistMovie, updates: Partial<WatchlistMovie>) {
   const nextMovie = { ...movie, ...updates }
-  try {
-    const { error } = await api.update(
-      getRecordId(movie.workspaceId, movie),
-      toDatabaseRow(nextMovie),
-    )
-    if (error) return { ok: false, message: getDatabaseMessage(error) }
-    savedMovies.value = savedMovies.value.map((item) => (
-      item.workspaceId === movie.workspaceId && getKey(item) === getKey(movie) ? nextMovie : item
-    ))
-    return { ok: true, movie: nextMovie }
-  } catch (error) {
-    return { ok: false, message: getErrorMessage(error) }
-  }
+  const result = await repository.updateAndWait(getRecordId(movie.workspaceId, movie), nextMovie)
+  return result.ok
+    ? { ok: true, movie: nextMovie }
+    : { ok: false, message: getDatabaseMessage({ message: result.message }) }
 }
 
 function getRecordId(workspaceId: string, movie: Pick<MovieMedia, 'id' | 'mediaType'>): string {
@@ -248,10 +214,6 @@ function fromDatabaseRow(row: Record<string, unknown>): WatchlistMovie {
 function getDatabaseMessage(error: { code?: string; message?: string }): string {
   if (error.code === '42P01') return 'Таблица фильмов ещё не создана в Supabase. Выполни миграцию movie_watchlist.'
   return error.message || 'Не удалось синхронизировать список фильмов'
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Не удалось синхронизировать список фильмов'
 }
 
 function addMinutes(time: string, minutes: number): string {

@@ -58,6 +58,7 @@
     />
 
     <AppOnboarding />
+    <PwaPrompt />
 
     <div class="toast-stack">
       <transition-group name="toast-list">
@@ -82,6 +83,7 @@ import AppSidebar from '../../components/common/AppSidebar.vue'
 import CommandPalette from '../../components/common/CommandPalette.vue'
 import AppToast from '../../components/common/AppToast.vue'
 import AppOnboarding from '../../components/onboarding/AppOnboarding.vue'
+import PwaPrompt from '../../components/common/PwaPrompt.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { authStore } from '../../stores/auth.store.js'
@@ -219,11 +221,16 @@ function handleBackendSyncError(event) {
   notify(`Ошибка синхронизации: ${event.detail?.message || 'проверь подключение к Supabase'}`, 'danger')
 }
 
+function handleBackendSyncComplete() {
+  notify('Офлайн-изменения синхронизированы', 'success')
+}
+
 onMounted(() => {
   runDailyAutoBackup()
   startLocalReminders()
   document.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('backend-sync-error', handleBackendSyncError)
+  window.addEventListener('backend-sync-complete', handleBackendSyncComplete)
 })
 
 watch([currentUser, isAuthRoute], ([user, authRoute]) => {
@@ -235,6 +242,7 @@ watch([currentUser, isAuthRoute], ([user, authRoute]) => {
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('backend-sync-error', handleBackendSyncError)
+  window.removeEventListener('backend-sync-complete', handleBackendSyncComplete)
   stopLocalReminders()
   window.clearTimeout(onboardingTimer)
 })

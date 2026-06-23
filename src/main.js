@@ -2,6 +2,7 @@ import './app/stores/networkActivity.store.js'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { router } from './app/router/index.js'
+import { initializePwa } from './app/composables/pwa/usePwa.js'
 import './assets/styles/variables.css'
 import './assets/styles/animations.css'
 import './assets/styles/main.css'
@@ -12,6 +13,4 @@ app.use(router)
 await router.isReady()
 app.mount('#app')
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))
-}
+window.addEventListener('load', initializePwa)

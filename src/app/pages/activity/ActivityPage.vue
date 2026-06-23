@@ -152,6 +152,10 @@ async function clearAll() {
 async function removeActivity(entryIds) {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   if (!workspaceId) return
+  if (!navigator.onLine) {
+    notify('Для очистки общей истории нужен интернет', 'warning')
+    return
+  }
   deleting.value = true
   try {
     const { data, error } = await deleteActivity({ workspaceId, entryIds })

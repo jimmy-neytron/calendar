@@ -1,17 +1,56 @@
 {
-  "name": "Пространство — календарь",
-  "short_name": "Календарь",
-  "start_url": "/",
+  "id": "/",
+  "name": "Пространство — семейный календарь",
+  "short_name": "Пространство",
+  "description": "Общий календарь, бюджет, спорт и семейные планы.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#050505",
   "theme_color": "#050505",
-  "description": "Локальный календарь пространства, спорт и совместные планы.",
+  "categories": ["productivity", "lifestyle"],
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Сегодня",
+      "short_name": "Сегодня",
+      "url": "/?today=pwa",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Экран дня",
+      "short_name": "Экран дня",
+      "url": "/display",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Бюджет",
+      "short_name": "Бюджет",
+      "url": "/budget",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

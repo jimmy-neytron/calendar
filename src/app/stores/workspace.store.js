@@ -6,8 +6,8 @@ import { generateShortId } from '../utils/helpers/idGenerator.js'
 import { authStore } from './auth.store.js'
 
 const { state: activeWorkspaceId } = useLocalStorage(`${APP_CONFIG.storageKey}:active-workspace`, null)
-const workspaces = ref([])
-const invites = ref([])
+const { state: workspaces } = useLocalStorage(`${APP_CONFIG.storageKey}:workspaces`, [])
+const { state: invites } = useLocalStorage(`${APP_CONFIG.storageKey}:workspace-invites`, [])
 const loading = ref(false)
 const initializedForUserId = ref(null)
 const error = ref('')
@@ -72,6 +72,11 @@ async function initialize(force = false) {
     return
   }
   if (!force && initializedForUserId.value === userId) return
+  if (!navigator.onLine) {
+    initializedForUserId.value = userId
+    error.value = ''
+    return
+  }
 
   loading.value = true
   try {
@@ -100,6 +105,7 @@ async function loadInvites() {
     invites.value = []
     return
   }
+  if (!navigator.onLine) return
   const { data } = await workspacesApi.listInvites(activeWorkspace.value.id)
   invites.value = (data || []).map(mapInvite)
 }
@@ -131,6 +137,7 @@ async function switchWorkspace(workspaceId) {
 }
 
 async function createWorkspace(name) {
+  if (!navigator.onLine) return networkRequired()
   const title = String(name || '').trim()
   if (!title) return { ok: false, message: 'Укажи название пространства' }
   const { data, error: createError } = await workspacesApi.create(title)
@@ -150,6 +157,7 @@ async function createWorkspace(name) {
 }
 
 async function updateWorkspace(workspaceId, updates) {
+  if (!navigator.onLine) return networkRequired()
   const { error: updateError } = await workspacesApi.update(workspaceId, { name: String(updates.name || '').trim() })
   if (updateError) return { ok: false, message: updateError.message }
   await initialize(true)
@@ -157,6 +165,7 @@ async function updateWorkspace(workspaceId, updates) {
 }
 
 async function createInvite(workspaceId, email = '') {
+  if (!navigator.onLine) return networkRequired()
   const payload = {
     code: generateShortId().toUpperCase(),
     workspace_id: workspaceId,
@@ -171,6 +180,7 @@ async function createInvite(workspaceId, email = '') {
 }
 
 async function acceptInvite(code) {
+  if (!navigator.onLine) return networkRequired()
   const { data, error: acceptError } = await workspacesApi.acceptInvite(String(code || '').trim())
   if (acceptError) return { ok: false, message: acceptError.message }
   await initialize(true)
@@ -179,6 +189,7 @@ async function acceptInvite(code) {
 }
 
 async function removeMember(workspaceId, userId) {
+  if (!navigator.onLine) return networkRequired()
   const { error: removeError } = await workspacesApi.removeMember(workspaceId, userId)
   if (removeError) return { ok: false, message: removeError.message }
   await initialize(true)
@@ -186,6 +197,7 @@ async function removeMember(workspaceId, userId) {
 }
 
 async function updateMemberRole(workspaceId, userId, role) {
+  if (!navigator.onLine) return false
   const { error: roleError } = await workspacesApi.updateMemberRole(workspaceId, userId, role)
   if (roleError) return false
   await initialize(true)
@@ -198,6 +210,7 @@ function getCurrentUserRole() {
 }
 
 async function deleteWorkspace(workspaceId) {
+  if (!navigator.onLine) return networkRequired()
   const { error: removeError } = await workspacesApi.remove(workspaceId)
   if (removeError) {
     return {
@@ -214,6 +227,13 @@ async function deleteWorkspace(workspaceId) {
     await loadWorkspaceData(activeWorkspaceId.value, { force: true })
   }
   return { ok: true, workspaceId: activeWorkspaceId.value }
+}
+
+function networkRequired() {
+  return {
+    ok: false,
+    message: 'Для управления пространством и доступами нужен интернет',
+  }
 }
 
 export const workspaceStore = {

@@ -3,143 +3,361 @@ import { createCollectionApi } from '../api/supabase/collections.api.js'
 import { fromDatabaseRow, toDatabaseRow } from '../api/supabase/entityMapper.js'
 import { LocalCollectionRepository } from './LocalCollectionRepository.js'
 
+const QUEUE_KEY = 'workspace-calendar:sync-queue'
+const RETRY_DELAY = 15_000
+const repositories = new Map()
+let syncQueue = readQueue()
+let flushPromise = null
+let retryTimer = null
+let listenersInstalled = false
+
 export class SyncedCollectionRepository extends LocalCollectionRepository {
   constructor(key, initialValue, table, options = {}) {
     super(key, initialValue)
+    this.table = table
     this.api = createCollectionApi(table)
     this.toRow = options.toRow || toDatabaseRow
     this.fromRow = options.fromRow || fromDatabaseRow
+    this.getEntityId = options.getEntityId || ((item) => item.id)
     this.lastError = ref('')
     this.pendingCount = ref(0)
+    repositories.set(table, this)
+    installConnectivityListeners()
+    updatePendingCounts()
+    if (isOnline()) window.setTimeout(() => flushSyncQueue(), 0)
   }
 
   async loadWorkspace(workspaceId) {
     if (!workspaceId) return []
-    const { data, error } = await this.api.list(workspaceId)
-    if (error) {
-      this.lastError.value = error.message
-      reportSyncError(error.message)
+    const localItems = this.items.value.filter((item) => item.workspaceId === workspaceId)
+    if (!isOnline()) return localItems
+
+    try {
+      const { data, error } = await this.api.list(workspaceId)
+      if (error) {
+        if (isNetworkError(error)) {
+          scheduleRetry()
+          return localItems
+        }
+        this.handlePermanentError(error)
+        return null
+      }
+
+      const remoteItems = (data || []).map(this.fromRow)
+      const mergedItems = applyPendingOperations(
+        remoteItems,
+        getTableOperations(this.table, workspaceId),
+        this.fromRow
+      )
+      const otherWorkspaces = this.items.value.filter((item) => item.workspaceId !== workspaceId)
+      this.replaceAll([...otherWorkspaces, ...mergedItems])
+      this.lastError.value = ''
+      flushSyncQueue()
+      return mergedItems
+    } catch (error) {
+      if (isNetworkError(error)) {
+        scheduleRetry()
+        return localItems
+      }
+      this.handlePermanentError(error)
       return null
     }
-    const remoteItems = (data || []).map(this.fromRow)
-    const otherWorkspaces = this.items.value.filter((item) => item.workspaceId !== workspaceId)
-    this.replaceAll([...otherWorkspaces, ...remoteItems])
-    this.lastError.value = ''
-    return remoteItems
   }
 
   create(item) {
     super.create(item)
-    this.runSync(() => this.api.create(this.toRow(item)), () => super.delete(item.id))
+    this.syncOperation({ type: 'create', entityId: this.getEntityId(item), payload: this.toRow(item) })
     return item
   }
 
   async createAndWait(item) {
     super.create(item)
-    try {
-      const { error } = await this.api.create(this.toRow(item))
-      if (!error) return { ok: true, item }
-      super.delete(item.id)
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    } catch (error) {
-      super.delete(item.id)
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    }
+    const result = await this.syncOperation(
+      { type: 'create', entityId: this.getEntityId(item), payload: this.toRow(item) },
+      { wait: true }
+    )
+    if (result.ok) return { ...result, item }
+    this.deleteLocal(this.getEntityId(item))
+    return result
   }
 
   update(id, updates) {
-    const previous = this.findById(id)
-    const updated = super.update(id, updates)
+    const previous = this.findLocal(id)
+    const updated = this.updateLocal(id, updates)
     if (updated) {
-      this.runSync(
-        () => this.api.update(id, this.toRow(updated)),
-        () => previous && super.update(id, previous)
+      this.syncOperation(
+        { type: 'update', entityId: id, payload: this.toRow(updated) },
+        { rollback: () => previous && this.updateLocal(id, previous) }
       )
     }
     return updated
   }
 
   async updateAndWait(id, updates) {
-    const previous = this.findById(id)
-    const updated = super.update(id, updates)
+    const previous = this.findLocal(id)
+    const updated = this.updateLocal(id, updates)
     if (!updated) return { ok: false, message: 'Запись не найдена' }
-    try {
-      const { error } = await this.api.update(id, this.toRow(updated))
-      if (!error) return { ok: true, item: updated }
-      if (previous) super.update(id, previous)
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    } catch (error) {
-      if (previous) super.update(id, previous)
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    }
+
+    const result = await this.syncOperation(
+      { type: 'update', entityId: id, payload: this.toRow(updated) },
+      { wait: true }
+    )
+    if (result.ok) return { ...result, item: updated }
+    if (previous) this.updateLocal(id, previous)
+    return result
   }
 
   delete(id) {
-    const previous = this.findById(id)
-    super.delete(id)
-    this.runSync(() => this.api.remove(id), () => previous && super.create(previous))
+    const previous = this.findLocal(id)
+    this.deleteLocal(id)
+    this.syncOperation(
+      { type: 'delete', entityId: id, payload: null, workspaceId: previous?.workspaceId },
+      { rollback: () => previous && super.create(previous) }
+    )
   }
 
   async deleteAndWait(id) {
-    const previous = this.findById(id)
-    super.delete(id)
-    try {
-      const { error } = await this.api.remove(id)
-      if (!error) return { ok: true }
-      if (previous) super.create(previous)
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    } catch (error) {
-      if (previous) super.create(previous)
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    }
+    const previous = this.findLocal(id)
+    this.deleteLocal(id)
+    const result = await this.syncOperation(
+      { type: 'delete', entityId: id, payload: null, workspaceId: previous?.workspaceId },
+      { wait: true }
+    )
+    if (result.ok) return result
+    if (previous) super.create(previous)
+    return result
   }
 
   async upsert(items) {
     if (!items.length) return { ok: true }
-    const { error } = await this.api.upsert(items.map(this.toRow))
-    if (error) {
-      this.lastError.value = error.message
-      reportSyncError(error.message)
-      return { ok: false, message: error.message }
-    }
-    return { ok: true }
+    const payload = items.map(this.toRow)
+    return this.syncOperation({ type: 'upsert', entityId: '', payload }, { wait: true })
   }
 
-  runSync(request, rollback) {
+  async syncOperation(operation, options = {}) {
+    const queuedOperation = createQueueOperation(this.table, operation)
+
+    if (!isOnline()) {
+      enqueueOperation(queuedOperation)
+      return { ok: true, queued: true }
+    }
+
     this.pendingCount.value += 1
-    Promise.resolve(request())
-      .then(({ error }) => {
-        if (!error) {
-          this.lastError.value = ''
-          return
-        }
-        this.lastError.value = error.message
-        reportSyncError(error.message)
-        rollback?.()
-        console.error('Supabase sync failed:', error.message)
-      })
-      .catch((error) => {
-        this.lastError.value = error.message
-        reportSyncError(error.message)
-        rollback?.()
-        console.error('Supabase sync failed:', error)
-      })
-      .finally(() => {
-        this.pendingCount.value = Math.max(0, this.pendingCount.value - 1)
-      })
+    try {
+      const result = await executeOperation(this, queuedOperation)
+      if (!result.error) {
+        this.lastError.value = ''
+        return { ok: true }
+      }
+
+      if (isNetworkError(result.error)) {
+        enqueueOperation(queuedOperation)
+        scheduleRetry()
+        return { ok: true, queued: true }
+      }
+
+      this.handlePermanentError(result.error)
+      options.rollback?.()
+      return { ok: false, message: result.error.message }
+    } catch (error) {
+      if (isNetworkError(error)) {
+        enqueueOperation(queuedOperation)
+        scheduleRetry()
+        return { ok: true, queued: true }
+      }
+
+      this.handlePermanentError(error)
+      options.rollback?.()
+      return { ok: false, message: error.message }
+    } finally {
+      this.pendingCount.value = Math.max(0, this.pendingCount.value - 1)
+    }
   }
+
+  handlePermanentError(error) {
+    const message = error?.message || 'Не удалось синхронизировать данные'
+    this.lastError.value = message
+    reportSyncError(message)
+    console.error('Supabase sync failed:', error)
+  }
+
+  findById(id) {
+    return this.findLocal(id)
+  }
+
+  findLocal(id) {
+    return this.items.value.find((item) => this.getEntityId(item) === id)
+  }
+
+  updateLocal(id, updates) {
+    let updatedItem = null
+    this.items.value = this.items.value.map((item) => {
+      if (this.getEntityId(item) !== id) return item
+      updatedItem = { ...item, ...updates }
+      return updatedItem
+    })
+    return updatedItem
+  }
+
+  deleteLocal(id) {
+    this.items.value = this.items.value.filter((item) => this.getEntityId(item) !== id)
+  }
+}
+
+async function flushSyncQueue() {
+  if (flushPromise || !isOnline() || !syncQueue.length) return flushPromise
+
+  flushPromise = (async () => {
+    while (syncQueue.length && isOnline()) {
+      const operation = syncQueue[0]
+      const repository = repositories.get(operation.table)
+      if (!repository) break
+
+      repository.pendingCount.value += 1
+      try {
+        const { error } = await executeOperation(repository, operation)
+        if (error) {
+          if (isNetworkError(error)) {
+            scheduleRetry()
+            break
+          }
+          repository.handlePermanentError(error)
+        } else {
+          repository.lastError.value = ''
+        }
+        syncQueue.shift()
+        persistQueue()
+      } catch (error) {
+        if (isNetworkError(error)) {
+          scheduleRetry()
+          break
+        }
+        repository.handlePermanentError(error)
+        syncQueue.shift()
+        persistQueue()
+      } finally {
+        repository.pendingCount.value = Math.max(0, repository.pendingCount.value - 1)
+      }
+    }
+
+    updatePendingCounts()
+    if (!syncQueue.length && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('backend-sync-complete'))
+    }
+  })().finally(() => {
+    flushPromise = null
+  })
+
+  return flushPromise
+}
+
+function enqueueOperation(operation) {
+  syncQueue.push(operation)
+  persistQueue()
+  updatePendingCounts()
+  scheduleRetry()
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('backend-sync-deferred', {
+      detail: { count: syncQueue.length },
+    }))
+  }
+}
+
+function createQueueOperation(table, operation) {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    table,
+    type: operation.type,
+    entityId: operation.entityId || '',
+    payload: operation.payload ?? null,
+    workspaceId: operation.workspaceId
+      || operation.payload?.workspace_id
+      || operation.payload?.[0]?.workspace_id
+      || '',
+    createdAt: new Date().toISOString(),
+  }
+}
+
+async function executeOperation(repository, operation) {
+  if (operation.type === 'create') return repository.api.create(operation.payload)
+  if (operation.type === 'update') return repository.api.update(operation.entityId, operation.payload)
+  if (operation.type === 'delete') return repository.api.remove(operation.entityId)
+  if (operation.type === 'upsert') return repository.api.upsert(operation.payload)
+  return { error: new Error(`Неизвестная операция синхронизации: ${operation.type}`) }
+}
+
+function applyPendingOperations(remoteItems, operations, fromRow) {
+  const items = new Map(remoteItems.map((item) => [item.id, item]))
+  operations.forEach((operation) => {
+    if (operation.type === 'delete') {
+      items.delete(operation.entityId)
+      return
+    }
+
+    const rows = operation.type === 'upsert' ? operation.payload : [operation.payload]
+    rows.filter(Boolean).forEach((row) => {
+      const localItem = fromRow(row)
+      items.set(localItem.id, { ...items.get(localItem.id), ...localItem })
+    })
+  })
+  return [...items.values()]
+}
+
+function getTableOperations(table, workspaceId) {
+  return syncQueue.filter((operation) => (
+    operation.table === table
+    && (!workspaceId || operation.workspaceId === workspaceId)
+  ))
+}
+
+function updatePendingCounts() {
+  repositories.forEach((repository, table) => {
+    repository.pendingCount.value = syncQueue.filter((operation) => operation.table === table).length
+  })
+}
+
+function scheduleRetry() {
+  if (retryTimer || !syncQueue.length) return
+  retryTimer = window.setTimeout(() => {
+    retryTimer = null
+    flushSyncQueue()
+  }, RETRY_DELAY)
+}
+
+function installConnectivityListeners() {
+  if (listenersInstalled || typeof window === 'undefined') return
+  listenersInstalled = true
+  window.addEventListener('online', () => flushSyncQueue())
+  if (isOnline()) window.setTimeout(() => flushSyncQueue(), 0)
+}
+
+function isOnline() {
+  return typeof navigator === 'undefined' || navigator.onLine
+}
+
+function isNetworkError(error) {
+  if (!isOnline()) return true
+  const message = String(error?.message || error || '').toLowerCase()
+  return message.includes('failed to fetch')
+    || message.includes('networkerror')
+    || message.includes('network request failed')
+    || message.includes('err_name_not_resolved')
+    || message.includes('load failed')
+}
+
+function readQueue() {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    const stored = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]')
+    return Array.isArray(stored) ? stored : []
+  } catch {
+    return []
+  }
+}
+
+function persistQueue() {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(syncQueue))
 }
 
 function reportSyncError(message) {
