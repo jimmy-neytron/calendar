@@ -27,7 +27,7 @@
       </button>
       <label>
         <span>Свой цвет</span>
-        <input :value="modelValue" type="color" @input="select($event.target.value, false)" />
+        <input :value="modelValue" type="color" @change="select($event.target.value)" />
       </label>
     </div>
   </div>

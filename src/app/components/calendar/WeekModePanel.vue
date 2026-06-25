@@ -20,8 +20,11 @@
           <span>{{ getWeekday(day.date) }}</span>
           <strong>{{ day.date.getDate() }}</strong>
         </div>
-        <small v-if="day.isToday">Сегодня</small>
-        <small v-else>{{ getMonth(day.date) }}</small>
+        <div class="week-mode__meta">
+          <small v-if="day.isToday">Сегодня</small>
+          <small v-else>{{ getMonth(day.date) }}</small>
+          <TimeWorkedSummary :summary="timeSummariesByDate[day.key]" variant="week" />
+        </div>
       </header>
 
       <p v-if="(holidaysByDate[day.key] || []).length" class="week-mode__holiday">
@@ -50,6 +53,7 @@
 
 <script setup>
 import EventCard from './EventCard.vue'
+import TimeWorkedSummary from '../time-tracking/TimeWorkedSummary.vue'
 
 defineProps({
   weekRange: { type: Array, required: true },
@@ -57,6 +61,7 @@ defineProps({
   selectedDateKey: { type: String, required: true },
   members: { type: Array, default: () => [] },
   holidaysByDate: { type: Object, default: () => ({}) },
+  timeSummariesByDate: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['select-date', 'edit-event', 'create-event', 'move-event'])
@@ -174,6 +179,12 @@ function formatHolidayNames(holidays) {
   font-size: 8px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.week-mode__meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
 }
 
 .week-mode__day--today .week-mode__header small {

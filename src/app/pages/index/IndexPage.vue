@@ -26,6 +26,7 @@
         :calendar-transition-name="calendarTransitionName"
         :members="members"
         :holidays-by-date="holidaysByDate"
+        :time-summaries-by-date="timeSummariesByDate"
         @update:mode="mode = $event"
         @previous="goPrevious"
         @next="goNext"
@@ -87,6 +88,7 @@ import { authStore } from '../../stores/auth.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { budgetStore } from '../../stores/budget.store.js'
+import { timeTrackingStore } from '../../stores/timeTracking.store'
 
 const props = defineProps({
   forceCreateToken: { type: Number, default: 0 },
@@ -137,6 +139,7 @@ const visibleHolidayYears = computed(() => {
   return [...new Set(days.map((day) => day.date.getFullYear()))]
 })
 const { holidaysByDate } = usePublicHolidays(holidayCountry, visibleHolidayYears)
+const timeSummariesByDate = timeTrackingStore.dailySummaries
 
 function toggleDayMonthView() {
   mode.value = mode.value === CALENDAR_MODES.DAY ? CALENDAR_MODES.MONTH : CALENDAR_MODES.DAY

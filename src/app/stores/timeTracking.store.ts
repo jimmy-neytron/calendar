@@ -52,6 +52,17 @@ export interface TimeProjectAnalytics {
   weekdayBreakdown: Array<{ label: string; value: number; color: string }>
 }
 
+export interface DailyTimeSummary {
+  date: string
+  totalMinutes: number
+  projects: Array<{
+    id: string
+    name: string
+    color: string
+    minutes: number
+  }>
+}
+
 const projectRepository = new SyncedCollectionRepository(
   `${APP_CONFIG.storageKey}:time-projects`,
   [],
@@ -113,6 +124,32 @@ const weekByDay = computed(() => {
   })
 })
 
+const dailySummaries = computed<Record<string, DailyTimeSummary>>(() => {
+  const summaries: Record<string, DailyTimeSummary> = {}
+  entries.value.forEach((entry) => {
+    const project = projects.value.find((item) => item.id === entry.projectId)
+    const summary = summaries[entry.date] || {
+      date: entry.date,
+      totalMinutes: 0,
+      projects: [],
+    }
+    summary.totalMinutes += entry.minutes
+    const projectSummary = summary.projects.find((item) => item.id === entry.projectId)
+    if (projectSummary) {
+      projectSummary.minutes += entry.minutes
+    } else {
+      summary.projects.push({
+        id: entry.projectId,
+        name: project?.name || 'Проект',
+        color: project?.color || '#60a5fa',
+        minutes: entry.minutes,
+      })
+    }
+    summaries[entry.date] = summary
+  })
+  return summaries
+})
+
 function getProjectById(id: string) {
   return projects.value.find((project) => project.id === id) || null
 }
@@ -152,7 +189,8 @@ function getProjectAnalytics(projectId: string, anchorDate = new Date()): TimePr
     }
   })
 
-  const weekdayColors = ['#60a5fa', '#22d3ee', '#10b981', '#eab308', '#fb923c', '#f472b6', '#a78bfa']
+  const projectColor = getProjectById(projectId)?.color || '#60a5fa'
+  const weekdayTones = [100, 88, 76, 64, 52, 40, 30]
   const weekdayBreakdown = Array.from({ length: 7 }, (_, offset) => {
     const weekday = (offset + 1) % 7
     const minutes = projectEntries
@@ -161,7 +199,7 @@ function getProjectAnalytics(projectId: string, anchorDate = new Date()): TimePr
     return {
       label: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][weekday],
       value: toChartHours(minutes),
-      color: weekdayColors[offset],
+      color: `color-mix(in srgb, ${projectColor} ${weekdayTones[offset]}%, var(--control-bg))`,
     }
   }).filter((item) => item.value > 0)
 
@@ -198,6 +236,24 @@ async function addProject(name: string, color = '#60a5fa') {
   }
   const result = await projectRepository.createAndWait(project)
   return result.ok ? { ok: true, project } : result
+}
+
+async function updateProjectColor(id: string, color: string) {
+  if (!readTimeTrackingSetting()) return disabledResult()
+  const project = projectRepository.findById(id) as TimeProject | undefined
+  if (!project || project.workspaceId !== workspaceStore.activeWorkspaceId.value) {
+    return { ok: false, message: 'Проект не найден' }
+  }
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    return { ok: false, message: 'Некорректный цвет проекта' }
+  }
+
+  const result = await projectRepository.updateAndWait(id, {
+    ...project,
+    color,
+    updatedAt: new Date().toISOString(),
+  })
+  return result.ok ? { ok: true, project: result.item } : result
 }
 
 async function addEntry(data: NewTimeEntry) {
@@ -316,10 +372,12 @@ export const timeTrackingStore = {
   todayMinutes,
   weekMinutes,
   weekByDay,
+  dailySummaries,
   getProjectById,
   getProjectEntries,
   getProjectAnalytics,
   addProject,
+  updateProjectColor,
   removeProject,
   addEntry,
   removeEntry,

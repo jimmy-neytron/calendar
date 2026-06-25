@@ -1,5 +1,5 @@
 <template>
-  <section class="time-page">
+  <section class="time-page" :style="{ '--time-accent': selectedProject?.color || 'var(--cyan)' }">
     <header class="time-hero panel">
       <div>
         <span>Учёт времени</span>
@@ -42,6 +42,8 @@
         @create-project="addProject"
         @remove-project="removeProject"
         @open-project="openProject"
+        @update-project-color="updateProjectColor"
+        @select-project="selectedProjectId = $event.id"
       />
       <TimeEntryList
         :entries="entries"
@@ -69,6 +71,12 @@ const weekMinutes = timeTrackingStore.weekMinutes
 const weekByDay = timeTrackingStore.weekByDay
 const entryLoading = ref(false)
 const projectLoading = ref(false)
+const selectedProjectId = ref('')
+const selectedProject = computed(() => (
+  projects.value.find((project) => project.id === selectedProjectId.value)
+  || projects.value[0]
+  || null
+))
 const todayKey = toDateKey(new Date())
 const todayEntries = computed(() => entries.value.filter((entry) => entry.date === todayKey))
 const maxDayMinutes = computed(() => Math.max(60, ...weekByDay.value.map((day) => day.minutes)))
@@ -119,6 +127,11 @@ function openProject(project: { id: string }) {
   router.push({ name: 'time-project', params: { projectId: project.id } })
 }
 
+async function updateProjectColor(payload: { project: { id: string; name: string }; color: string }) {
+  const result = await timeTrackingStore.updateProjectColor(payload.project.id, payload.color)
+  if (!result.ok) notify(result.message || 'Не удалось изменить цвет', 'danger')
+}
+
 function barHeight(minutes: number) {
   if (!minutes) return 4
   return Math.max(12, Math.round((minutes / maxDayMinutes.value) * 100))
@@ -150,5 +163,5 @@ function toDateKey(value: Date) {
 </script>
 
 <style scoped>
-.time-page{display:grid;gap:12px;width:min(100%,1180px);margin:0 auto;animation:fadeSlideUp .42s var(--ease-out)}.time-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 26px;background:radial-gradient(circle at 88% 20%,color-mix(in srgb,var(--cyan) 12%,transparent),transparent 220px),var(--panel-bg)}.time-hero>div:first-child>span,.time-stat>span,.time-stat>div>span{color:var(--cyan);font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}.time-hero h1{margin:5px 0 7px}.time-hero p{max-width:620px;margin:0;color:var(--text-secondary)}.time-hero__total{display:grid;justify-items:end;min-width:190px}.time-hero__total small,.time-hero__total span{color:var(--text-muted)}.time-hero__total strong{margin:2px 0;font-size:28px;letter-spacing:-.04em}.time-stats{display:grid;grid-template-columns:240px minmax(0,1fr);gap:12px}.time-stat{display:grid;align-content:center;padding:17px 19px}.time-stat>strong{margin:3px 0;font-size:25px}.time-stat>small{color:var(--text-muted)}.time-stat--chart{grid-template-columns:120px minmax(0,1fr);align-items:center;gap:16px}.time-stat--chart>div:first-child small{display:block;margin-top:3px;color:var(--text-muted)}.week-bars{display:grid;grid-template-columns:repeat(7,1fr);align-items:end;gap:7px;height:66px}.week-bars>div{display:grid;grid-template-rows:44px auto;align-items:end;justify-items:center;gap:4px;height:100%}.week-bars i{display:block;width:100%;max-width:34px;min-height:2px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--cyan),color-mix(in srgb,var(--cyan) 42%,var(--control-bg)))}.week-bars small{color:var(--text-muted);font-size:8px;text-transform:uppercase}.time-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:12px;align-items:start}@media(max-width:900px){.time-grid{grid-template-columns:1fr}.time-stats{grid-template-columns:1fr 2fr}}@media(max-width:680px){.time-hero{align-items:flex-start;display:grid;padding:19px}.time-hero__total{justify-items:start}.time-stats{grid-template-columns:1fr}.time-stat--chart{grid-template-columns:95px minmax(0,1fr)}}
+.time-page{display:grid;gap:12px;width:min(100%,1180px);margin:0 auto;animation:fadeSlideUp .42s var(--ease-out)}.time-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 26px;border-color:color-mix(in srgb,var(--time-accent) 20%,var(--border-color));background:radial-gradient(circle at 88% 20%,color-mix(in srgb,var(--time-accent) 16%,transparent),transparent 240px),var(--panel-bg);transition:border-color .25s var(--ease-out),background .25s var(--ease-out)}.time-hero>div:first-child>span,.time-stat>span,.time-stat>div>span{color:var(--time-accent);font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase;transition:color .25s var(--ease-out)}.time-hero h1{margin:5px 0 7px}.time-hero p{max-width:620px;margin:0;color:var(--text-secondary)}.time-hero__total{display:grid;justify-items:end;min-width:190px}.time-hero__total small,.time-hero__total span{color:var(--text-muted)}.time-hero__total strong{margin:2px 0;color:color-mix(in srgb,var(--time-accent) 76%,var(--text-primary));font-size:28px;letter-spacing:-.04em;transition:color .25s var(--ease-out)}.time-stats{display:grid;grid-template-columns:240px minmax(0,1fr);gap:12px}.time-stat{display:grid;align-content:center;padding:17px 19px}.time-stat>strong{margin:3px 0;font-size:25px}.time-stat>small{color:var(--text-muted)}.time-stat--chart{grid-template-columns:120px minmax(0,1fr);align-items:center;gap:16px}.time-stat--chart>div:first-child small{display:block;margin-top:3px;color:var(--text-muted)}.week-bars{display:grid;grid-template-columns:repeat(7,1fr);align-items:end;gap:7px;height:66px}.week-bars>div{display:grid;grid-template-rows:44px auto;align-items:end;justify-items:center;gap:4px;height:100%}.week-bars i{display:block;width:100%;max-width:34px;min-height:2px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--time-accent),color-mix(in srgb,var(--time-accent) 42%,var(--control-bg)));transition:background .25s var(--ease-out)}.week-bars small{color:var(--text-muted);font-size:8px;text-transform:uppercase}.time-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:12px;align-items:start}@media(max-width:900px){.time-grid{grid-template-columns:1fr}.time-stats{grid-template-columns:1fr 2fr}}@media(max-width:680px){.time-hero{align-items:flex-start;display:grid;padding:19px}.time-hero__total{justify-items:start}.time-stats{grid-template-columns:1fr}.time-stat--chart{grid-template-columns:95px minmax(0,1fr)}}
 </style>

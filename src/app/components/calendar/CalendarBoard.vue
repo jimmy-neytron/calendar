@@ -30,6 +30,7 @@
             :selected-date-key="selectedDateKey"
             :events="eventsByDate[selectedDateKey] || []"
             :holidays="holidaysByDate[selectedDateKey] || []"
+            :time-summary="timeSummariesByDate[selectedDateKey] || null"
             :members="members"
             @create-event="$emit('create-event')"
             @edit-event="$emit('edit-event', $event)"
@@ -52,6 +53,7 @@
               :members="members"
               :holidays="holidaysByDate[day.key] || []"
               :selected="day.key === selectedDateKey"
+              :time-summary="timeSummariesByDate[day.key] || null"
               @select="$emit('select-date', $event)"
               @edit-event="$emit('edit-event', $event)"
               @move-event="$emit('move-event', $event)"
@@ -65,6 +67,7 @@
             :selected-date-key="selectedDateKey"
             :members="members"
             :holidays-by-date="holidaysByDate"
+            :time-summaries-by-date="timeSummariesByDate"
             @select-date="$emit('select-date', $event)"
             @edit-event="$emit('edit-event', $event)"
             @create-event="$emit('create-event', $event)"
@@ -97,6 +100,7 @@ defineProps({
   calendarTransitionName: { type: String, default: 'calendar-fade' },
   members: { type: Array, default: () => [] },
   holidaysByDate: { type: Object, default: () => ({}) },
+  timeSummariesByDate: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-date', 'edit-event', 'create-event', 'move-event', 'resize-event'])

@@ -55,6 +55,7 @@
       </span>
       <span v-if="hiddenCount" class="calendar-day__more">+{{ hiddenCount }} ещё</span>
     </div>
+    <TimeWorkedSummary :summary="timeSummary" variant="month" />
     <div v-if="events.length" class="calendar-day__mobile-dots" aria-hidden="true">
       <i
         v-for="event in mobileDotEvents"
@@ -72,6 +73,7 @@ import { formatEventTitle, getEventAccent } from '../../utils/formatters/calenda
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
+import TimeWorkedSummary from '../time-tracking/TimeWorkedSummary.vue'
 
 const props = defineProps({
   day: { type: Object, required: true },
@@ -79,6 +81,7 @@ const props = defineProps({
   members: { type: Array, default: () => [] },
   selected: { type: Boolean, default: false },
   holidays: { type: Array, default: () => [] },
+  timeSummary: { type: Object, default: null },
 })
 
 const emit = defineEmits(['select', 'edit-event', 'move-event'])

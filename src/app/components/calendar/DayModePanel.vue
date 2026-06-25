@@ -20,6 +20,8 @@
       </div>
     </header>
 
+    <TimeWorkedSummary :summary="timeSummary" variant="day" />
+
     <div
       v-if="allDayEvents.length"
       class="day-mode__all-day"
@@ -98,12 +100,14 @@ import { formatDateShort, formatTimeRange, formatWeekday } from '../../utils/for
 import { formatEventMembers, formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
+import TimeWorkedSummary from '../time-tracking/TimeWorkedSummary.vue'
 
 const props = defineProps({
   selectedDateKey: { type: String, required: true },
   events: { type: Array, default: () => [] },
   members: { type: Array, default: () => [] },
   holidays: { type: Array, default: () => [] },
+  timeSummary: { type: Object, default: null },
 })
 
 const emit = defineEmits(['create-event', 'edit-event', 'move-event', 'resize-event'])
