@@ -95,6 +95,7 @@ import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { showSystemEventReminder } from '../../services/systemNotification.service.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
+import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -105,6 +106,7 @@ const isCommandPaletteOpen = ref(false)
 const paletteQuery = ref('')
 const { notifications, dismiss, notify } = useNotification()
 const { start: startOnboarding } = useOnboarding()
+const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
 const { runDailyAutoBackup } = useAutoBackup()
 const {
   start: startRealtimeNotifications,
@@ -129,6 +131,7 @@ const commands = computed(() => [
   { id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) },
   { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
   { id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) },
+  ...(timeTrackingEnabled.value ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
   { id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) },
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
   { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
