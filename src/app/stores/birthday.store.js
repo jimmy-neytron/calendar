@@ -9,6 +9,7 @@ import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const repository = new SyncedCollectionRepository(`${APP_CONFIG.storageKey}:birthdays`, [], 'birthdays')
 const { addActivity } = useActivityLog()
+let isSyncingCalendar = false
 
 const birthdays = computed(() => repository.items.value
   .filter((birthday) => birthday.workspaceId === workspaceStore.activeWorkspaceId.value)
@@ -40,7 +41,7 @@ async function addBirthday(data) {
   if (!synced.ok) return synced
   const created = await repository.createAndWait({ ...birthday, ...synced.ids })
   if (!created.ok) {
-    await removeCalendarEvents(synced.ids)
+    await removeCalendarEvents(synced.createdIds)
     return { ok: false, message: created.message }
   }
   addActivity('birthday:create', `добавил(а) день рождения ${birthday.name}`, {
@@ -66,10 +67,9 @@ async function updateBirthday(id, updates) {
   if (!synced.ok) return synced
   const updated = await repository.updateAndWait(id, { ...next, ...synced.ids })
   if (!updated.ok) {
-    await removeCalendarEvents(synced.ids)
+    await removeCalendarEvents(synced.createdIds)
     return { ok: false, message: updated.message }
   }
-  await removeCalendarEvents(current)
   addActivity('birthday:update', `обновил(а) день рождения ${next.name}`, {
     birthdayId: id,
     birthDate: next.birthDate,
@@ -134,7 +134,36 @@ function removeGiftIdea(birthdayId, giftId) {
 }
 
 async function syncCalendarEvents(birthday) {
-  const birthdayEvent = await calendarStore.addEventAndWait({
+  isSyncingCalendar = true
+  try {
+    const birthdayEvent = await upsertBirthdayCalendarEvent(
+      birthday.eventId,
+      buildBirthdayEventPayload(birthday),
+      'Не удалось создать событие дня рождения'
+    )
+    if (!birthdayEvent.ok) return birthdayEvent
+
+    const reminderEvent = await syncReminderCalendarEvent(birthday)
+    if (!reminderEvent.ok) return reminderEvent
+
+    return {
+      ok: true,
+      ids: {
+        eventId: birthdayEvent.event.id,
+        reminderEventId: reminderEvent.eventId,
+      },
+      createdIds: {
+        eventId: birthdayEvent.created ? birthdayEvent.event.id : '',
+        reminderEventId: reminderEvent.created ? reminderEvent.eventId : '',
+      },
+    }
+  } finally {
+    isSyncingCalendar = false
+  }
+}
+
+function buildBirthdayEventPayload(birthday) {
+  return {
     title: `День рождения: ${birthday.name}`,
     date: birthday.birthDate,
     memberIds: [],
@@ -145,31 +174,60 @@ async function syncCalendarEvents(birthday) {
     repeat: 'yearly',
     repeatEndType: 'never',
     reminder: '1d',
-  })
-  if (!birthdayEvent.ok) return { ok: false, message: 'Не удалось создать событие дня рождения' }
-
-  let reminderEventId = ''
-  if (birthday.reminderDays > 0) {
-    const reminderDate = DateHelper.toKey(DateHelper.addDays(DateHelper.parseKey(birthday.birthDate), -birthday.reminderDays))
-    const reminderEvent = await calendarStore.addEventAndWait({
-      title: `Подготовить подарок: ${birthday.name}`,
-      date: reminderDate,
-      memberIds: [],
-      category: 'birthday',
-      location: '',
-      notes: `До дня рождения ${birthday.reminderDays} дней`,
-      allDay: true,
-      repeat: 'yearly',
-      repeatEndType: 'never',
-      reminder: '1d',
-    })
-    if (reminderEvent.ok) reminderEventId = reminderEvent.event.id
+    linkedEntityType: 'birthday',
+    linkedEntityId: birthday.id,
   }
+}
 
+function buildReminderEventPayload(birthday) {
+  const reminderDate = DateHelper.toKey(DateHelper.addDays(DateHelper.parseKey(birthday.birthDate), -birthday.reminderDays))
   return {
-    ok: true,
-    ids: { eventId: birthdayEvent.event.id, reminderEventId },
+    title: `Подготовить подарок: ${birthday.name}`,
+    date: reminderDate,
+    memberIds: [],
+    category: 'birthday',
+    location: '',
+    notes: `До дня рождения ${birthday.reminderDays} дней`,
+    allDay: true,
+    repeat: 'yearly',
+    repeatEndType: 'never',
+    reminder: '1d',
+    linkedEntityType: 'birthday-reminder',
+    linkedEntityId: birthday.id,
   }
+}
+
+async function syncReminderCalendarEvent(birthday) {
+  if (birthday.reminderDays <= 0) {
+    if (birthday.reminderEventId) await calendarStore.deleteEventAndWait(birthday.reminderEventId)
+    return { ok: true, eventId: '', created: false }
+  }
+
+  const result = await upsertBirthdayCalendarEvent(
+    birthday.reminderEventId,
+    buildReminderEventPayload(birthday),
+    'Не удалось создать напоминание о подарке'
+  )
+  return result.ok
+    ? { ok: true, eventId: result.event.id, created: result.created }
+    : result
+}
+
+async function upsertBirthdayCalendarEvent(eventId, payload, errorMessage) {
+  const existingEvent = eventId
+    ? calendarStore.events.value.find((event) => event.id === eventId)
+    : null
+  if (existingEvent) {
+    const updated = calendarStore.updateEvent(eventId, payload)
+    return updated.ok
+      ? { ok: true, event: updated.event, created: false }
+      : { ok: false, message: Object.values(updated.errors || {})[0] || errorMessage }
+  }
+
+  const created = await calendarStore.addEventAndWait(payload)
+  return created.ok
+    ? { ok: true, event: created.event, created: true }
+    : { ok: false, message: Object.values(created.errors || {})[0] || errorMessage }
 }
 
 async function removeCalendarEvents(birthday) {
@@ -223,6 +281,144 @@ function isLeapYear(year) {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
 }
 
+async function handleLinkedCalendarEventChange(change) {
+  if (isSyncingCalendar) return
+  const event = change?.event
+  if (!event?.linkedEntityId) return
+  if (event.linkedEntityType === 'birthday') {
+    await syncBirthdayFromCalendar(change.action, event)
+    return
+  }
+  if (event.linkedEntityType === 'birthday-reminder') {
+    await syncBirthdayReminderFromCalendar(change.action, event)
+  }
+}
+
+async function syncBirthdayFromCalendar(action, event) {
+  const birthday = findBirthdayByCalendarEvent(event)
+  if (!birthday) return
+  if (action === 'delete') {
+    await repository.deleteAndWait(birthday.id)
+    if (birthday.reminderEventId) await calendarStore.deleteEventAndWait(birthday.reminderEventId)
+    return
+  }
+
+  const nextBirthDate = mergeBirthdayDate(birthday.birthDate, event.date)
+  const nextBirthday = {
+    ...birthday,
+    name: parseBirthdayName(event.title) || birthday.name,
+    birthDate: nextBirthDate,
+    note: event.notes || '',
+    updatedAt: new Date().toISOString(),
+  }
+  const reminderSync = await syncCalendarEvents(nextBirthday)
+  if (!reminderSync.ok) return
+  await repository.updateAndWait(birthday.id, {
+    ...nextBirthday,
+    ...reminderSync.ids,
+  })
+}
+
+async function syncBirthdayReminderFromCalendar(action, event) {
+  const birthday = findBirthdayByCalendarEvent(event)
+  if (!birthday) return
+  if (action === 'delete') {
+    await repository.updateAndWait(birthday.id, {
+      ...birthday,
+      reminderDays: 0,
+      reminderEventId: '',
+      updatedAt: new Date().toISOString(),
+    })
+    return
+  }
+
+  const reminderDays = calculateReminderDays(birthday.birthDate, event.date)
+  await repository.updateAndWait(birthday.id, {
+    ...birthday,
+    reminderDays,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+function findBirthdayByCalendarEvent(event) {
+  return repository.findById(event.linkedEntityId)
+    || repository.items.value.find((birthday) => (
+      birthday.eventId === event.id || birthday.reminderEventId === event.id
+    ))
+}
+
+function parseBirthdayName(title) {
+  return String(title || '').replace(/^день рождения:\s*/i, '').trim()
+}
+
+function mergeBirthdayDate(currentBirthDate, calendarDate) {
+  if (!DateHelper.isValidKey(calendarDate)) return currentBirthDate
+  if (!DateHelper.isValidKey(currentBirthDate)) return calendarDate
+  const birthDate = DateHelper.parseKey(currentBirthDate)
+  const eventDate = DateHelper.parseKey(calendarDate)
+  return DateHelper.toKey(safeBirthdayDate(
+    birthDate.getFullYear(),
+    eventDate.getMonth(),
+    eventDate.getDate()
+  ))
+}
+
+function calculateReminderDays(birthDateKey, reminderDateKey) {
+  if (!DateHelper.isValidKey(birthDateKey) || !DateHelper.isValidKey(reminderDateKey)) return 0
+  const birthDate = DateHelper.parseKey(birthDateKey)
+  const reminderDate = DateHelper.parseKey(reminderDateKey)
+  let birthdayInReminderYear = safeBirthdayDate(
+    reminderDate.getFullYear(),
+    birthDate.getMonth(),
+    birthDate.getDate()
+  )
+  if (startOfDay(birthdayInReminderYear) < startOfDay(reminderDate)) {
+    birthdayInReminderYear = safeBirthdayDate(
+      reminderDate.getFullYear() + 1,
+      birthDate.getMonth(),
+      birthDate.getDate()
+    )
+  }
+  return Math.max(0, Math.round((startOfDay(birthdayInReminderYear) - startOfDay(reminderDate)) / 86400000))
+}
+
+async function ensureSupabaseCalendarLinks(workspaceId) {
+  if (!workspaceId) return
+  isSyncingCalendar = true
+  try {
+    const workspaceBirthdays = repository.items.value.filter((birthday) => birthday.workspaceId === workspaceId)
+    for (const birthday of workspaceBirthdays) {
+      const birthdayEvent = calendarStore.events.value.find((event) => event.id === birthday.eventId)
+      if (birthdayEvent && (birthdayEvent.linkedEntityType !== 'birthday' || birthdayEvent.linkedEntityId !== birthday.id)) {
+        calendarStore.updateEvent(birthdayEvent.id, {
+          linkedEntityType: 'birthday',
+          linkedEntityId: birthday.id,
+        })
+      }
+
+      const reminderEvent = calendarStore.events.value.find((event) => event.id === birthday.reminderEventId)
+      if (reminderEvent && (reminderEvent.linkedEntityType !== 'birthday-reminder' || reminderEvent.linkedEntityId !== birthday.id)) {
+        calendarStore.updateEvent(reminderEvent.id, {
+          linkedEntityType: 'birthday-reminder',
+          linkedEntityId: birthday.id,
+        })
+      }
+    }
+  } finally {
+    isSyncingCalendar = false
+  }
+}
+
+async function loadWorkspace(workspaceId) {
+  const result = await repository.loadWorkspace(workspaceId)
+  if (result === null) return null
+  if (typeof window !== 'undefined') {
+    window.setTimeout(() => ensureSupabaseCalendarLinks(workspaceId), 0)
+    window.setTimeout(() => ensureSupabaseCalendarLinks(workspaceId), 500)
+  }
+  return result
+}
+
 export const birthdayStore = {
   birthdays,
   upcomingBirthdays,
@@ -232,5 +428,11 @@ export const birthdayStore = {
   addGiftIdea,
   toggleGiftIdea,
   removeGiftIdea,
-  loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
+  loadWorkspace,
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('calendar-linked-event-change', (event) => {
+    handleLinkedCalendarEventChange(event.detail)
+  })
 }
