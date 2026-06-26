@@ -7,7 +7,7 @@
 
     <transition name="fade">
       <div v-if="isOpen" class="notification-bell__popover">
-        <NotificationCenter />
+        <NotificationCenter @open="isOpen = false" />
       </div>
     </transition>
   </div>

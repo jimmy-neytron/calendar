@@ -61,6 +61,7 @@
       @update="handleUpdateEvent"
       @delete="handleDeleteEvent"
       @duplicate="handleDuplicateEvent"
+      @comment="handleAddComment"
       @open-linked="openLinkedBudget"
     />
   </section>
@@ -115,7 +116,7 @@ const {
   enableDayMode,
 } = useCalendarView(defaultMode.value)
 
-const { events, sortedEvents, eventsByDate, upcomingReminders, addEvent, updateEvent, deleteEvent, moveEvent, resizeEvent, duplicateEvent } = useCalendarEvents()
+const { events, sortedEvents, eventsByDate, upcomingReminders, addEvent, updateEvent, deleteEvent, moveEvent, resizeEvent, duplicateEvent, addComment } = useCalendarEvents()
 const { members } = useFamilyMembers()
 const { notify } = useNotification()
 const { isOpen: isEventDrawerOpen, open: openEventDrawer, close: closeEventDrawer } = useModal(false)
@@ -198,6 +199,11 @@ const handleDeleteEvent = (id) => {
   closeEventDrawer()
 }
 
+const handleAddComment = (id, comment) => {
+  const result = addComment(id, comment)
+  if (!result.ok) notify('Не удалось отправить сообщение', 'danger')
+}
+
 const handleMoveEvent = ({ eventId, date, time, copy }) => {
   if (copy) {
     const duplicated = duplicateEvent(eventId, 'custom-dates', [date])
@@ -222,7 +228,12 @@ const handleMoveEvent = ({ eventId, date, time, copy }) => {
 }
 
 const editEventById = (eventId) => {
-  const event = sortedEvents.value.find((item) => item.id === eventId || item.parentId === eventId)
+  const baseEventId = String(eventId || '').split('::')[0]
+  const event = sortedEvents.value.find((item) => (
+    item.id === eventId
+    || item.id === baseEventId
+    || item.parentId === baseEventId
+  ))
   if (event) editEvent(event)
 }
 
@@ -293,6 +304,13 @@ watch(
 )
 
 watch(
+  isEventDrawerOpen,
+  (isOpen, wasOpen) => {
+    if (!isOpen && wasOpen) clearEventQuery()
+  }
+)
+
+watch(
   () => route.query,
   (query) => {
     if (query.mode === 'day') enableDayMode()
@@ -303,6 +321,12 @@ watch(
   },
   { immediate: true }
 )
+
+function clearEventQuery() {
+  if (!route.query.event && !route.query.eventDate && !route.query.notification) return
+  const { event, eventDate, notification, ...query } = route.query
+  router.replace({ name: route.name, query })
+}
 
 watch(
   () => props.forceCreateToken,

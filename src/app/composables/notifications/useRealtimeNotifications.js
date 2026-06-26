@@ -4,7 +4,7 @@ import { notificationStore } from '../../stores/notification.store.js'
 
 let channel = null
 
-export function useRealtimeNotifications({ onEventReminder } = {}) {
+export function useRealtimeNotifications() {
   async function start() {
     const userId = authStore.currentUserId.value
     if (!supabase || !userId || channel) return
@@ -17,8 +17,7 @@ export function useRealtimeNotifications({ onEventReminder } = {}) {
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
       }, ({ new: row }) => {
-        const notification = notificationStore.ingestRemoteRow(row)
-        if (notification?.type === 'event_reminder') onEventReminder?.(notification)
+        notificationStore.ingestRemoteRow(row)
       })
       .subscribe()
   }

@@ -104,10 +104,23 @@ const updateEvent = (id, updates) => {
   const validation = validateEvent(nextEvent)
   if (!validation.valid) return { ok: false, errors: validation.errors }
 
+  const addedComments = getAddedComments(target.comments, nextEvent.comments)
+  const onlyCommentsChanged = notificationAction === 'comment'
+    || (addedComments.length > 0 && !hasEventDetailsChanged(target, nextEvent))
+
   eventRepository.update(targetId, nextEvent)
   reportLinkedEventChange('update', nextEvent)
-  notificationStore.notifyEventChange(notificationAction, nextEvent, target)
-  addActivity('event:update', `обновил(а) событие «${nextEvent.title}»`, { eventId: targetId, date: nextEvent.date })
+  addedComments.forEach((comment) => {
+    notificationStore.notifyEventComment(nextEvent, comment)
+    addActivity('event:comment', `добавил(а) комментарий к событию «${nextEvent.title}»`, {
+      eventId: targetId,
+      commentId: comment.id,
+    })
+  })
+  if (!onlyCommentsChanged) {
+    notificationStore.notifyEventChange(notificationAction, nextEvent, target)
+    addActivity('event:update', `обновил(а) событие «${nextEvent.title}»`, { eventId: targetId, date: nextEvent.date })
+  }
   return { ok: true, event: nextEvent }
 }
 
@@ -267,28 +280,70 @@ function normalizeReminder(value) {
   return ['none', '1h', '1d'].includes(value) ? value : 'none'
 }
 
-function addComment(id, text) {
+function addComment(id, commentInput) {
   const eventId = String(id).split('::')[0]
   const target = eventRepository.findById(eventId)
-  const message = String(text || '').trim()
+  const message = String(
+    typeof commentInput === 'string' ? commentInput : commentInput?.text || ''
+  ).trim()
   if (!target || !message) return { ok: false }
   const user = authStore.currentUser.value
-  const comments = [
-    ...(target.comments || []),
-    {
+  const comment = typeof commentInput === 'object' && commentInput
+    ? {
+      ...commentInput,
+      text: message,
+      userId: commentInput.userId || user?.id || null,
+      userName: commentInput.userName || user?.name || 'Пользователь',
+      createdAt: commentInput.createdAt || new Date().toISOString(),
+    }
+    : {
       id: generateId(),
       userId: user?.id || null,
       userName: user?.name || 'Пользователь',
       text: message,
       createdAt: new Date().toISOString(),
-    },
+    }
+  const comments = [
+    ...(target.comments || []),
+    comment,
   ]
-  const result = updateEvent(eventId, { comments })
-  if (result.ok) addActivity('event:comment', `добавил(а) комментарий к событию «${target.title}»`, {
-    eventId,
-    commentId: comments.at(-1)?.id,
-  })
+  const result = updateEvent(eventId, { comments, __notificationAction: 'comment' })
   return result
+}
+
+function getAddedComments(previousComments = [], nextComments = []) {
+  const previousIds = new Set((previousComments || []).map((comment) => comment.id))
+  return (nextComments || []).filter((comment) => comment?.id && !previousIds.has(comment.id))
+}
+
+function hasEventDetailsChanged(previousEvent, nextEvent) {
+  const fields = [
+    'title',
+    'date',
+    'startTime',
+    'endTime',
+    'calendarId',
+    'responsibleId',
+    'category',
+    'location',
+    'notes',
+    'allDay',
+    'repeat',
+    'repeatUntil',
+    'repeatEndType',
+    'repeatCount',
+    'repeatInterval',
+    'repeatUnit',
+    'importance',
+    'reminder',
+    'completedAt',
+  ]
+
+  if (fields.some((field) => previousEvent?.[field] !== nextEvent?.[field])) return true
+  if (JSON.stringify(previousEvent?.memberIds || []) !== JSON.stringify(nextEvent?.memberIds || [])) return true
+  if (JSON.stringify(previousEvent?.attendeeResponses || {}) !== JSON.stringify(nextEvent?.attendeeResponses || {})) return true
+  if (JSON.stringify(previousEvent?.repeatWeekdays || []) !== JSON.stringify(nextEvent?.repeatWeekdays || [])) return true
+  return false
 }
 
 function respondToEvent(id, response) {

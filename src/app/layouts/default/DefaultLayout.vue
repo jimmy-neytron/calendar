@@ -90,12 +90,12 @@ import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
-import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
-import { showSystemEventReminder } from '../../services/systemNotification.service.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
+import { useLocalEventReminders } from '../../composables/notifications/useLocalEventReminders.js'
+import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -109,9 +109,13 @@ const { start: startOnboarding } = useOnboarding()
 const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
 const { runDailyAutoBackup } = useAutoBackup()
 const {
+  start: startLocalEventReminders,
+  stop: stopLocalEventReminders,
+} = useLocalEventReminders()
+const {
   start: startRealtimeNotifications,
   stop: stopRealtimeNotifications,
-} = useRealtimeNotifications({ onEventReminder: showEventReminder })
+} = useRealtimeNotifications()
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
@@ -199,19 +203,6 @@ function runNotificationAction(notification) {
   dismiss(notification.id)
 }
 
-async function showEventReminder(reminder) {
-  if (reminder.workspaceId !== workspaceStore.activeWorkspaceId.value) return
-  const eventId = reminder.eventDate
-    ? `${reminder.eventId}::${reminder.eventDate}`
-    : reminder.eventId
-  await showSystemEventReminder(reminder)
-  notify(reminder.message || 'Скоро событие', reminder.severity || 'warning', {
-    duration: 12000,
-    actionLabel: 'Открыть событие',
-    action: () => openEventById(eventId),
-  })
-}
-
 function handleGlobalKeydown(event) {
   const target = event.target
   const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable
@@ -255,9 +246,11 @@ onMounted(() => {
 watch([currentUser, isAuthRoute], async ([user, authRoute]) => {
   window.clearTimeout(onboardingTimer)
   if (!user || authRoute) {
+    stopLocalEventReminders()
     await stopRealtimeNotifications()
     return
   }
+  startLocalEventReminders()
   await startRealtimeNotifications()
   onboardingTimer = window.setTimeout(() => startOnboarding(), 650)
 }, { immediate: true })
@@ -266,6 +259,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('backend-sync-error', handleBackendSyncError)
   window.removeEventListener('backend-sync-complete', handleBackendSyncComplete)
+  stopLocalEventReminders()
   stopRealtimeNotifications()
   window.clearTimeout(onboardingTimer)
 })

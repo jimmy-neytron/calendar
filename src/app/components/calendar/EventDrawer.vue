@@ -322,7 +322,7 @@ const props = defineProps({
   calendars: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'duplicate', 'open-linked'])
+const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'duplicate', 'comment', 'open-linked'])
 
 const titleInputRef = ref(null)
 const errors = reactive({})
@@ -455,17 +455,19 @@ function setResponse(response) {
 function addComment() {
   const text = commentText.value.trim()
   if (!text) return
+  const comment = {
+    id: generateId(),
+    userId: currentUserId.value,
+    userName: authStore.currentUser.value?.name || 'Пользователь',
+    text,
+    createdAt: new Date().toISOString(),
+  }
   form.comments = [
     ...form.comments,
-    {
-      id: generateId(),
-      userId: currentUserId.value,
-      userName: authStore.currentUser.value?.name || 'Пользователь',
-      text,
-      createdAt: new Date().toISOString(),
-    },
+    comment,
   ]
   commentText.value = ''
+  if (props.editingEvent) emit('comment', props.editingEvent.id, comment)
 }
 
 function normalizeIncomingEvent(event) {
