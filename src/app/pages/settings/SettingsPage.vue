@@ -223,18 +223,6 @@
               @update:model-value="toggleActivityLog"
             />
           </label>
-
-          <label class="setting-switch">
-            <span>
-              <strong>Учёт времени</strong>
-              <small>Добавляет отдельный раздел для проектов и часов. Когда выключено, таблицы учёта времени не загружаются и в Supabase ничего не записывается.</small>
-            </span>
-            <UiToggle
-              :model-value="timeTrackingEnabled"
-              label="Учёт времени"
-              @update:model-value="toggleTimeTracking"
-            />
-          </label>
         </article>
       </div>
     </section>
@@ -251,14 +239,10 @@ import UiToggle from '../../components/ui/UiToggle.vue'
 import { usePushNotifications } from '../../composables/notifications/usePushNotifications.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
-import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { HOLIDAY_COUNTRY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 import { authStore } from '../../stores/auth.store.js'
-import { workspaceStore } from '../../stores/workspace.store.js'
-import { timeTrackingStore } from '../../stores/timeTracking.store'
-import { discardSyncOperations } from '../../repositories/SyncedCollectionRepository.js'
 
 const { notify } = useNotification()
 const router = useRouter()
@@ -267,10 +251,6 @@ const {
   isEnabled: activityLogEnabled,
   setEnabled: setActivityLogEnabled,
 } = useActivityLogSettings()
-const {
-  isEnabled: timeTrackingEnabled,
-  setEnabled: setTimeTrackingEnabled,
-} = useTimeTrackingSettings()
 const { start: startOnboarding } = useOnboarding()
 const {
   enabled: localRemindersEnabled,
@@ -333,21 +313,6 @@ function toggleActivityLog(enabled) {
   markPreferencesSaved()
   notify(
     enabled ? 'Журнал активности включён' : 'Журнал активности выключен',
-    enabled ? 'success' : 'info',
-  )
-}
-
-async function toggleTimeTracking(enabled) {
-  setTimeTrackingEnabled(enabled)
-  if (enabled && workspaceStore.activeWorkspaceId.value) {
-    await timeTrackingStore.loadWorkspace(workspaceStore.activeWorkspaceId.value)
-  } else {
-    discardSyncOperations('time_entries')
-    discardSyncOperations('time_projects')
-  }
-  markPreferencesSaved()
-  notify(
-    enabled ? 'Учёт времени включён' : 'Учёт времени выключен — запись в базу остановлена',
     enabled ? 'success' : 'info',
   )
 }

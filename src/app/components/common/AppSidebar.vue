@@ -32,12 +32,10 @@
 import { computed } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
-import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
-const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
 
 const groups = [
@@ -49,7 +47,6 @@ const groups = [
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
       { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: 'sparkles' },
       { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport' },
-      { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock' },
       { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie' },
     ],
   },
@@ -66,10 +63,7 @@ const groups = [
 
 const visibleGroups = computed(() => groups.map((group) => ({
   ...group,
-  items: group.items.filter((item) => (
-    (item.name !== 'activity' || activityLogEnabled.value)
-    && (item.name !== 'time-tracking' || timeTrackingEnabled.value)
-  )),
+  items: group.items.filter((item) => item.name !== 'activity' || activityLogEnabled.value),
 })))
 </script>
 

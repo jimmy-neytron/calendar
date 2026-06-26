@@ -3,7 +3,6 @@ import { authStore } from '../stores/auth.store.js'
 import { workspaceStore } from '../stores/workspace.store.js'
 import { loadWorkspaceData } from '../services/backend/workspaceData.service.js'
 import { readActivityLogSetting } from '../composables/preferences/useActivityLogSettings.js'
-import { readTimeTrackingSetting } from '../composables/preferences/useTimeTrackingSettings.js'
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
@@ -18,13 +17,10 @@ const SportPage = () => import('../pages/sport/SportPage.vue')
 const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
 const DayDisplayPage = () => import('../pages/display/DayDisplayPage.vue')
-const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.vue')
-const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
-  TimeProjectPage,
+  IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage,
 ]
 let pagesPreloaded = false
 
@@ -34,8 +30,6 @@ export const routes = [
   { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
   { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет' } },
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт' } },
-  { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresTimeTracking: true } },
-  { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresTimeTracking: true } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
@@ -73,10 +67,6 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresActivityLog && !readActivityLogSetting()) {
-    return { name: 'settings' }
-  }
-
-  if (to.meta.requiresTimeTracking && !readTimeTrackingSetting()) {
     return { name: 'settings' }
   }
 

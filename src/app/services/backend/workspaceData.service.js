@@ -7,7 +7,6 @@ import { notificationStore } from '../../stores/notification.store.js'
 import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
-import { timeTrackingStore } from '../../stores/timeTracking.store'
 
 let loadedDataKey = ''
 let loadingDataKey = ''
@@ -40,7 +39,6 @@ async function fetchWorkspaceData(workspaceId) {
     notificationStore.loadWorkspace(workspaceId),
     movieWatchlistStore.loadWorkspace(workspaceId),
     useActivityLog().loadWorkspace(workspaceId),
-    timeTrackingStore.loadWorkspace(workspaceId),
   ])
   return results.some((result) => result === null)
     ? { ok: false, message: 'Часть данных не загрузилась из Supabase' }

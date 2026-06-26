@@ -32,7 +32,6 @@ const icons = {
   check: { paths: ['M5 12l4 4L19 6'] },
   calendar: { paths: ['M5 4h14a1 1 0 011 1v15H4V5a1 1 0 011-1z', 'M8 2v4', 'M16 2v4', 'M4 9h16'] },
   activity: { paths: ['M4 12h4l2-6 4 12 2-6h4'] },
-  clock: { paths: ['M12 7v5l3 2'], circles: [{ cx: 12, cy: 12, r: 9 }] },
   filter: { paths: ['M4 6h16', 'M7 12h10', 'M10 18h4'] },
   refresh: { paths: ['M20 11a8 8 0 10-2 5', 'M20 5v6h-6'] },
   download: { paths: ['M12 3v12', 'M7 10l5 5 5-5', 'M5 21h14'] },
