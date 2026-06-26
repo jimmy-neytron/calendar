@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { workspacesApi } from '../api/supabase/workspaces.api.js'
 import { APP_CONFIG } from '../config/app.config.js'
 import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
+import { readWorkspaceLimit } from '../composables/preferences/useSubscriptionSettings.js'
 import { generateShortId } from '../utils/helpers/idGenerator.js'
 import { authStore } from './auth.store.js'
 
@@ -140,6 +141,13 @@ async function createWorkspace(name) {
   if (!navigator.onLine) return networkRequired()
   const title = String(name || '').trim()
   if (!title) return { ok: false, message: 'Укажи название пространства' }
+  const limit = Number(readWorkspaceLimit() || 1)
+  if (workspaces.value.length >= limit) {
+    return {
+      ok: false,
+      message: 'Достигнут лимит пространств для текущей подписки',
+    }
+  }
   const { data, error: createError } = await workspacesApi.create(title)
   if (createError) {
     return {

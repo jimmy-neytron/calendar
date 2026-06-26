@@ -8,6 +8,7 @@ import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
+import { loadWorkspaceFeatures } from '../../composables/preferences/useBudgetSettings.js'
 
 let loadedDataKey = ''
 let loadingDataKey = ''
@@ -29,6 +30,7 @@ export async function loadWorkspaceData(workspaceId, { force = false } = {}) {
 }
 
 async function fetchWorkspaceData(workspaceId) {
+  await loadWorkspaceFeatures(workspaceId)
   const collections = await calendarCollectionStore.loadWorkspace(workspaceId)
   if (collections === null) return { ok: false, message: 'Не удалось загрузить календари' }
   await calendarCollectionStore.ensureWorkspaceCollections()

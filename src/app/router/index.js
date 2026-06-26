@@ -3,11 +3,14 @@ import { authStore } from '../stores/auth.store.js'
 import { workspaceStore } from '../stores/workspace.store.js'
 import { loadWorkspaceData } from '../services/backend/workspaceData.service.js'
 import { readActivityLogSetting } from '../composables/preferences/useActivityLogSettings.js'
+import { loadWorkspaceFeatures, readBudgetSetting } from '../composables/preferences/useBudgetSettings.js'
+import { readSubscriptionFeature } from '../composables/preferences/useSubscriptionSettings.js'
 import { readTimeTrackingSetting } from '../composables/preferences/useTimeTrackingSettings.js'
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
+const SubscriptionsPage = () => import('../pages/subscriptions/SubscriptionsPage.vue')
 const BudgetPage = () => import('../pages/budget/BudgetPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
 const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
@@ -22,7 +25,7 @@ const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.v
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
-  IndexPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
+  IndexPage, SettingsPage, SubscriptionsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
   IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
@@ -32,11 +35,12 @@ export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
   { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
-  { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет' } },
-  { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт' } },
-  { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresTimeTracking: true } },
-  { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresTimeTracking: true } },
+  { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет', requiresBudget: true } },
+  { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт', requiresSubscriptionFeature: 'sport' } },
+  { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
+  { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
+  { path: '/subscriptions', name: 'subscriptions', component: SubscriptionsPage, meta: { title: 'Подписки' } },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
   { path: '/analytics/calendar', name: 'analytics-calendar', component: AnalyticsDetailPage, meta: { title: 'Аналитика календаря', analyticsSection: 'calendar' } },
@@ -48,7 +52,7 @@ export const routes = [
   { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
-  { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы' } },
+  { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresSubscriptionFeature: 'movies' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/ideas' },
@@ -80,6 +84,10 @@ router.beforeEach(async (to) => {
     return { name: 'settings' }
   }
 
+  if (to.meta.requiresSubscriptionFeature && !readSubscriptionFeature(to.meta.requiresSubscriptionFeature)) {
+    return { name: 'subscriptions' }
+  }
+
   if (to.name === 'login' && authStore.isAuthenticated.value) {
     const workspace = await workspaceStore.ensureActiveWorkspace()
     if (workspace) await loadWorkspaceData(workspace.id)
@@ -89,6 +97,10 @@ router.beforeEach(async (to) => {
   if (!to.meta.public) {
     const workspace = workspaceStore.activeWorkspace.value
       || await workspaceStore.ensureActiveWorkspace()
+    if (workspace) await loadWorkspaceFeatures(workspace.id)
+    if (to.meta.requiresBudget && !readBudgetSetting()) {
+      return { name: 'subscriptions' }
+    }
     if (workspace) await loadWorkspaceData(workspace.id)
   }
 

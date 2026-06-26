@@ -215,6 +215,18 @@
               @update:model-value="toggleTimeTracking"
             />
           </label>
+
+          <label class="setting-switch">
+            <span>
+              <strong>Бюджет</strong>
+              <small>Показывает раздел бюджета и связанные платежи в календаре. Когда выключено, бюджет не пишет данные в Supabase, а события платежей скрываются до повторного включения.</small>
+            </span>
+            <UiToggle
+              :model-value="budgetEnabled"
+              label="Бюджет"
+              @update:model-value="toggleBudget"
+            />
+          </label>
         </article>
       </div>
     </section>
@@ -230,12 +242,14 @@ import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
+import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { HOLIDAY_COUNTRY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
+import { budgetStore } from '../../stores/budget.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { discardSyncOperations } from '../../repositories/SyncedCollectionRepository.js'
 
@@ -250,6 +264,10 @@ const {
   isEnabled: timeTrackingEnabled,
   setEnabled: setTimeTrackingEnabled,
 } = useTimeTrackingSettings()
+const {
+  isEnabled: budgetEnabled,
+  setEnabled: setBudgetEnabled,
+} = useBudgetSettings()
 const { start: startOnboarding } = useOnboarding()
 
 const preferencesSaved = ref(false)
@@ -305,6 +323,30 @@ async function toggleTimeTracking(enabled) {
   markPreferencesSaved()
   notify(
     enabled ? 'Учёт времени включён' : 'Учёт времени выключен — запись в базу остановлена',
+    enabled ? 'success' : 'info',
+  )
+}
+
+async function toggleBudget(enabled) {
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  const saved = await setBudgetEnabled(enabled, workspaceId)
+  if (!saved.ok) {
+    notify(saved.message || 'Не удалось обновить доступность бюджета', 'danger')
+    return
+  }
+  if (enabled && workspaceStore.activeWorkspaceId.value) {
+    await budgetStore.loadWorkspace(workspaceStore.activeWorkspaceId.value)
+    await budgetStore.syncCalendarLinks()
+  } else {
+    discardSyncOperations('budget_months')
+    discardSyncOperations('budget_categories')
+    discardSyncOperations('budget_recurring_rules')
+    discardSyncOperations('budget_payments')
+    if (router.currentRoute.value.name === 'budget') await router.replace({ name: 'settings' })
+  }
+  markPreferencesSaved()
+  notify(
+    enabled ? 'Бюджет включён' : 'Бюджет выключен — записи в базу остановлены, платежи скрыты из календаря',
     enabled ? 'success' : 'info',
   )
 }

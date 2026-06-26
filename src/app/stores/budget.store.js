@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
 import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
 import { createStorage } from '../composables/storage/useStorage.js'
+import { readBudgetSetting } from '../composables/preferences/useBudgetSettings.js'
 import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { calendarStore } from './calendar.store.js'
@@ -92,6 +93,7 @@ function setSelectedMonth(month) {
 }
 
 async function updateSettings(updates) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const month = await ensureCurrentMonth()
   if (!month.ok) return month
   return monthRepository.updateAndWait(month.item.id, {
@@ -105,6 +107,7 @@ async function updateSettings(updates) {
 }
 
 async function addCategory(name, amount = 0, options = {}) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const title = String(name || '').trim()
   if (!title) return { ok: false, message: 'Укажи название раздела' }
   if (categories.value.some((category) => category.name.toLowerCase() === title.toLowerCase())) {
@@ -130,6 +133,7 @@ async function addCategory(name, amount = 0, options = {}) {
 }
 
 function updateCategory(id, updates) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const category = categoryRepository.findById(id)
   if (!category) return { ok: false, message: 'Раздел не найден' }
   return categoryRepository.update(id, {
@@ -141,6 +145,7 @@ function updateCategory(id, updates) {
 }
 
 async function removeCategory(id) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const linkedPayments = payments.value.filter((payment) => payment.categoryId === id)
   if (linkedPayments.some((payment) => payment.recurringRuleId)) {
     return {
@@ -156,6 +161,7 @@ async function removeCategory(id) {
 }
 
 async function addRecurringRule(data) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const title = String(data.title || '').trim()
   if (!title) return { ok: false, message: 'Укажи название обязательного платежа' }
   const dueDay = Math.max(1, Math.min(31, Number(data.dueDay || 1)))
@@ -178,6 +184,7 @@ async function addRecurringRule(data) {
 }
 
 function updateRecurringRule(id, updates) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const rule = ruleRepository.findById(id)
   if (!rule) return { ok: false, message: 'Правило не найдено' }
   return ruleRepository.update(id, {
@@ -194,6 +201,7 @@ function updateRecurringRule(id, updates) {
 }
 
 async function removeRecurringRule(id) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const rule = ruleRepository.findById(id)
   if (!rule) return { ok: false, message: 'Обязательный платёж не найден' }
 
@@ -252,6 +260,7 @@ async function removeLinkedPayment(payment) {
 }
 
 async function prepareMonth({ income = 0, includeRules = true } = {}) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const monthResult = await ensureCurrentMonth()
   if (!monthResult.ok) return monthResult
   await updateSettings({ income, status: 'active' })
@@ -285,6 +294,7 @@ async function prepareMonth({ income = 0, includeRules = true } = {}) {
 }
 
 async function unapplyRulesFromMonth() {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const appliedPayments = payments.value.filter((payment) => payment.recurringRuleId)
   if (!appliedPayments.length) return { ok: true, deletedPayments: 0, deletedEvents: 0 }
 
@@ -334,6 +344,7 @@ async function unapplyRulesFromMonth() {
 }
 
 async function addPayment(categoryId, data) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const month = await ensureCurrentMonth()
   if (!month.ok) return month
   const category = categoryId ? categoryRepository.findById(categoryId) : null
@@ -389,6 +400,7 @@ async function addPayment(categoryId, data) {
 }
 
 async function setPaymentStatus(paymentId, status, actualAmount = null) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const payment = paymentRepository.findById(paymentId)
   if (!payment) return { ok: false, message: 'Платёж не найден' }
   if (!['planned', 'paid', 'skipped'].includes(status)) {
@@ -415,12 +427,14 @@ async function setPaymentStatus(paymentId, status, actualAmount = null) {
 }
 
 async function togglePaymentPaid(categoryId, paymentId) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const payment = paymentRepository.findById(paymentId)
   if (!payment) return { ok: false, message: 'Платёж не найден' }
   return setPaymentStatus(paymentId, payment.status === 'paid' ? 'planned' : 'paid')
 }
 
 async function removePayment(categoryId, paymentId) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const payment = paymentRepository.findById(paymentId)
   if (!payment) return { ok: false, message: 'Платёж не найден' }
   if (payment.recurringRuleId) {
@@ -437,6 +451,7 @@ async function removePayment(categoryId, paymentId) {
 }
 
 async function restorePaymentEvent(categoryId, paymentId) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const payment = paymentRepository.findById(paymentId)
   if (!payment) return { ok: false, message: 'Платёж не найден' }
   if (payment.calendarEventId) return { ok: true, existing: true }
@@ -453,6 +468,7 @@ async function restorePaymentEvent(categoryId, paymentId) {
 }
 
 async function syncCalendarLinks() {
+  if (!readBudgetSetting()) return
   const eventIds = new Set(calendarStore.events.value.map((event) => event.id))
   const linkedEventByPayment = new Map(calendarStore.events.value
     .filter((event) => event.linkedEntityType === 'budget-payment' && event.linkedEntityId)
@@ -482,6 +498,7 @@ async function syncCalendarLinks() {
 }
 
 async function syncPaymentFromCalendar(event) {
+  if (!readBudgetSetting()) return
   const payment = findPaymentByCalendarEvent(event)
   if (!payment) return
   const updates = {}
@@ -506,6 +523,7 @@ async function syncPaymentFromCalendar(event) {
 }
 
 async function handleLinkedCalendarEventChange(change) {
+  if (!readBudgetSetting()) return
   const event = change?.event
   const payment = findPaymentByCalendarEvent(event)
   if (!payment) return
@@ -521,6 +539,7 @@ async function handleLinkedCalendarEventChange(change) {
 }
 
 async function loadWorkspace(workspaceId) {
+  if (!readBudgetSetting()) return []
   const results = await Promise.all([
     monthRepository.loadWorkspace(workspaceId),
     categoryRepository.loadWorkspace(workspaceId),
@@ -641,6 +660,7 @@ async function migrateLegacyBudget(workspaceId) {
 }
 
 async function ensureCurrentMonth() {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   if (currentMonthRecord.value) return { ok: true, item: currentMonthRecord.value }
   if (monthCreatePromise) return monthCreatePromise
   const workspaceId = workspaceStore.activeWorkspaceId.value
@@ -665,6 +685,7 @@ async function ensureCurrentMonth() {
 }
 
 async function ensureBudgetMonthForDate(dateKey) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const monthKey = toMonthKey(dateKey)
   if (!/^\d{4}-\d{2}$/.test(monthKey)) return { ok: false, message: 'Некорректная дата платежа' }
   const existingMonth = workspaceMonths.value.find((month) => toMonthKey(month.month) === monthKey)
@@ -703,6 +724,7 @@ function categoryBelongsToMonth(categoryId, monthId) {
 }
 
 async function ensureCategory(name, amount = 0) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const existing = categories.value.find((category) => (
     category.name.toLowerCase() === String(name).trim().toLowerCase()
   ))
@@ -712,6 +734,7 @@ async function ensureCategory(name, amount = 0) {
 }
 
 async function ensureRulePayment(rule, preparedCategory = null) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const existing = payments.value.find((payment) => payment.recurringRuleId === rule.id)
   if (existing) return { ok: true, existing: true, payment: toPaymentView(existing) }
 
@@ -743,6 +766,7 @@ async function ensureRulePayment(rule, preparedCategory = null) {
 }
 
 async function createPaymentEvent(payment, category) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
   const result = await calendarStore.addEventAndWait({
     title: payment.title,
     date: payment.dueDate,
@@ -813,6 +837,10 @@ function formatAmount(value) {
     currency: 'RUB',
     maximumFractionDigits: 0,
   }).format(toAmount(value))
+}
+
+function disabledBudgetResult() {
+  return { ok: false, message: 'Бюджет выключен в настройках' }
 }
 
 export const budgetStore = {

@@ -1,5 +1,9 @@
 import { computed, ref } from 'vue'
 import { authApi } from '../api/supabase/auth.api.js'
+import {
+  getSubscriptionPlan,
+  normalizeSubscriptionTier,
+} from '../utils/constants/subscriptionConstants.js'
 
 const users = ref([])
 const currentUserId = ref(null)
@@ -12,13 +16,16 @@ const isAuthenticated = computed(() => Boolean(currentUserId.value))
 
 function mapUser(profile, authUser) {
   const email = profile?.email || authUser?.email || ''
-  const name = profile?.name || authUser?.user_metadata?.name || email.split('@')[0] || 'Пользователь'
+  const name = profile?.name || authUser?.user_metadata?.name || email.split('@')[0] || 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ'
+  const subscriptionTier = normalizeSubscriptionTier(profile?.subscription_tier || 'free')
   return {
     id: profile?.id || authUser.id,
     email,
     name,
     avatar: profile?.avatar || name.slice(0, 1).toUpperCase(),
     color: profile?.color || authUser?.user_metadata?.color || '#60a5fa',
+    subscriptionTier,
+    workspaceLimit: Number(profile?.workspace_limit || getSubscriptionPlan(subscriptionTier).workspaceLimit),
     createdAt: profile?.created_at || authUser?.created_at,
   }
 }
@@ -62,7 +69,7 @@ async function login(email, password) {
     await applySession(data.session)
     return { ok: true, user: currentUser.value }
   } catch {
-    return { ok: false, message: 'Нет соединения с Supabase. Проверь интернет и настройки проекта.' }
+    return { ok: false, message: 'РќРµС‚ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ Supabase. РџСЂРѕРІРµСЂСЊ РёРЅС‚РµСЂРЅРµС‚ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕРµРєС‚Р°.' }
   } finally {
     loading.value = false
   }
@@ -71,9 +78,9 @@ async function login(email, password) {
 async function register(data) {
   const name = String(data.name || '').trim()
   const email = String(data.email || '').trim().toLowerCase()
-  if (!name) return { ok: false, message: 'Укажи имя аккаунта' }
-  if (!email.includes('@')) return { ok: false, message: 'Укажи корректный email' }
-  if (String(data.password || '').length < 6) return { ok: false, message: 'Пароль должен быть не короче 6 символов' }
+  if (!name) return { ok: false, message: 'РЈРєР°Р¶Рё РёРјСЏ Р°РєРєР°СѓРЅС‚Р°' }
+  if (!email.includes('@')) return { ok: false, message: 'РЈРєР°Р¶Рё РєРѕСЂСЂРµРєС‚РЅС‹Р№ email' }
+  if (String(data.password || '').length < 6) return { ok: false, message: 'РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РЅРµ РєРѕСЂРѕС‡Рµ 6 СЃРёРјРІРѕР»РѕРІ' }
   loading.value = true
   try {
     const { data: result, error } = await authApi.signUp({ ...data, name, email })
@@ -81,7 +88,7 @@ async function register(data) {
     if (result.session) await applySession(result.session)
     return { ok: true, needsEmailConfirmation: !result.session }
   } catch {
-    return { ok: false, message: 'Нет соединения с Supabase. Проверь интернет и настройки проекта.' }
+    return { ok: false, message: 'РќРµС‚ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ Supabase. РџСЂРѕРІРµСЂСЊ РёРЅС‚РµСЂРЅРµС‚ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕРµРєС‚Р°.' }
   } finally {
     loading.value = false
   }
@@ -98,6 +105,9 @@ async function updateCurrentUser(updates) {
     name: String(updates.name || currentUser.value.name).trim(),
     avatar: updates.avatar || currentUser.value.avatar,
     color: updates.color || currentUser.value.color,
+    ...(updates.subscriptionTier !== undefined
+      ? { subscription_tier: normalizeSubscriptionTier(updates.subscriptionTier) }
+      : {}),
   }
   const { data, error } = await authApi.updateProfile(currentUser.value.id, payload)
   if (error) return { ok: false, message: error.message }
@@ -116,13 +126,13 @@ function mergeUsers(items) {
 
 function getAuthErrorMessage(error) {
   const messages = {
-    invalid_credentials: 'Неверный email или пароль',
-    email_not_confirmed: 'Сначала подтверди email по ссылке из письма',
-    user_already_exists: 'Аккаунт с таким email уже существует',
-    signup_disabled: 'Регистрация отключена в настройках Supabase',
-    over_email_send_rate_limit: 'Слишком много писем. Попробуй немного позже',
+    invalid_credentials: 'РќРµРІРµСЂРЅС‹Р№ email РёР»Рё РїР°СЂРѕР»СЊ',
+    email_not_confirmed: 'РЎРЅР°С‡Р°Р»Р° РїРѕРґС‚РІРµСЂРґРё email РїРѕ СЃСЃС‹Р»РєРµ РёР· РїРёСЃСЊРјР°',
+    user_already_exists: 'РђРєРєР°СѓРЅС‚ СЃ С‚Р°РєРёРј email СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚',
+    signup_disabled: 'Р РµРіРёСЃС‚СЂР°С†РёСЏ РѕС‚РєР»СЋС‡РµРЅР° РІ РЅР°СЃС‚СЂРѕР№РєР°С… Supabase',
+    over_email_send_rate_limit: 'РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ РїРёСЃРµРј. РџРѕРїСЂРѕР±СѓР№ РЅРµРјРЅРѕРіРѕ РїРѕР·Р¶Рµ',
   }
-  return messages[error.code] || error.message || 'Ошибка авторизации'
+  return messages[error.code] || error.message || 'РћС€РёР±РєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё'
 }
 
 export const authStore = {

@@ -6,6 +6,7 @@ import { generateId } from '../utils/helpers/idGenerator.js'
 import { validateEvent } from '../utils/validators/calendarValidator.js'
 import { toDateKey } from '../utils/formatters/dateFormatter.js'
 import { DateHelper } from '../utils/date/dateHelper.js'
+import { readBudgetSetting } from '../composables/preferences/useBudgetSettings.js'
 import { useRecurringEvents } from '../composables/recurrence/useRecurringEvents.js'
 import { useActivityLog } from '../composables/history/useActivityLog.js'
 import { workspaceStore } from './workspace.store.js'
@@ -27,6 +28,7 @@ const { addActivity } = useActivityLog()
 
 const events = computed(() => eventRepository.items.value
   .filter((event) => event.workspaceId === workspaceStore.activeWorkspaceId.value)
+  .filter((event) => readBudgetSetting() || event.linkedEntityType !== 'budget-payment')
   .map(normalizeEvent))
 const visibleEvents = computed(() => expandRecurringEvents(events.value))
 const sortedEvents = computed(() => [...visibleEvents.value].sort(compareEvents))

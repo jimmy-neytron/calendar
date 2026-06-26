@@ -32,11 +32,14 @@
 import { computed } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
+import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
+import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
+const { isEnabled: budgetEnabled } = useBudgetSettings()
 const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
 
@@ -44,6 +47,7 @@ const groups = [
   {
     label: 'Планирование',
     items: [
+      { name: 'subscriptions', label: 'Подписки', description: 'Тарифы и возможности', icon: 'star' },
       { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: 'calendar' },
       { name: 'budget', label: 'Бюджет', description: 'Доходы и план расходов', icon: 'wallet' },
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
@@ -68,7 +72,10 @@ const visibleGroups = computed(() => groups.map((group) => ({
   ...group,
   items: group.items.filter((item) => (
     (item.name !== 'activity' || activityLogEnabled.value)
+    && (item.name !== 'budget' || budgetEnabled.value)
     && (item.name !== 'time-tracking' || timeTrackingEnabled.value)
+    && (item.name !== 'sport' || readSubscriptionFeature('sport'))
+    && (item.name !== 'movies' || readSubscriptionFeature('movies'))
   )),
 })))
 </script>

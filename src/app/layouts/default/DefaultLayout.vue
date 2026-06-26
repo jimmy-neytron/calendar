@@ -90,6 +90,8 @@ import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
+import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
+import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
@@ -106,6 +108,7 @@ const isCommandPaletteOpen = ref(false)
 const paletteQuery = ref('')
 const { notifications, dismiss, notify } = useNotification()
 const { start: startOnboarding } = useOnboarding()
+const { isEnabled: budgetEnabled } = useBudgetSettings()
 const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
 const { runDailyAutoBackup } = useAutoBackup()
 const {
@@ -134,11 +137,13 @@ const commands = computed(() => [
   { id: 'day', label: 'Режим дня', description: 'Показать расписание дня', icon: '◫', shortcut: 'D', action: () => setCalendarMode('day') },
   { id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) },
   { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
-  { id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) },
-  ...(timeTrackingEnabled.value ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
-  { id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) },
+  ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
+  ...(timeTrackingEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
+  ...(readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) }] : []),
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
+  ...(readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
   { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
+  { id: 'subscriptions', label: 'Открыть подписки', description: 'Тарифы Free, Plus и Pro', icon: '★', action: () => router.push({ name: 'subscriptions' }) },
   { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
   ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
     id: `event-${event.id}`,
