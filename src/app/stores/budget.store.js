@@ -36,6 +36,8 @@ let monthCreatePromise = null
 
 const workspaceMonths = computed(() => monthRepository.items.value
   .filter((item) => item.workspaceId === workspaceStore.activeWorkspaceId.value))
+const workspacePayments = computed(() => paymentRepository.items.value
+  .filter((item) => item.workspaceId === workspaceStore.activeWorkspaceId.value))
 const currentMonthRecord = computed(() => workspaceMonths.value.find((item) => (
   toMonthKey(item.month) === selectedMonth.value
 )) || null)
@@ -49,8 +51,8 @@ const categories = computed(() => {
 const payments = computed(() => {
   const monthId = currentMonthRecord.value?.id
   if (!monthId) return []
-  return paymentRepository.items.value
-    .filter((item) => item.workspaceId === workspaceStore.activeWorkspaceId.value && item.budgetMonthId === monthId)
+  return workspacePayments.value
+    .filter((item) => item.budgetMonthId === monthId)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
 })
 const recurringRules = computed(() => ruleRepository.items.value
@@ -456,11 +458,20 @@ async function syncCalendarLinks() {
     .filter((event) => event.linkedEntityType === 'budget-payment' && event.linkedEntityId)
     .map((event) => [event.linkedEntityId, event]))
 
-  for (const payment of payments.value) {
+  for (const payment of workspacePayments.value) {
     const linkedEvent = linkedEventByPayment.get(payment.id)
     const nextEventId = linkedEvent?.id || null
     const storedEventExists = payment.calendarEventId && eventIds.has(payment.calendarEventId)
-    if (storedEventExists && (!linkedEvent || linkedEvent.id === payment.calendarEventId)) continue
+    if (storedEventExists) {
+      const storedEvent = calendarStore.events.value.find((event) => event.id === payment.calendarEventId)
+      if (storedEvent && (storedEvent.linkedEntityType !== 'budget-payment' || storedEvent.linkedEntityId !== payment.id)) {
+        calendarStore.updateEvent(storedEvent.id, {
+          linkedEntityType: 'budget-payment',
+          linkedEntityId: payment.id,
+        })
+      }
+      if (!linkedEvent || linkedEvent.id === payment.calendarEventId) continue
+    }
     if (!payment.calendarEventId && !nextEventId) continue
     await paymentRepository.updateAndWait(payment.id, {
       ...payment,
@@ -471,11 +482,16 @@ async function syncCalendarLinks() {
 }
 
 async function syncPaymentFromCalendar(event) {
-  if (event.linkedEntityType !== 'budget-payment' || !event.linkedEntityId) return
-  const payment = paymentRepository.findById(event.linkedEntityId)
+  const payment = findPaymentByCalendarEvent(event)
   if (!payment) return
   const updates = {}
+  if (payment.calendarEventId !== event.id) updates.calendarEventId = event.id
   if (event.date !== payment.dueDate) updates.dueDate = event.date
+  const targetMonth = await ensureBudgetMonthForDate(event.date)
+  if (targetMonth.ok && targetMonth.item.id !== payment.budgetMonthId) {
+    updates.budgetMonthId = targetMonth.item.id
+    if (!categoryBelongsToMonth(payment.categoryId, targetMonth.item.id)) updates.categoryId = null
+  }
   if (event.completedAt && payment.status !== 'paid') {
     updates.status = 'paid'
     updates.paidAt = event.completedAt
@@ -491,8 +507,7 @@ async function syncPaymentFromCalendar(event) {
 
 async function handleLinkedCalendarEventChange(change) {
   const event = change?.event
-  if (event?.linkedEntityType !== 'budget-payment' || !event.linkedEntityId) return
-  const payment = paymentRepository.findById(event.linkedEntityId)
+  const payment = findPaymentByCalendarEvent(event)
   if (!payment) return
   if (change.action === 'delete') {
     await paymentRepository.updateAndWait(payment.id, {
@@ -515,6 +530,10 @@ async function loadWorkspace(workspaceId) {
   if (results.some((result) => result === null)) return null
   await migrateLegacyBudget(workspaceId)
   await cleanupDraftAutoPayments()
+  await syncCalendarLinks()
+  await Promise.all(calendarStore.events.value
+    .filter((event) => event.linkedEntityType === 'budget-payment' || findPaymentByCalendarEvent(event))
+    .map((event) => syncPaymentFromCalendar(event)))
   return results
 }
 
@@ -643,6 +662,44 @@ async function ensureCurrentMonth() {
   const result = await monthCreatePromise
   monthCreatePromise = null
   return result
+}
+
+async function ensureBudgetMonthForDate(dateKey) {
+  const monthKey = toMonthKey(dateKey)
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return { ok: false, message: 'Некорректная дата платежа' }
+  const existingMonth = workspaceMonths.value.find((month) => toMonthKey(month.month) === monthKey)
+  if (existingMonth) return { ok: true, item: existingMonth }
+
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
+  const now = new Date().toISOString()
+  const month = {
+    id: generateId(),
+    workspaceId,
+    month: `${monthKey}-01`,
+    plannedIncome: 0,
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+  }
+  const result = await monthRepository.createAndWait(month)
+  return result.ok ? { ok: true, item: month } : result
+}
+
+function findPaymentByCalendarEvent(event) {
+  if (!event) return null
+  if (event.linkedEntityType === 'budget-payment' && event.linkedEntityId) {
+    return paymentRepository.findById(event.linkedEntityId)
+      || workspacePayments.value.find((payment) => payment.calendarEventId === event.id)
+      || null
+  }
+  return workspacePayments.value.find((payment) => payment.calendarEventId === event.id) || null
+}
+
+function categoryBelongsToMonth(categoryId, monthId) {
+  if (!categoryId) return true
+  const category = categoryRepository.findById(categoryId)
+  return category?.budgetMonthId === monthId
 }
 
 async function ensureCategory(name, amount = 0) {
