@@ -8,8 +8,12 @@ import { workspaceStore } from './workspace.store.js'
 
 const STORAGE_KEY = `${APP_CONFIG.storageKey}:notifications`
 const CLEARED_AT_KEY = `${APP_CONFIG.storageKey}:notifications-cleared-at`
+const DISMISSED_DEDUPE_KEY = `${APP_CONFIG.storageKey}:notifications-dismissed-dedupe-keys`
 const MAX_USER_NOTIFICATIONS = 60
+const NOTIFICATION_TTL_DAYS = 30
+const ALLOWED_NOTIFICATION_TYPES = new Set(['event_reminder', 'event_comment'])
 const { state: clearedAtByScope } = useLocalStorage(CLEARED_AT_KEY, {})
+const { state: dismissedDedupeKeys } = useLocalStorage(DISMISSED_DEDUPE_KEY, {})
 
 const repository = new SyncedCollectionRepository(STORAGE_KEY, [], 'notifications', {
   toRow: (item) => {
@@ -48,6 +52,7 @@ const currentUserNotifications = computed(() => {
     .filter((notification) => (
       notification.userId === userId
       && notification.workspaceId === workspaceId
+      && isAllowedNotification(notification)
       && (!clearedAt || notification.updatedAt > clearedAt)
     ))
     .sort((first, second) => new Date(second.updatedAt) - new Date(first.updatedAt))
@@ -57,42 +62,90 @@ const unreadCount = computed(() => currentUserNotifications.value.filter((notifi
 const unreadImportantCount = computed(() => currentUserNotifications.value.filter((notification) => !notification.readAt && notification.severity !== 'info').length)
 
 function notifyEventChange(action, event, previousEvent = null) {
-  const actor = authStore.currentUser.value
-  if (!actor || !event?.workspaceId) return
+  return null
+}
 
-  const recipients = resolveRecipients(event, actor.id)
+function notifyEventReminder(event) {
+  const userId = authStore.currentUserId.value
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  if (!userId || !workspaceId || !event?.id || !event?.date) return null
+
+  const eventId = String(event.parentId || event.id).split('::')[0]
+  const eventDate = event.date
+  const eventTime = event.startTime || ''
+  const reminder = event.reminder || 'none'
+  const dedupeKey = `${workspaceId}:${userId}:event-reminder:${eventId}:${eventDate}:${eventTime}:${reminder}`
+  if (isDedupeKeyDismissed(dedupeKey)) return null
+  const existing = notifications.value.find((notification) => notification.dedupeKey === dedupeKey)
+  if (existing) return existing
+
+  const now = new Date().toISOString()
+  const payload = {
+    id: generateId(),
+    dedupeKey,
+    userId,
+    workspaceId,
+    eventId,
+    eventDate,
+    eventTime,
+    eventTitle: event.title,
+    title: 'Скоро событие',
+    message: getEventReminderMessage(event),
+    type: 'event_reminder',
+    action: 'reminder',
+    severity: getSeverity('update', event),
+    readAt: null,
+    createdAt: now,
+    updatedAt: now,
+    updateCount: 1,
+  }
+  repository.create(payload)
+  cleanupStoredNotifications(workspaceId)
+  trimUserNotifications(userId, workspaceId)
+  return payload
+}
+
+function notifyEventComment(event, comment) {
+  const actor = authStore.currentUser.value
+  const actorId = comment?.userId || actor?.id
+  if (!actorId || !event?.workspaceId || !comment?.id) return
+
+  const recipients = resolveRecipients(event, actorId)
   if (!recipients.length) return
 
   const now = new Date().toISOString()
-  const title = getEventNotificationTitle(action, event)
-  const message = getEventNotificationMessage(action, event, previousEvent, actor)
-  const severity = getSeverity(action, event)
+  const eventId = String(event.parentId || event.id).split('::')[0]
+  const actorName = comment.userName || actor?.name || 'Пользователь'
+  const message = String(comment.text || '').trim()
 
   recipients.forEach((userId) => {
-    const dedupeKey = `${event.workspaceId}:${userId}:event:${event.id}`
+    const dedupeKey = `${event.workspaceId}:${userId}:event-comment:${eventId}:${comment.id}`
     const existing = notifications.value.find((notification) => notification.dedupeKey === dedupeKey)
-    const payload = {
-      id: existing?.id || generateId(),
+    if (existing) return
+
+    repository.create({
+      id: generateId(),
       dedupeKey,
       userId,
       workspaceId: event.workspaceId,
-      actorId: actor.id,
-      actorName: actor.name,
-      eventId: event.id,
+      actorId,
+      actorName,
+      eventId,
       eventDate: event.date,
       eventTitle: event.title,
-      title,
-      message,
-      type: 'event',
-      action,
-      severity,
+      commentId: comment.id,
+      title: `Новое сообщение в «${event.title || 'событии'}»`,
+      message: `${actorName}: ${message}`,
+      type: 'event_comment',
+      action: 'comment',
+      severity: 'info',
       readAt: null,
-      createdAt: existing?.createdAt || now,
+      createdAt: now,
       updatedAt: now,
-      updateCount: existing ? Number(existing.updateCount || 1) + 1 : 1,
-    }
-    if (existing) repository.update(existing.id, payload)
-    else repository.create(payload)
+      updateCount: 1,
+    })
+    cleanupStoredNotifications(event.workspaceId)
+    trimUserNotifications(userId, event.workspaceId)
   })
 }
 
@@ -104,6 +157,14 @@ function resolveRecipients(event, actorId) {
 
   return [...new Set(rawRecipients)]
     .filter((userId) => userId && userId !== actorId && workspaceMembers.includes(userId))
+}
+
+function getEventReminderMessage(event) {
+  const title = event.title || 'Без названия'
+  const date = formatDate(event.date)
+  const time = event.allDay ? 'весь день' : event.startTime || 'без времени'
+  const location = event.location ? ` · ${event.location}` : ''
+  return `«${title}» — ${date}, ${time}${location}.`
 }
 
 function getEventNotificationTitle(action, event) {
@@ -156,11 +217,17 @@ function markAllAsRead() {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   const now = new Date().toISOString()
   notifications.value
-    .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId)
+    .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId && isAllowedNotification(notification))
     .forEach((notification) => repository.update(notification.id, { readAt: notification.readAt || now }))
 }
 
 function removeNotification(id) {
+  dismissNotification(id)
+}
+
+function dismissNotification(id) {
+  const notification = repository.findById(id)
+  if (notification?.dedupeKey) rememberDismissedDedupeKey(notification.dedupeKey)
   repository.delete(id)
 }
 
@@ -173,7 +240,7 @@ function clearCurrentWorkspaceNotifications() {
     .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId)
 
   currentNotifications.forEach((notification) => {
-    if (!notification.readAt) repository.update(notification.id, { readAt: now })
+    if (notification.dedupeKey) rememberDismissedDedupeKey(notification.dedupeKey)
   })
   clearedAtByScope.value = {
     ...clearedAtByScope.value,
@@ -182,11 +249,74 @@ function clearCurrentWorkspaceNotifications() {
   currentNotifications.forEach((notification) => repository.delete(notification.id))
 }
 
+function rememberDismissedDedupeKey(dedupeKey) {
+  if (!dedupeKey) return
+  const now = new Date().toISOString()
+  dismissedDedupeKeys.value = trimDismissedDedupeKeys({
+    ...dismissedDedupeKeys.value,
+    [dedupeKey]: now,
+  })
+}
+
+function isDedupeKeyDismissed(dedupeKey) {
+  return Boolean(dedupeKey && dismissedDedupeKeys.value[dedupeKey])
+}
+
+function trimDismissedDedupeKeys(items) {
+  const entries = Object.entries(items || {})
+    .sort((first, second) => new Date(second[1]) - new Date(first[1]))
+    .slice(0, 500)
+  return Object.fromEntries(entries)
+}
+
+function trimUserNotifications(userId, workspaceId) {
+  const userNotifications = notifications.value
+    .filter((notification) => notification.userId === userId && notification.workspaceId === workspaceId && isAllowedNotification(notification))
+    .sort((first, second) => new Date(second.updatedAt) - new Date(first.updatedAt))
+
+  userNotifications
+    .slice(MAX_USER_NOTIFICATIONS)
+    .forEach((notification) => repository.delete(notification.id))
+}
+
 function ingestRemoteRow(row) {
   if (!row?.id) return null
   const notification = repository.fromRow(row)
+  if (!isAllowedNotification(notification) || isExpiredNotification(notification)) {
+    repository.delete(notification.id)
+    return null
+  }
   repository.mergeById([notification])
   return notification
+}
+
+async function loadWorkspace(workspaceId) {
+  const result = await repository.loadWorkspace(workspaceId)
+  cleanupStoredNotifications(workspaceId)
+  return result
+}
+
+function cleanupStoredNotifications(workspaceId = workspaceStore.activeWorkspaceId.value) {
+  if (!workspaceId) return
+  notifications.value
+    .filter((notification) => notification.workspaceId === workspaceId)
+    .filter((notification) => !isAllowedNotification(notification) || isExpiredNotification(notification))
+    .forEach((notification) => {
+      if (notification.dedupeKey) rememberDismissedDedupeKey(notification.dedupeKey)
+      repository.delete(notification.id)
+    })
+}
+
+function isAllowedNotification(notification) {
+  return ALLOWED_NOTIFICATION_TYPES.has(notification?.type)
+}
+
+function isExpiredNotification(notification) {
+  const sourceDate = notification?.updatedAt || notification?.createdAt
+  if (!sourceDate) return false
+  const time = new Date(sourceDate).getTime()
+  if (Number.isNaN(time)) return false
+  return Date.now() - time > NOTIFICATION_TTL_DAYS * 24 * 60 * 60 * 1000
 }
 
 function formatDate(dateKey) {
@@ -218,10 +348,13 @@ export const notificationStore = {
   unreadCount,
   unreadImportantCount,
   notifyEventChange,
+  notifyEventReminder,
+  notifyEventComment,
   markAsRead,
   markAllAsRead,
   removeNotification,
+  dismissNotification,
   clearCurrentWorkspaceNotifications,
   ingestRemoteRow,
-  loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
+  loadWorkspace,
 }

@@ -20,7 +20,7 @@
           `notification-item--${notification.severity}`,
           { 'notification-item--unread': !notification.readAt }
         ]"
-        @click="notificationStore.markAsRead(notification.id)"
+        @click="openNotification(notification)"
       >
         <div class="notification-item__dot" />
         <div class="notification-item__body">
@@ -49,10 +49,34 @@
 <script setup>
 import UiIconButton from '../ui/UiIconButton.vue'
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { notificationStore } from '../../stores/notification.store.js'
+import { calendarStore } from '../../stores/calendar.store.js'
+import { workspaceStore } from '../../stores/workspace.store.js'
 
+const emit = defineEmits(['open'])
+const router = useRouter()
 const notifications = computed(() => notificationStore.currentUserNotifications.value)
 const unreadCount = computed(() => notificationStore.unreadCount.value)
+
+async function openNotification(notification) {
+  if (notification.type === 'event_reminder') notificationStore.dismissNotification(notification.id)
+  else notificationStore.markAsRead(notification.id)
+  if (!notification.eventId) return
+  if (workspaceStore.activeWorkspaceId.value) {
+    await calendarStore.loadWorkspace(workspaceStore.activeWorkspaceId.value)
+  }
+
+  await router.push({
+    name: 'calendar',
+    query: {
+      event: notification.eventId,
+      ...(notification.eventDate ? { eventDate: notification.eventDate } : {}),
+      notification: notification.id,
+    },
+  })
+  emit('open')
+}
 
 function formatNotificationDate(value) {
   return new Intl.DateTimeFormat('ru-RU', {

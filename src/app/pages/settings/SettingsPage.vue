@@ -194,26 +194,6 @@
 
           <label class="setting-switch">
             <span>
-              <strong>Напоминания на устройстве</strong>
-              <small>Получать уведомления о событиях, даже если вкладка свёрнута.</small>
-              <small
-                v-if="pushNotificationsStatus"
-                class="setting-switch__status"
-                :class="`setting-switch__status--${pushNotificationsStatusType}`"
-              >
-                {{ pushNotificationsStatus }}
-              </small>
-            </span>
-            <UiToggle
-              :model-value="localRemindersEnabled"
-              label="Напоминания на устройстве"
-              :disabled="pushNotificationsLoading"
-              @update:model-value="toggleLocalReminders"
-            />
-          </label>
-
-          <label class="setting-switch">
-            <span>
               <strong>Журнал активности</strong>
               <small>Сохранять историю изменений в Supabase. Когда выключено, раздел «Активность» скрыт и база не заполняется.</small>
             </span>
@@ -242,13 +222,12 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
-import { usePushNotifications } from '../../composables/notifications/usePushNotifications.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
@@ -272,15 +251,6 @@ const {
   setEnabled: setTimeTrackingEnabled,
 } = useTimeTrackingSettings()
 const { start: startOnboarding } = useOnboarding()
-const {
-  enabled: localRemindersEnabled,
-  loading: pushNotificationsLoading,
-  status: pushNotificationsStatus,
-  statusType: pushNotificationsStatusType,
-  enable: enableLocalReminders,
-  disable: disableLocalReminders,
-  refresh: refreshPushNotifications,
-} = usePushNotifications()
 
 const preferencesSaved = ref(false)
 const isLoggingOut = ref(false)
@@ -315,19 +285,6 @@ function markPreferencesSaved() {
   }, 1600)
 }
 
-async function toggleLocalReminders(enabled) {
-  if (!enabled) {
-    const result = await disableLocalReminders()
-    notify(
-      result.message || 'Push-уведомления выключены на этом устройстве',
-      result.ok ? 'info' : 'danger',
-    )
-    return
-  }
-  const result = await enableLocalReminders()
-  notify(result.message, result.ok ? 'success' : 'warning')
-}
-
 function toggleActivityLog(enabled) {
   setActivityLogEnabled(enabled)
   markPreferencesSaved()
@@ -360,7 +317,6 @@ async function logout() {
   if (isLoggingOut.value) return
   isLoggingOut.value = true
   try {
-    if (localRemindersEnabled.value) await disableLocalReminders()
     await authStore.logout()
     await router.replace({ name: 'login' })
   } catch {
@@ -370,7 +326,6 @@ async function logout() {
 }
 
 onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
-onMounted(() => refreshPushNotifications())
 </script>
 
 <style scoped>
