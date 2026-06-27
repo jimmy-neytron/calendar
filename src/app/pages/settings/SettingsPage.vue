@@ -330,24 +330,33 @@ async function toggleTimeTracking(enabled) {
 async function toggleBudget(enabled) {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   const saved = await setBudgetEnabled(enabled, workspaceId)
+
   if (!saved.ok) {
     notify(saved.message || 'Не удалось обновить доступность бюджета', 'danger')
     return
   }
-  if (enabled && workspaceStore.activeWorkspaceId.value) {
-    await budgetStore.loadWorkspace(workspaceStore.activeWorkspaceId.value)
+
+  if (enabled && workspaceId) {
+    await budgetStore.loadWorkspace(workspaceId)
     await budgetStore.syncCalendarLinks()
   } else {
     discardSyncOperations('budget_months')
     discardSyncOperations('budget_categories')
     discardSyncOperations('budget_recurring_rules')
     discardSyncOperations('budget_payments')
-    if (router.currentRoute.value.name === 'budget') await router.replace({ name: 'settings' })
+
+    if (router.currentRoute.value.name === 'budget') {
+      await router.replace({ name: 'settings' })
+    }
   }
+
   markPreferencesSaved()
+
   notify(
-    enabled ? 'Бюджет включён' : 'Бюджет выключен — записи в базу остановлены, платежи скрыты из календаря',
-    enabled ? 'success' : 'info',
+      enabled
+          ? 'Бюджет включён'
+          : 'Бюджет выключен — записи в базу остановлены, платежи скрыты из календаря',
+      enabled ? 'success' : 'info',
   )
 }
 

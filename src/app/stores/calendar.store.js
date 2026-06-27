@@ -13,6 +13,7 @@ import { workspaceStore } from './workspace.store.js'
 import { notificationStore } from './notification.store.js'
 import { calendarCollectionStore } from './calendarCollection.store.js'
 import { authStore } from './auth.store.js'
+import { CALENDAR_LINK_CHANGE_EVENT, LINKED_ENTITY_TYPES } from '../utils/constants/linkedEntityTypes.js'
 
 const STORAGE_KEY = `${APP_CONFIG.storageKey}:events`
 const defaultWorkspaceEvents = defaultEvents.map((event) => ({
@@ -28,7 +29,7 @@ const { addActivity } = useActivityLog()
 
 const events = computed(() => eventRepository.items.value
   .filter((event) => event.workspaceId === workspaceStore.activeWorkspaceId.value)
-  .filter((event) => readBudgetSetting() || event.linkedEntityType !== 'budget-payment')
+  .filter((event) => readBudgetSetting() || event.linkedEntityType !== LINKED_ENTITY_TYPES.BUDGET_PAYMENT)
   .map(normalizeEvent))
 const visibleEvents = computed(() => expandRecurringEvents(events.value))
 const sortedEvents = computed(() => [...visibleEvents.value].sort(compareEvents))
@@ -142,6 +143,7 @@ const deleteEventAndWait = async (id) => {
   const target = eventRepository.findById(eventId)
   const result = await eventRepository.deleteAndWait(eventId)
   if (result.ok && target) {
+    reportLinkedEventChange('delete', target)
     notificationStore.notifyEventChange('delete', target)
     addActivity('event:delete', `удалил(а) событие «${target.title}»`, { eventId, date: target.date })
   }
@@ -411,8 +413,8 @@ function getUpcomingReminders(items) {
 }
 
 function reportLinkedEventChange(action, event) {
-  if (typeof window === 'undefined' || !event?.linkedEntityId) return
-  window.dispatchEvent(new CustomEvent('calendar-linked-event-change', {
+  if (typeof window === 'undefined' || !event?.id) return
+  window.dispatchEvent(new CustomEvent(CALENDAR_LINK_CHANGE_EVENT, {
     detail: { action, event },
   }))
 }

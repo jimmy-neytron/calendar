@@ -12,6 +12,7 @@ function mapKeys(value, mapper) {
     'categoryId',
     'recurringRuleId',
     'calendarEventId',
+    'linkedEntityType',
     'linkedEntityId',
     'completedAt',
     'actualAmount',

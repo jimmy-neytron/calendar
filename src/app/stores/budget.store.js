@@ -7,6 +7,7 @@ import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepo
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { calendarStore } from './calendar.store.js'
 import { workspaceStore } from './workspace.store.js'
+import { CALENDAR_LINK_CHANGE_EVENT, LINKED_ENTITY_TYPES } from '../utils/constants/linkedEntityTypes.js'
 
 const monthRepository = new SyncedCollectionRepository(
   `${APP_CONFIG.storageKey}:budget-months`,
@@ -34,6 +35,7 @@ const { state: selectedMonth } = useLocalStorage(
 )
 const legacyStorage = createStorage()
 let monthCreatePromise = null
+let isSyncingCalendar = false
 
 const workspaceMonths = computed(() => monthRepository.items.value
   .filter((item) => item.workspaceId === workspaceStore.activeWorkspaceId.value))
@@ -245,7 +247,7 @@ async function removeLinkedPayment(payment) {
     })
     if (!unlinked.ok) return unlinked
 
-    const eventResult = await calendarStore.deleteEventAndWait(eventId)
+    const eventResult = await runCalendarSync(() => calendarStore.deleteEventAndWait(eventId))
     if (!eventResult.ok) {
       await paymentRepository.updateAndWait(payment.id, {
         ...payment,
@@ -389,7 +391,7 @@ async function addPayment(categoryId, data) {
     updatedAt: new Date().toISOString(),
   })
   if (!linked.ok) {
-    await calendarStore.deleteEventAndWait(eventResult.event.id)
+    await runCalendarSync(() => calendarStore.deleteEventAndWait(eventResult.event.id))
     return linked
   }
   return {
@@ -418,10 +420,10 @@ async function setPaymentStatus(paymentId, status, actualAmount = null) {
   })
   if (!result.ok) return result
   if (payment.calendarEventId) {
-    calendarStore.updateEvent(payment.calendarEventId, {
+    runCalendarSyncNow(() => calendarStore.updateEvent(payment.calendarEventId, {
       completedAt: paidAt,
       importance: status === 'paid' ? 'normal' : 'important',
-    })
+    }))
   }
   return { ok: true, payment: toPaymentView(result.item) }
 }
@@ -444,7 +446,7 @@ async function removePayment(categoryId, paymentId) {
     }
   }
   if (payment.calendarEventId) {
-    const eventResult = await calendarStore.deleteEventAndWait(payment.calendarEventId)
+    const eventResult = await runCalendarSync(() => calendarStore.deleteEventAndWait(payment.calendarEventId))
     if (!eventResult.ok) return { ok: false, message: 'Не удалось удалить событие календаря' }
   }
   return paymentRepository.deleteAndWait(paymentId)
@@ -471,7 +473,7 @@ async function syncCalendarLinks() {
   if (!readBudgetSetting()) return
   const eventIds = new Set(calendarStore.events.value.map((event) => event.id))
   const linkedEventByPayment = new Map(calendarStore.events.value
-    .filter((event) => event.linkedEntityType === 'budget-payment' && event.linkedEntityId)
+    .filter((event) => event.linkedEntityType === LINKED_ENTITY_TYPES.BUDGET_PAYMENT && event.linkedEntityId)
     .map((event) => [event.linkedEntityId, event]))
 
   for (const payment of workspacePayments.value) {
@@ -480,11 +482,11 @@ async function syncCalendarLinks() {
     const storedEventExists = payment.calendarEventId && eventIds.has(payment.calendarEventId)
     if (storedEventExists) {
       const storedEvent = calendarStore.events.value.find((event) => event.id === payment.calendarEventId)
-      if (storedEvent && (storedEvent.linkedEntityType !== 'budget-payment' || storedEvent.linkedEntityId !== payment.id)) {
-        calendarStore.updateEvent(storedEvent.id, {
-          linkedEntityType: 'budget-payment',
+      if (storedEvent && (storedEvent.linkedEntityType !== LINKED_ENTITY_TYPES.BUDGET_PAYMENT || storedEvent.linkedEntityId !== payment.id)) {
+        runCalendarSyncNow(() => calendarStore.updateEvent(storedEvent.id, {
+          linkedEntityType: LINKED_ENTITY_TYPES.BUDGET_PAYMENT,
           linkedEntityId: payment.id,
-        })
+        }))
       }
       if (!linkedEvent || linkedEvent.id === payment.calendarEventId) continue
     }
@@ -514,6 +516,11 @@ async function syncPaymentFromCalendar(event) {
     updates.paidAt = event.completedAt
     updates.actualAmount = payment.actualAmount ?? payment.plannedAmount
   }
+  if (!event.completedAt && payment.status === 'paid') {
+    updates.status = 'planned'
+    updates.paidAt = null
+    updates.actualAmount = null
+  }
   if (!Object.keys(updates).length) return
   await paymentRepository.updateAndWait(payment.id, {
     ...payment,
@@ -523,7 +530,7 @@ async function syncPaymentFromCalendar(event) {
 }
 
 async function handleLinkedCalendarEventChange(change) {
-  if (!readBudgetSetting()) return
+  if (isSyncingCalendar || !readBudgetSetting()) return
   const event = change?.event
   const payment = findPaymentByCalendarEvent(event)
   if (!payment) return
@@ -551,7 +558,7 @@ async function loadWorkspace(workspaceId) {
   await cleanupDraftAutoPayments()
   await syncCalendarLinks()
   await Promise.all(calendarStore.events.value
-    .filter((event) => event.linkedEntityType === 'budget-payment' || findPaymentByCalendarEvent(event))
+    .filter((event) => event.linkedEntityType === LINKED_ENTITY_TYPES.BUDGET_PAYMENT || findPaymentByCalendarEvent(event))
     .map((event) => syncPaymentFromCalendar(event)))
   return results
 }
@@ -644,11 +651,11 @@ async function migrateLegacyBudget(workspaceId) {
         const paymentResult = await paymentRepository.createAndWait(payment)
         if (!paymentResult.ok) return
         if (payment.calendarEventId) {
-          calendarStore.updateEvent(payment.calendarEventId, {
-            linkedEntityType: 'budget-payment',
+          runCalendarSyncNow(() => calendarStore.updateEvent(payment.calendarEventId, {
+            linkedEntityType: LINKED_ENTITY_TYPES.BUDGET_PAYMENT,
             linkedEntityId: payment.id,
             completedAt: payment.paidAt,
-          })
+          }))
         }
       }
     }
@@ -707,9 +714,27 @@ async function ensureBudgetMonthForDate(dateKey) {
   return result.ok ? { ok: true, item: month } : result
 }
 
+
+async function runCalendarSync(callback) {
+  isSyncingCalendar = true
+  try {
+    return await callback()
+  } finally {
+    isSyncingCalendar = false
+  }
+}
+
+function runCalendarSyncNow(callback) {
+  isSyncingCalendar = true
+  try {
+    return callback()
+  } finally {
+    isSyncingCalendar = false
+  }
+}
 function findPaymentByCalendarEvent(event) {
   if (!event) return null
-  if (event.linkedEntityType === 'budget-payment' && event.linkedEntityId) {
+  if (event.linkedEntityType === LINKED_ENTITY_TYPES.BUDGET_PAYMENT && event.linkedEntityId) {
     return paymentRepository.findById(event.linkedEntityId)
       || workspacePayments.value.find((payment) => payment.calendarEventId === event.id)
       || null
@@ -780,7 +805,7 @@ async function createPaymentEvent(payment, category) {
     repeat: 'none',
     reminder: payment.reminder || '1d',
     importance: 'important',
-    linkedEntityType: 'budget-payment',
+    linkedEntityType: LINKED_ENTITY_TYPES.BUDGET_PAYMENT,
     linkedEntityId: payment.id,
     completedAt: null,
   })
@@ -875,7 +900,7 @@ export const budgetStore = {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('calendar-linked-event-change', (event) => {
+  window.addEventListener(CALENDAR_LINK_CHANGE_EVENT, (event) => {
     handleLinkedCalendarEventChange(event.detail)
   })
 }

@@ -54,7 +54,8 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
       const mergedItems = applyPendingOperations(
         remoteItems,
         getTableOperations(this.table, workspaceId),
-        this.fromRow
+        this.fromRow,
+        this.getEntityId
       )
       const otherWorkspaces = this.items.value.filter((item) => item.workspaceId !== workspaceId)
       this.replaceAll([...otherWorkspaces, ...mergedItems])
@@ -306,8 +307,8 @@ async function executeOperation(repository, operation) {
   return { error: new Error(`Неизвестная операция синхронизации: ${operation.type}`) }
 }
 
-function applyPendingOperations(remoteItems, operations, fromRow) {
-  const items = new Map(remoteItems.map((item) => [item.id, item]))
+function applyPendingOperations(remoteItems, operations, fromRow, getEntityId = (item) => item.id) {
+  const items = new Map(remoteItems.map((item) => [getEntityId(item), item]))
   operations.forEach((operation) => {
     if (operation.type === 'delete') {
       items.delete(operation.entityId)
@@ -317,7 +318,8 @@ function applyPendingOperations(remoteItems, operations, fromRow) {
     const rows = operation.type === 'upsert' ? operation.payload : [operation.payload]
     rows.filter(Boolean).forEach((row) => {
       const localItem = fromRow(row)
-      items.set(localItem.id, { ...items.get(localItem.id), ...localItem })
+      const entityId = getEntityId(localItem)
+      items.set(entityId, { ...items.get(entityId), ...localItem })
     })
   })
   return [...items.values()]

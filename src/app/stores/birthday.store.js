@@ -6,6 +6,7 @@ import { DateHelper } from '../utils/date/dateHelper.js'
 import { workspaceStore } from './workspace.store.js'
 import { calendarStore } from './calendar.store.js'
 import { useActivityLog } from '../composables/history/useActivityLog.js'
+import { CALENDAR_LINK_CHANGE_EVENT, LINKED_ENTITY_TYPES } from '../utils/constants/linkedEntityTypes.js'
 
 const repository = new SyncedCollectionRepository(`${APP_CONFIG.storageKey}:birthdays`, [], 'birthdays')
 const { addActivity } = useActivityLog()
@@ -167,14 +168,14 @@ function buildBirthdayEventPayload(birthday) {
     title: `День рождения: ${birthday.name}`,
     date: birthday.birthDate,
     memberIds: [],
-    category: 'birthday',
+    category: LINKED_ENTITY_TYPES.BIRTHDAY,
     location: '',
     notes: birthday.note,
     allDay: true,
     repeat: 'yearly',
     repeatEndType: 'never',
     reminder: '1d',
-    linkedEntityType: 'birthday',
+    linkedEntityType: LINKED_ENTITY_TYPES.BIRTHDAY,
     linkedEntityId: birthday.id,
   }
 }
@@ -185,14 +186,14 @@ function buildReminderEventPayload(birthday) {
     title: `Подготовить подарок: ${birthday.name}`,
     date: reminderDate,
     memberIds: [],
-    category: 'birthday',
+    category: LINKED_ENTITY_TYPES.BIRTHDAY,
     location: '',
     notes: `До дня рождения ${birthday.reminderDays} дней`,
     allDay: true,
     repeat: 'yearly',
     repeatEndType: 'never',
     reminder: '1d',
-    linkedEntityType: 'birthday-reminder',
+    linkedEntityType: LINKED_ENTITY_TYPES.BIRTHDAY_REMINDER,
     linkedEntityId: birthday.id,
   }
 }
@@ -284,13 +285,17 @@ function isLeapYear(year) {
 async function handleLinkedCalendarEventChange(change) {
   if (isSyncingCalendar) return
   const event = change?.event
-  if (!event?.linkedEntityId) return
-  if (event.linkedEntityType === 'birthday') {
-    await syncBirthdayFromCalendar(change.action, event)
+  if (!event?.id) return
+  const birthday = findBirthdayByCalendarEvent(event)
+  if (!birthday) return
+
+  if (event.linkedEntityType === LINKED_ENTITY_TYPES.BIRTHDAY_REMINDER || birthday.reminderEventId === event.id) {
+    await syncBirthdayReminderFromCalendar(change.action, event)
     return
   }
-  if (event.linkedEntityType === 'birthday-reminder') {
-    await syncBirthdayReminderFromCalendar(change.action, event)
+
+  if (event.linkedEntityType === LINKED_ENTITY_TYPES.BIRTHDAY || birthday.eventId === event.id) {
+    await syncBirthdayFromCalendar(change.action, event)
   }
 }
 
@@ -389,17 +394,17 @@ async function ensureSupabaseCalendarLinks(workspaceId) {
     const workspaceBirthdays = repository.items.value.filter((birthday) => birthday.workspaceId === workspaceId)
     for (const birthday of workspaceBirthdays) {
       const birthdayEvent = calendarStore.events.value.find((event) => event.id === birthday.eventId)
-      if (birthdayEvent && (birthdayEvent.linkedEntityType !== 'birthday' || birthdayEvent.linkedEntityId !== birthday.id)) {
+      if (birthdayEvent && (birthdayEvent.linkedEntityType !== LINKED_ENTITY_TYPES.BIRTHDAY || birthdayEvent.linkedEntityId !== birthday.id)) {
         calendarStore.updateEvent(birthdayEvent.id, {
-          linkedEntityType: 'birthday',
+          linkedEntityType: LINKED_ENTITY_TYPES.BIRTHDAY,
           linkedEntityId: birthday.id,
         })
       }
 
       const reminderEvent = calendarStore.events.value.find((event) => event.id === birthday.reminderEventId)
-      if (reminderEvent && (reminderEvent.linkedEntityType !== 'birthday-reminder' || reminderEvent.linkedEntityId !== birthday.id)) {
+      if (reminderEvent && (reminderEvent.linkedEntityType !== LINKED_ENTITY_TYPES.BIRTHDAY_REMINDER || reminderEvent.linkedEntityId !== birthday.id)) {
         calendarStore.updateEvent(reminderEvent.id, {
-          linkedEntityType: 'birthday-reminder',
+          linkedEntityType: LINKED_ENTITY_TYPES.BIRTHDAY_REMINDER,
           linkedEntityId: birthday.id,
         })
       }
@@ -432,7 +437,7 @@ export const birthdayStore = {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('calendar-linked-event-change', (event) => {
+  window.addEventListener(CALENDAR_LINK_CHANGE_EVENT, (event) => {
     handleLinkedCalendarEventChange(event.detail)
   })
 }

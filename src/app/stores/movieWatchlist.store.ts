@@ -6,6 +6,7 @@ import { calendarStore } from './calendar.store.js'
 import { calendarCollectionStore } from './calendarCollection.store.js'
 import { workspaceStore } from './workspace.store.js'
 import { useActivityLog } from '../composables/history/useActivityLog.js'
+import { CALENDAR_LINK_CHANGE_EVENT, LINKED_ENTITY_TYPES } from '../utils/constants/linkedEntityTypes.js'
 
 const repository = new SyncedCollectionRepository(
   `${APP_CONFIG.storageKey}:movie-watchlist`,
@@ -19,6 +20,7 @@ const repository = new SyncedCollectionRepository(
 )
 const savedMovies = repository.items
 const { addActivity } = useActivityLog()
+let isSyncingCalendar = false
 
 const watchlist = computed(() => savedMovies.value
   .filter((movie) => movie.workspaceId === workspaceStore.activeWorkspaceId.value)
@@ -33,6 +35,11 @@ function isSaved(movie: Pick<MovieMedia, 'id' | 'mediaType'>): boolean {
   return savedMovies.value.some((item) => (
     item.workspaceId === workspaceId && getKey(item) === getKey(movie)
   ))
+}
+
+function getSaved(movie: Pick<MovieMedia, 'id' | 'mediaType'>): WatchlistMovie | undefined {
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  return savedMovies.value.find((item) => item.workspaceId === workspaceId && getKey(item) === getKey(movie))
 }
 
 async function add(movie: MovieMedia) {
@@ -59,6 +66,12 @@ async function remove(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
   const saved = getSaved(movie)
   if (!saved) return { ok: true }
+
+  if (saved.plannedEventId) {
+    const deleted = await deleteCalendarEventSilently(saved.plannedEventId)
+    if (!deleted.ok) return { ok: false, message: deleted.message || 'Не удалось удалить событие' }
+  }
+
   const result = await repository.deleteAndWait(getRecordId(workspaceId, movie))
   if (!result.ok) return { ok: false, message: getDatabaseMessage({ message: result.message }) }
   addActivity('movie:remove', `убрал(а) «${saved.title}» из списка «Хочу посмотреть»`, {
@@ -66,11 +79,6 @@ async function remove(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
     mediaType: saved.mediaType,
   })
   return { ok: true }
-}
-
-function getSaved(movie: Pick<MovieMedia, 'id' | 'mediaType'>): WatchlistMovie | undefined {
-  const workspaceId = workspaceStore.activeWorkspaceId.value
-  return savedMovies.value.find((item) => item.workspaceId === workspaceId && getKey(item) === getKey(movie))
 }
 
 function isPlanned(movie: Pick<MovieMedia, 'id' | 'mediaType'>): boolean {
@@ -95,11 +103,61 @@ async function planMovie(
     const added = await add(movie)
     if (!added.ok) return added
   }
+  const saved = getSaved(movie)
+  if (!saved) return { ok: false, message: 'Не удалось найти фильм в списке' }
+
   const collectionsReady = await calendarCollectionStore.ensureWorkspaceCollections()
   if (!collectionsReady?.ok) return { ok: false, message: collectionsReady?.message }
 
   const startTime = data.time || '20:00'
-  const result = await calendarStore.addEventAndWait({
+  const payload = buildMovieEventPayload(saved, data, startTime)
+  const result = await upsertMovieCalendarEvent(saved, payload)
+  if (!result.ok) return result
+
+  if (saved.plannedEventId !== result.event.id) {
+    const linked = await updateSavedMovie(saved, { plannedEventId: result.event.id })
+    if (!linked.ok) {
+      if (result.created) await deleteCalendarEventSilently(result.event.id)
+      return linked
+    }
+  }
+
+  addActivity('movie:plan', `запланировал(а) просмотр «${movie.title}» на ${data.date} в ${startTime}`, {
+    tmdbId: movie.id,
+    mediaType: movie.mediaType,
+    eventId: result.event.id,
+    date: data.date,
+    time: startTime,
+  })
+  return { ok: true, event: result.event }
+}
+
+async function unplanMovie(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
+  const saved = getSaved(movie)
+  if (!saved?.plannedEventId) return { ok: true }
+  const eventId = saved.plannedEventId
+  const unlinked = await updateSavedMovie(saved, { plannedEventId: '' })
+  if (!unlinked.ok) return unlinked
+
+  const result = await deleteCalendarEventSilently(eventId)
+  if (!result.ok) {
+    await updateSavedMovie(saved, { plannedEventId: eventId })
+    return { ok: false, message: result.message || 'Не удалось удалить событие' }
+  }
+
+  addActivity('movie:unplan', `убрал(а) просмотр «${saved.title}» из календаря`, {
+    tmdbId: saved.id,
+    mediaType: saved.mediaType,
+  })
+  return { ok: true }
+}
+
+function buildMovieEventPayload(
+  movie: WatchlistMovie,
+  data: { date: string; time: string; calendarId: string; reminder: string },
+  startTime: string,
+) {
+  return {
     title: `Посмотреть «${movie.title}»`,
     date: data.date,
     startTime,
@@ -116,45 +174,51 @@ async function planMovie(
     allDay: false,
     repeat: 'none',
     reminder: data.reminder || '1h',
-  })
-
-  if (!result.ok) {
-    return { ok: false, message: Object.values(result.errors || {})[0] || 'Не удалось создать событие' }
+    linkedEntityType: LINKED_ENTITY_TYPES.MOVIE_WATCHLIST,
+    linkedEntityId: getRecordId(movie.workspaceId, movie),
   }
-
-  const saved = getSaved(movie)
-  if (saved) {
-    const linked = await updateSavedMovie(saved, { plannedEventId: result.event.id })
-    if (!linked.ok) {
-      await calendarStore.deleteEventAndWait(result.event.id)
-      return linked
-    }
-  }
-  addActivity('movie:plan', `запланировал(а) просмотр «${movie.title}» на ${data.date} в ${startTime}`, {
-    tmdbId: movie.id,
-    mediaType: movie.mediaType,
-    eventId: result.event.id,
-    date: data.date,
-    time: startTime,
-  })
-  return { ok: true, event: result.event }
 }
 
-async function unplanMovie(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
-  const saved = getSaved(movie)
-  if (!saved?.plannedEventId) return { ok: true }
-  const result = await calendarStore.deleteEventAndWait(saved.plannedEventId)
-  if (!result.ok) return { ok: false, message: result.message || 'Не удалось удалить событие' }
-  const unlinked = await updateSavedMovie(saved, { plannedEventId: '' })
-  if (unlinked.ok) addActivity('movie:unplan', `убрал(а) просмотр «${saved.title}» из календаря`, {
-    tmdbId: saved.id,
-    mediaType: saved.mediaType,
-  })
-  return unlinked
+async function upsertMovieCalendarEvent(movie: WatchlistMovie, payload: ReturnType<typeof buildMovieEventPayload>) {
+  isSyncingCalendar = true
+  try {
+    const existingEvent = movie.plannedEventId
+      ? calendarStore.events.value.find((event) => event.id === movie.plannedEventId)
+      : null
+
+    if (existingEvent) {
+      const updated = calendarStore.updateEvent(existingEvent.id, payload)
+      return updated.ok
+        ? { ok: true, event: updated.event, created: false }
+        : { ok: false, message: Object.values(updated.errors || {})[0] || 'Не удалось обновить событие' }
+    }
+
+    const created = await calendarStore.addEventAndWait(payload)
+    return created.ok
+      ? { ok: true, event: created.event, created: true }
+      : { ok: false, message: Object.values(created.errors || {})[0] || 'Не удалось создать событие' }
+  } finally {
+    isSyncingCalendar = false
+  }
+}
+
+async function deleteCalendarEventSilently(eventId: string) {
+  isSyncingCalendar = true
+  try {
+    return await calendarStore.deleteEventAndWait(eventId)
+  } finally {
+    isSyncingCalendar = false
+  }
 }
 
 async function loadWorkspace(workspaceId: string) {
-  return repository.loadWorkspace(workspaceId)
+  const result = await repository.loadWorkspace(workspaceId)
+  if (result === null) return null
+  if (typeof window !== 'undefined') {
+    window.setTimeout(() => ensureCalendarLinks(workspaceId), 0)
+    window.setTimeout(() => ensureCalendarLinks(workspaceId), 500)
+  }
+  return result
 }
 
 async function updateSavedMovie(movie: WatchlistMovie, updates: Partial<WatchlistMovie>) {
@@ -163,6 +227,62 @@ async function updateSavedMovie(movie: WatchlistMovie, updates: Partial<Watchlis
   return result.ok
     ? { ok: true, movie: nextMovie }
     : { ok: false, message: getDatabaseMessage({ message: result.message }) }
+}
+
+async function handleLinkedCalendarEventChange(change: { action?: string; event?: Record<string, any> }) {
+  if (isSyncingCalendar) return
+  const event = change?.event
+  if (!event?.id) return
+  const movie = findMovieByCalendarEvent(event)
+  if (!movie) return
+
+  if (change.action === 'delete') {
+    await updateSavedMovie(movie, { plannedEventId: '' })
+    return
+  }
+
+  if (movie.plannedEventId !== event.id) {
+    await updateSavedMovie(movie, { plannedEventId: String(event.id || '') })
+  }
+}
+
+function findMovieByCalendarEvent(event: Record<string, any>): WatchlistMovie | undefined {
+  if (!event) return undefined
+  if (event.linkedEntityType === LINKED_ENTITY_TYPES.MOVIE_WATCHLIST && event.linkedEntityId) {
+    return repository.findById(String(event.linkedEntityId))
+      || savedMovies.value.find((movie) => movie.plannedEventId === event.id)
+  }
+  return savedMovies.value.find((movie) => movie.plannedEventId === event.id)
+}
+
+async function ensureCalendarLinks(workspaceId: string) {
+  if (!workspaceId) return
+  isSyncingCalendar = true
+  try {
+    const workspaceMovies = savedMovies.value.filter((movie) => movie.workspaceId === workspaceId)
+
+    for (const movie of workspaceMovies) {
+      const linkedEvent = movie.plannedEventId
+        ? calendarStore.events.value.find((event) => event.id === movie.plannedEventId)
+        : null
+      const linkedEntityId = getRecordId(movie.workspaceId, movie)
+
+      if (linkedEvent && (linkedEvent.linkedEntityType !== LINKED_ENTITY_TYPES.MOVIE_WATCHLIST || linkedEvent.linkedEntityId !== linkedEntityId)) {
+        calendarStore.updateEvent(linkedEvent.id, {
+          linkedEntityType: LINKED_ENTITY_TYPES.MOVIE_WATCHLIST,
+          linkedEntityId,
+        })
+      }
+    }
+
+    for (const event of calendarStore.events.value.filter((event) => event.linkedEntityType === LINKED_ENTITY_TYPES.MOVIE_WATCHLIST && event.linkedEntityId)) {
+      const movie = repository.findById(String(event.linkedEntityId)) as WatchlistMovie | undefined
+      if (!movie || movie.plannedEventId === event.id) continue
+      await updateSavedMovie(movie, { plannedEventId: String(event.id || '') })
+    }
+  } finally {
+    isSyncingCalendar = false
+  }
 }
 
 function getRecordId(workspaceId: string, movie: Pick<MovieMedia, 'id' | 'mediaType'>): string {
@@ -232,4 +352,10 @@ export const movieWatchlistStore = {
   planMovie,
   unplanMovie,
   loadWorkspace,
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(CALENDAR_LINK_CHANGE_EVENT, (event) => {
+    handleLinkedCalendarEventChange((event as CustomEvent).detail)
+  })
 }
