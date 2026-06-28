@@ -8,7 +8,9 @@
     "dev": "vite",
     "icons:pwa": "powershell -ExecutionPolicy Bypass -File scripts/generate-pwa-icons.ps1",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
@@ -16,5 +18,9 @@
     "vite": "latest",
     "vue": "latest",
     "vue-router": "latest"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.9"
   }
 }
