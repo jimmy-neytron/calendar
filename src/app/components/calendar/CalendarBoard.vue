@@ -31,6 +31,9 @@
             :events="eventsByDate[selectedDateKey] || []"
             :holidays="holidaysByDate[selectedDateKey] || []"
             :members="members"
+            :weather-day="weatherDay"
+            :weather-hourly="weatherHourly"
+            :weather-loading="weatherLoading"
             @create-event="$emit('create-event')"
             @edit-event="$emit('edit-event', $event)"
             @move-event="$emit('move-event', $event)"
@@ -97,6 +100,9 @@ defineProps({
   calendarTransitionName: { type: String, default: 'calendar-fade' },
   members: { type: Array, default: () => [] },
   holidaysByDate: { type: Object, default: () => ({}) },
+  weatherDay: { type: Object, default: null },
+  weatherHourly: { type: Array, default: () => [] },
+  weatherLoading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-date', 'edit-event', 'create-event', 'move-event', 'resize-event'])

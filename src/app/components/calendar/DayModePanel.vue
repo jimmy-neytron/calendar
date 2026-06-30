@@ -53,7 +53,11 @@
           @dragover.prevent
           @drop="handleHourDrop(hour, $event)"
         >
-          <time>{{ formatHour(hour) }}</time>
+          <div class="day-mode__hour-meta">
+            <time>{{ formatHour(hour) }}</time>
+            <span v-if="getWeatherForHour(hour)" class="day-mode__weather">{{ getWeatherForHour(hour).temperature }}°</span>
+            <span v-else-if="weatherLoading" class="day-mode__weather day-mode__weather--loading" />
+          </div>
           <div class="day-mode__hour-line">
             <transition-group name="list" tag="div" class="day-mode__hour-events">
               <article
@@ -104,6 +108,9 @@ const props = defineProps({
   events: { type: Array, default: () => [] },
   members: { type: Array, default: () => [] },
   holidays: { type: Array, default: () => [] },
+  weatherDay: { type: Object, default: null },
+  weatherHourly: { type: Array, default: () => [] },
+  weatherLoading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['create-event', 'edit-event', 'move-event', 'resize-event'])
@@ -132,6 +139,10 @@ function getEventsForHour(hour) {
 
 function formatHour(hour) {
   return `${String(hour).padStart(2, '0')}:00`
+}
+
+function getWeatherForHour(hour) {
+  return props.weatherHourly.find((point) => Number(point.time?.slice(11, 13)) === hour) || null
 }
 
 function handleDragStart(event, dragEvent) {
@@ -279,7 +290,7 @@ function pluralize(value, words) {
 
 .day-mode__hour {
   display: grid;
-  grid-template-columns: 54px 1fr;
+  grid-template-columns: 62px 1fr;
   min-height: 56px;
   border-bottom: 1px solid var(--border-color);
 }
@@ -288,11 +299,38 @@ function pluralize(value, words) {
   border-bottom: 0;
 }
 
+.day-mode__hour-meta {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+}
+
 .day-mode__hour time {
-  padding: 10px 8px;
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 800;
+}
+
+.day-mode__weather {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 20px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 24%, var(--border-color));
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--cyan) 8%, var(--control-bg));
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.day-mode__weather--loading {
+  width: 32px;
+  background: var(--control-bg-hover);
+  animation: weatherInlinePulse 1.4s ease-in-out infinite;
 }
 
 .day-mode__hour-line {
@@ -389,5 +427,9 @@ function pluralize(value, words) {
   .day-mode__event {
     grid-template-columns: 1fr;
   }
+}
+
+@keyframes weatherInlinePulse {
+  50% { opacity: .48; }
 }
 </style>

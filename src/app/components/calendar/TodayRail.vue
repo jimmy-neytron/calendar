@@ -35,6 +35,15 @@
       </article>
     </section>
 
+    <WeatherRailCard
+      :selected-day="weatherDay"
+      :current="weatherCurrent"
+      :hourly="weatherHourly"
+      :location-label="weatherLocationLabel"
+      :is-loading="weatherLoading"
+      :has-error="weatherError"
+    />
+
     <section v-if="reminders.length" class="today-rail__section today-rail__section--reminders">
       <h3>Скоро</h3>
       <article v-for="event in reminders" :key="event.id" class="today-rail__reminder">
@@ -74,6 +83,7 @@ import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
 import EventCard from './EventCard.vue'
+import WeatherRailCard from '../weather/WeatherRailCard.vue'
 import { formatDateShort, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventTitle } from '../../utils/formatters/calendarFormatter.js'
 import { sportStore } from '../../stores/sport.store.js'
@@ -85,6 +95,12 @@ const props = defineProps({
   calendars: { type: Array, default: () => [] },
   reminders: { type: Array, default: () => [] },
   closable: { type: Boolean, default: false },
+  weatherDay: { type: Object, default: null },
+  weatherCurrent: { type: Object, default: null },
+  weatherHourly: { type: Array, default: () => [] },
+  weatherLocationLabel: { type: String, default: '' },
+  weatherLoading: { type: Boolean, default: false },
+  weatherError: { type: Boolean, default: false },
 })
 
 defineEmits(['create-event', 'edit-event', 'quick-create', 'close'])

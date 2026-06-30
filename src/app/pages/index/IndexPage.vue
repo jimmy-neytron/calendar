@@ -26,6 +26,9 @@
         :calendar-transition-name="calendarTransitionName"
         :members="members"
         :holidays-by-date="holidaysByDate"
+        :weather-day="weatherDay"
+        :weather-hourly="weatherSelectedHourly"
+        :weather-loading="weatherLoading"
         @update:mode="mode = $event"
         @previous="goPrevious"
         @next="goNext"
@@ -48,6 +51,12 @@
       :members="members"
       :calendars="calendars"
       :reminders="upcomingReminders"
+      :weather-day="weatherDay"
+      :weather-current="weatherCurrent"
+      :weather-hourly="weatherSelectedHourly"
+      :weather-location-label="weatherLocationLabel"
+      :weather-loading="weatherLoading"
+      :weather-error="Boolean(weatherError)"
       @close="isDayRailOpen = false"
       @create-event="createEvent"
       @edit-event="editEvent"
@@ -90,6 +99,7 @@ import { useCalendarView } from '../../composables/calendar/useCalendarView.js'
 import { useCalendarEvents } from '../../composables/calendar/useCalendarEvents.js'
 import { useFamilyMembers } from '../../composables/calendar/useFamilyMembers.js'
 import { usePublicHolidays } from '../../composables/calendar/usePublicHolidays.js'
+import { useWeather } from '../../composables/weather/useWeather'
 import { useModal } from '../../composables/ui/useModal.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
@@ -150,6 +160,15 @@ const visibleHolidayYears = computed(() => {
   return [...new Set(days.map((day) => day.date.getFullYear()))]
 })
 const { holidaysByDate } = usePublicHolidays(holidayCountry, visibleHolidayYears)
+const weather = useWeather(selectedDateKey)
+const {
+  current: weatherCurrent,
+  selectedDay: weatherDay,
+  selectedHourly: weatherSelectedHourly,
+  locationLabel: weatherLocationLabel,
+  isLoading: weatherLoading,
+  error: weatherError,
+} = weather
 
 function toggleDayMonthView() {
   mode.value = mode.value === CALENDAR_MODES.DAY ? CALENDAR_MODES.MONTH : CALENDAR_MODES.DAY
@@ -386,6 +405,10 @@ defineExpose({
   grid-template-columns: minmax(0, 1fr);
 }
 
+.index-page__rail-backdrop {
+  display: none;
+}
+
 @media (max-width: 1100px) {
   .index-page {
     grid-template-columns: 1fr;
@@ -412,6 +435,7 @@ defineExpose({
 
   .index-page__rail-backdrop {
     position: fixed;
+    display: block;
     inset: var(--header-height) 0 0;
     z-index: 41;
     border: 0;
