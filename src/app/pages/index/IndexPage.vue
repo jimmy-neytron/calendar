@@ -30,7 +30,7 @@
         @previous="goPrevious"
         @next="goNext"
         @today="goToday"
-        @select-date="selectDate"
+        @select-date="selectDateAndOpenRail"
         @edit-event="editEvent"
         @create-event="createEvent"
         @move-event="handleMoveEvent"
@@ -40,14 +40,25 @@
 
     <TodayRail
       v-if="mode !== CALENDAR_MODES.WEEK"
+      class="index-page__rail"
+      :class="{ 'index-page__rail--open': isDayRailOpen }"
+      closable
       :selected-date-key="selectedDateKey"
       :selected-events="selectedEvents"
       :members="members"
       :calendars="calendars"
       :reminders="upcomingReminders"
+      @close="isDayRailOpen = false"
       @create-event="createEvent"
       @edit-event="editEvent"
       @quick-create="quickCreateAt"
+    />
+    <button
+      v-if="mode !== CALENDAR_MODES.WEEK && isDayRailOpen"
+      class="index-page__rail-backdrop"
+      type="button"
+      aria-label="Закрыть день"
+      @click="isDayRailOpen = false"
     />
 
     <EventDrawer
@@ -125,6 +136,7 @@ const editingEvent = ref(null)
 const quickStartTime = ref('')
 const smartEventQuery = ref('')
 const handledCreateToken = ref(props.forceCreateToken)
+const isDayRailOpen = ref(false)
 const filters = reactive({ ...DEFAULT_FILTERS })
 const selectedEvents = computed(() => filteredEventsByDate.value[selectedDateKey.value] || [])
 const smartEventSuggestion = computed(() => parseSmartEvent(smartEventQuery.value, {
@@ -144,10 +156,15 @@ function toggleDayMonthView() {
 }
 
 const createEvent = (dateKey = '') => {
-  if (dateKey) selectDate(dateKey)
+  if (dateKey) selectDateAndOpenRail(dateKey)
   editingEvent.value = null
   quickStartTime.value = ''
   openEventDrawer()
+}
+
+function selectDateAndOpenRail(dateKey) {
+  selectDate(dateKey)
+  if (mode.value !== CALENDAR_MODES.WEEK) isDayRailOpen.value = true
 }
 
 const quickCreateAt = (time) => {
@@ -299,7 +316,10 @@ function setViewMode(nextMode) {
 
 watch(
   mode,
-  (nextMode) => emit('view-mode-change', nextMode),
+  (nextMode) => {
+    emit('view-mode-change', nextMode)
+    if (nextMode === CALENDAR_MODES.WEEK) isDayRailOpen.value = false
+  },
   { immediate: true }
 )
 
@@ -349,6 +369,7 @@ defineExpose({
 
 <style scoped>
 .index-page {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 14px;
@@ -368,6 +389,34 @@ defineExpose({
 @media (max-width: 1100px) {
   .index-page {
     grid-template-columns: 1fr;
+  }
+
+  .index-page .index-page__rail {
+    position: fixed;
+    z-index: 42;
+    top: calc(var(--header-height) + 10px);
+    right: 10px;
+    bottom: 74px;
+    width: min(360px, calc(100vw - 22px));
+    transform: translateX(calc(100% + 18px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .24s var(--ease-out), opacity .2s var(--ease-out);
+  }
+
+  .index-page .index-page__rail--open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .index-page__rail-backdrop {
+    position: fixed;
+    inset: var(--header-height) 0 0;
+    z-index: 41;
+    border: 0;
+    background: rgba(0, 0, 0, .34);
+    backdrop-filter: blur(2px);
   }
 }
 </style>

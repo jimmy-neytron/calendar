@@ -1,11 +1,20 @@
-<template>
+﻿<template>
   <aside class="today-rail panel">
     <header class="today-rail__header">
       <div>
         <p>{{ formatWeekday(selectedDateKey) }}</p>
         <h2>{{ formatDateShort(selectedDateKey) }}</h2>
       </div>
-      <UiButton icon="＋" icon-only @click="$emit('create-event')" />
+      <div class="today-rail__actions">
+        <UiButton icon="＋" icon-only @click="$emit('create-event')" />
+        <UiIconButton
+          v-if="closable"
+          class="today-rail__close"
+          icon="close"
+          label="Закрыть день"
+          @click="$emit('close')"
+        />
+      </div>
     </header>
 
     <section class="today-rail__overview">
@@ -63,6 +72,7 @@
 <script setup>
 import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
+import UiIconButton from '../ui/UiIconButton.vue'
 import EventCard from './EventCard.vue'
 import { formatDateShort, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventTitle } from '../../utils/formatters/calendarFormatter.js'
@@ -74,9 +84,10 @@ const props = defineProps({
   members: { type: Array, default: () => [] },
   calendars: { type: Array, default: () => [] },
   reminders: { type: Array, default: () => [] },
+  closable: { type: Boolean, default: false },
 })
 
-defineEmits(['create-event', 'edit-event', 'quick-create'])
+defineEmits(['create-event', 'edit-event', 'quick-create', 'close'])
 
 const todayKey = new Date().toISOString().slice(0, 10)
 const timedEvents = computed(() => props.selectedEvents
@@ -126,6 +137,16 @@ function difference(start, end) {
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
+}
+
+.today-rail__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.today-rail__close {
+  display: none;
 }
 
 .today-rail__header p {
@@ -182,8 +203,15 @@ function difference(start, end) {
 @media (max-width: 1100px) {
   .today-rail {
     position: static;
+    max-height: calc(100dvh - var(--header-height) - 86px);
+    overflow: auto;
     gap: 7px;
     padding: 9px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .today-rail__close {
+    display: inline-grid;
   }
 
   .today-rail__overview article { padding: 6px; }
