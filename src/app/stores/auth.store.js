@@ -17,7 +17,7 @@ const isAuthenticated = computed(() => Boolean(currentUserId.value))
 function mapUser(profile, authUser) {
   const email = profile?.email || authUser?.email || ''
   const name = profile?.name || authUser?.user_metadata?.name || email.split('@')[0] || 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ'
-  const subscriptionTier = normalizeSubscriptionTier(profile?.subscription_tier || 'free')
+  const subscriptionTier = normalizeSubscriptionTier(profile?.subscription_tier)
   return {
     id: profile?.id || authUser.id,
     email,

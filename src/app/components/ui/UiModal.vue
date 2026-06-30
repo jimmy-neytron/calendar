@@ -3,7 +3,7 @@
     <transition name="fade">
       <div v-if="modelValue" class="ui-modal" @mousedown.self="handleOverlayClick">
         <transition name="modal" appear>
-          <section class="ui-modal__dialog" :style="{ maxWidth: width }" role="dialog" aria-modal="true">
+          <section class="ui-modal__dialog" :style="{ '--ui-modal-width': width }" role="dialog" aria-modal="true">
             <header class="ui-modal__header">
               <div>
                 <p v-if="eyebrow" class="ui-modal__eyebrow">{{ eyebrow }}</p>
@@ -65,7 +65,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 }
 
 .ui-modal__dialog {
-  width: min(100%, 560px);
+  width: min(100%, var(--ui-modal-width, 560px));
   max-height: min(760px, calc(100vh - 32px));
   display: flex;
   flex-direction: column;

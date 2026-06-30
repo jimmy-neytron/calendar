@@ -54,7 +54,7 @@ export const SUBSCRIPTION_FEATURES = {
 
 export function normalizeSubscriptionTier(value) {
     const tier = String(value || '').toLowerCase()
-    return SUBSCRIPTION_TIERS[tier] ? tier : 'free'
+    return SUBSCRIPTION_TIERS[tier] ? tier : 'pro'
 }
 
 export function getSubscriptionPlan(value) {
