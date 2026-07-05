@@ -1,238 +1,94 @@
 <template>
-  <section class="admin-page">
-    <header class="admin-hero panel">
-      <div>
-        <span class="admin-eyebrow">Админка</span>
-        <h1>Пользователи</h1>
-        <p>Просмотр аккаунтов, фильтры, деактивация и управление тарифами.</p>
-      </div>
-      <UiButton icon="refresh" variant="secondary" :loading="isLoading" @click="loadUsers">
-        Обновить
-      </UiButton>
-    </header>
-
-    <section class="admin-stats">
-      <article>
-        <small>Всего</small>
-        <strong>{{ users.length }}</strong>
-        <span>пользователей</span>
-      </article>
-      <article>
-        <small>Активные</small>
-        <strong>{{ activeCount }}</strong>
-        <span>могут войти</span>
-      </article>
-      <article>
-        <small>Админы</small>
-        <strong>{{ adminCount }}</strong>
-        <span>с доступом</span>
-      </article>
-    </section>
-
-    <section class="admin-toolbar panel">
-      <UiInput
-        v-model="searchQuery"
-        placeholder="Поиск по имени или email"
-        aria-label="Поиск пользователей"
-      />
-      <UiSelect v-model="statusFilter" aria-label="Фильтр по статусу">
-        <option value="all">Все статусы</option>
-        <option value="active">Активные</option>
-        <option value="inactive">Деактивированные</option>
-      </UiSelect>
-      <UiSelect v-model="roleFilter" aria-label="Фильтр по роли">
-        <option value="all">Все роли</option>
-        <option value="admin">Админы</option>
-        <option value="user">Пользователи</option>
-      </UiSelect>
-    </section>
-
-    <section class="admin-users panel">
-      <div v-if="isLoading" class="admin-state">
-        <span><UiIcon name="refresh" /></span>
-        <strong>Загружаем пользователей</strong>
-      </div>
-      <div v-else-if="errorMessage" class="admin-state admin-state--danger">
-        <span><UiIcon name="warning" /></span>
-        <strong>{{ errorMessage }}</strong>
-      </div>
-      <div v-else-if="!filteredUsers.length" class="admin-state">
-        <span><UiIcon name="search" /></span>
-        <strong>Ничего не найдено</strong>
-      </div>
-      <div v-else class="admin-table">
-        <div class="admin-table__row admin-table__row--head">
-          <strong>Пользователь</strong>
-          <strong>Статус</strong>
-          <strong>Роль</strong>
-          <strong>Тариф</strong>
-          <strong>Действия</strong>
+  <section class="admin-shell">
+    <aside class="admin-shell__sidebar">
+      <RouterLink class="admin-shell__brand" :to="{ name: 'admin-overview' }">
+        <span><UiIcon name="key" /></span>
+        <div>
+          <small>Панель</small>
+          <strong>Админка</strong>
         </div>
+      </RouterLink>
 
-        <article v-for="user in filteredUsers" :key="user.id" class="admin-table__row">
-          <div class="admin-user">
-            <span class="admin-user__avatar" :style="{ '--user-color': user.color }">
-              {{ user.avatar || '?' }}
-            </span>
-            <div>
-              <strong>{{ user.name || 'Пользователь' }}</strong>
-              <small>{{ user.email }}</small>
-            </div>
-          </div>
-
-          <span class="admin-badge" :class="user.isActive ? 'admin-badge--success' : 'admin-badge--danger'">
-            {{ user.isActive ? 'Активен' : 'Отключён' }}
+      <nav class="admin-shell__nav" aria-label="Разделы админки">
+        <RouterLink
+          v-for="item in navItems"
+          :key="item.name"
+          class="admin-shell__link"
+          :to="{ name: item.name }"
+        >
+          <span class="admin-shell__icon"><UiIcon :name="item.icon" /></span>
+          <span class="admin-shell__copy">
+            <b>{{ item.label }}</b>
+            <small>{{ item.description }}</small>
           </span>
+          <strong v-if="item.badge" class="admin-shell__badge">{{ item.badge }}</strong>
+        </RouterLink>
+      </nav>
 
-          <UiSelect
-            :model-value="user.role"
-            compact
-            aria-label="Роль пользователя"
-            :disabled="isSaving(user.id) || !user.isActive"
-            @update:model-value="updateUser(user, { role: $event })"
-          >
-            <option value="user">Пользователь</option>
-            <option value="admin">Админ</option>
-          </UiSelect>
+      <RouterLink class="admin-shell__back" :to="{ name: 'calendar' }">
+        <UiIcon name="left" /> В календарь
+      </RouterLink>
+    </aside>
 
-          <UiSelect
-            :model-value="user.subscriptionTier"
-            compact
-            aria-label="Тариф пользователя"
-            :disabled="isSaving(user.id) || !user.isActive"
-            @update:model-value="updateUser(user, { subscriptionTier: $event })"
-          >
-            <option v-for="plan in plans" :key="plan.id" :value="plan.id">
-              {{ plan.name }}
-            </option>
-          </UiSelect>
+    <main class="admin-shell__main">
+      <header class="admin-shell__topbar">
+        <div>
+          <small>Администрирование</small>
+          <strong>{{ activeTitle }}</strong>
+        </div>
+        <span v-if="unreadLeadCount" class="admin-shell__notice">
+          {{ unreadLeadCount }} новых заявок
+        </span>
+      </header>
 
-          <div class="admin-actions">
-            <UiButton
-              size="sm"
-              :variant="user.isActive ? 'danger' : 'secondary'"
-              :disabled="isCurrentUser(user) || isSaving(user.id)"
-              :loading="savingUserId === user.id"
-              @click="updateUser(user, { isActive: !user.isActive })"
-            >
-              {{ user.isActive ? 'Деактивировать' : 'Активировать' }}
-            </UiButton>
-          </div>
-        </article>
-      </div>
-    </section>
+      <RouterView v-slot="{ Component }">
+        <transition name="admin-page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </RouterView>
+    </main>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import UiButton from '../../components/ui/UiButton.vue'
+import { computed, onMounted } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import UiIcon from '../../components/ui/UiIcon.vue'
-import UiInput from '../../components/ui/UiInput.vue'
-import UiSelect from '../../components/ui/UiSelect.vue'
-import { useNotification } from '../../composables/ui/useNotification.js'
-import { authStore } from '../../stores/auth.store.js'
-import { SUBSCRIPTION_TIERS, normalizeSubscriptionTier } from '../../utils/constants/subscriptionConstants.js'
+import { useAdminLeadNotifications } from '../../composables/admin/useAdminLeadNotifications.js'
 
-const { notify } = useNotification()
-const users = ref([])
-const isLoading = ref(false)
-const savingUserId = ref('')
-const errorMessage = ref('')
-const searchQuery = ref('')
-const statusFilter = ref('all')
-const roleFilter = ref('all')
+const route = useRoute()
+const { unreadLeadCount, startUnreadLeadPolling } = useAdminLeadNotifications()
 
-const plans = Object.values(SUBSCRIPTION_TIERS)
-const activeCount = computed(() => users.value.filter((user) => user.isActive).length)
-const adminCount = computed(() => users.value.filter((user) => user.role === 'admin').length)
-const filteredUsers = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-  return users.value.filter((user) => {
-    const matchesQuery = !query
-      || user.name.toLowerCase().includes(query)
-      || user.email.toLowerCase().includes(query)
-    const matchesStatus = statusFilter.value === 'all'
-      || (statusFilter.value === 'active' && user.isActive)
-      || (statusFilter.value === 'inactive' && !user.isActive)
-    const matchesRole = roleFilter.value === 'all' || user.role === roleFilter.value
-    return matchesQuery && matchesStatus && matchesRole
-  })
-})
+const navItems = computed(() => [
+  {
+    name: 'admin-overview',
+    label: 'Обзор',
+    description: 'Главные метрики',
+    icon: 'chart',
+    badge: 0,
+  },
+  {
+    name: 'admin-users',
+    label: 'Пользователи',
+    description: 'Роли, тарифы, блокировки',
+    icon: 'users',
+    badge: 0,
+  },
+  {
+    name: 'admin-leads',
+    label: 'Заявки',
+    description: 'Лиды с landing page',
+    icon: 'table',
+    badge: unreadLeadCount.value,
+  },
+])
+const activeTitle = computed(() => (
+  navItems.value.find((item) => item.name === route.name)?.label || 'Админка'
+))
 
-function mapAdminUser(row) {
-  const name = row.name || row.email?.split('@')[0] || 'Пользователь'
-  return {
-    id: row.id,
-    email: row.email || '',
-    name,
-    avatar: row.avatar || name.slice(0, 1).toUpperCase(),
-    color: row.color || '#60a5fa',
-    subscriptionTier: normalizeSubscriptionTier(row.subscription_tier),
-    workspaceLimit: Number(row.workspace_limit || 0),
-    role: row.role || 'user',
-    isActive: row.is_active !== false,
-    createdAt: row.created_at || '',
-    updatedAt: row.updated_at || '',
-  }
-}
-
-async function loadUsers() {
-  if (isLoading.value) return
-  isLoading.value = true
-  errorMessage.value = ''
-  try {
-    const { data, error } = await adminApi.listUsers()
-    if (error) {
-      errorMessage.value = error.message || 'Не удалось загрузить пользователей'
-      return
-    }
-    users.value = (data || []).map(mapAdminUser)
-  } catch (error) {
-    errorMessage.value = error.message || 'Не удалось загрузить пользователей'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function isCurrentUser(user) {
-  return user.id === authStore.currentUserId.value
-}
-
-function isSaving(userId) {
-  return savingUserId.value === userId
-}
-
-async function updateUser(user, updates) {
-  if (savingUserId.value) return
-  if (updates.isActive === false && isCurrentUser(user)) {
-    notify('Свой аккаунт нельзя деактивировать', 'warning')
-    return
-  }
-
-  savingUserId.value = user.id
-  try {
-    const { data, error } = await adminApi.updateUser(user.id, updates)
-    if (error) {
-      notify(error.message || 'Не удалось обновить пользователя', 'danger')
-      return
-    }
-
-    const updated = mapAdminUser(data)
-    users.value = users.value.map((item) => (item.id === user.id ? updated : item))
-    if (isCurrentUser(updated)) authStore.mergeUsers([updated])
-    notify('Пользователь обновлён', 'success')
-  } catch (error) {
-    notify(error.message || 'Не удалось обновить пользователя', 'danger')
-  } finally {
-    savingUserId.value = ''
-  }
-}
-
-onMounted(loadUsers)
+onMounted(startUnreadLeadPolling)
 </script>
 
 <style scoped>
-.admin-page{display:grid;gap:12px;width:min(100%,1120px);margin:0 auto}.admin-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 8%,var(--panel-bg)),var(--panel-bg))}.admin-eyebrow{color:var(--accent);font-size:9px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}.admin-hero h1{margin:5px 0 7px}.admin-hero p{margin:0;color:var(--text-secondary)}.admin-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.admin-stats article{display:grid;gap:3px;border:1px solid var(--border-color);border-radius:8px;padding:14px 15px;background:var(--card-solid);box-shadow:var(--shadow-sm)}.admin-stats small{color:var(--text-muted);font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.admin-stats strong{font-size:25px;line-height:1}.admin-stats span{color:var(--text-secondary);font-size:11px}.admin-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 180px 180px;gap:8px;padding:12px}.admin-users{overflow:hidden;padding:0}.admin-state{display:grid;justify-items:center;gap:8px;padding:48px 16px;color:var(--text-secondary);text-align:center}.admin-state span{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--control-bg));font-size:20px}.admin-state--danger span{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--control-bg))}.admin-table{display:grid;overflow-x:auto}.admin-table__row{display:grid;grid-template-columns:minmax(250px,1.5fr) 120px 150px 150px 150px;align-items:center;gap:12px;min-width:830px;border-top:1px solid var(--border-color);padding:11px 14px}.admin-table__row:first-child{border-top:0}.admin-table__row--head{min-height:42px;color:var(--text-muted);background:var(--control-bg);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.admin-user{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:10px;min-width:0}.admin-user__avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;color:#071016;background:var(--user-color,var(--accent));font-weight:850}.admin-user strong,.admin-user small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-user small{margin-top:2px;color:var(--text-muted);font-size:10px}.admin-badge{display:inline-flex;justify-content:center;border:1px solid var(--border-color);border-radius:var(--radius-pill);padding:5px 8px;font-size:10px;font-weight:850}.admin-badge--success{color:var(--success);border-color:color-mix(in srgb,var(--success) 28%,var(--border-color));background:color-mix(in srgb,var(--success) 8%,var(--control-bg))}.admin-badge--danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 28%,var(--border-color));background:color-mix(in srgb,var(--danger) 8%,var(--control-bg))}.admin-actions{display:flex;justify-content:flex-end}@media(max-width:760px){.admin-hero{display:grid}.admin-stats,.admin-toolbar{grid-template-columns:1fr}.admin-users{overflow-x:auto}}
+.admin-shell{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:100vh;color:var(--text-primary);background:var(--bg-primary)}.admin-shell__sidebar{position:sticky;top:0;display:flex;flex-direction:column;gap:18px;height:100vh;border-right:1px solid var(--border-color);padding:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--card-solid) 88%,var(--bg-primary)),var(--sidebar-bg))}.admin-shell__brand{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:10px;border:1px solid var(--border-color);border-radius:8px;padding:10px;color:var(--text-primary);background:var(--card-solid);text-decoration:none}.admin-shell__brand>span{display:grid;place-items:center;width:44px;height:44px;border-radius:8px;color:var(--text-inverse);background:var(--accent);font-size:20px}.admin-shell__brand small,.admin-shell__brand strong{display:block}.admin-shell__brand small,.admin-shell__topbar small{color:var(--text-muted);font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.admin-shell__brand strong{margin-top:2px;font-size:18px}.admin-shell__nav{display:grid;gap:6px}.admin-shell__link{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid transparent;border-radius:8px;padding:9px;color:var(--text-secondary);text-decoration:none;transition:.18s var(--ease-out)}.admin-shell__link:hover{border-color:var(--border-color);background:var(--control-bg);transform:translateX(2px)}.admin-shell__link.router-link-active{border-color:var(--accent-border);color:var(--text-primary);background:var(--accent-soft)}.admin-shell__icon{display:grid;place-items:center;width:38px;height:38px;border-radius:8px;color:var(--text-secondary);background:var(--control-bg);font-size:18px}.router-link-active .admin-shell__icon{color:var(--text-inverse);background:var(--accent)}.admin-shell__copy{min-width:0}.admin-shell__copy b,.admin-shell__copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-shell__copy small{margin-top:2px;color:var(--text-muted);font-size:10px}.admin-shell__badge,.admin-shell__notice{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:999px;color:#fff;background:var(--danger);font-size:10px;font-weight:850}.admin-shell__back{display:inline-flex;align-items:center;gap:7px;margin-top:auto;border:1px solid var(--border-color);border-radius:8px;padding:10px;color:var(--text-secondary);background:var(--control-bg);text-decoration:none;font-size:12px;font-weight:750}.admin-shell__main{display:grid;grid-template-rows:auto minmax(0,1fr);gap:16px;min-width:0;padding:16px 18px 28px}.admin-shell__topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--border-color);border-radius:8px;padding:13px 15px;background:var(--card-solid);box-shadow:var(--shadow-sm)}.admin-shell__topbar strong{display:block;margin-top:2px;font-size:18px}.admin-shell__notice{width:auto;padding:0 9px;background:var(--warning);white-space:nowrap}.admin-page-enter-active{animation:adminPageIn .18s var(--ease-out) both}.admin-page-leave-active{animation:adminPageOut .08s ease-in both}@keyframes adminPageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes adminPageOut{to{opacity:0;transform:translateY(-4px)}}@media(max-width:860px){.admin-shell{display:block;padding-bottom:74px}.admin-shell__sidebar{position:fixed;z-index:30;inset:auto 8px 8px;height:auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;padding:6px;border:1px solid var(--border-color);border-radius:16px;background:var(--sidebar-floating-bg);backdrop-filter:blur(18px);box-shadow:var(--shadow-md)}.admin-shell__brand{display:none}.admin-shell__nav{display:flex;gap:5px;overflow-x:auto}.admin-shell__link{grid-template-columns:34px auto;min-width:44px;padding:5px}.admin-shell__copy{display:none}.admin-shell__back{margin:0;padding:8px}.admin-shell__main{padding:12px}.admin-shell__topbar{align-items:flex-start}.admin-shell__notice{height:auto;min-height:22px}}@media(max-width:520px){.admin-shell__topbar{display:grid}.admin-shell__back{font-size:0}.admin-shell__back svg{font-size:16px}}
 </style>

@@ -13,4 +13,20 @@ export const adminApi = {
       next_role: updates.role ?? null,
     })
   },
+
+  listLeads() {
+    return requireSupabase().rpc('admin_list_landing_leads')
+  },
+
+  countUnreadLeads() {
+    return requireSupabase().rpc('admin_unread_landing_leads_count')
+  },
+
+  getOverviewMetrics() {
+    return requireSupabase().rpc('admin_get_overview_metrics')
+  },
+
+  markLeadViewed(leadId) {
+    return requireSupabase().rpc('admin_mark_landing_lead_viewed', { lead_id: leadId })
+  },
 }

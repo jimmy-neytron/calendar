@@ -17,7 +17,10 @@
         :to="{ name: item.name }"
         :title="item.label"
       >
-        <span class="app-sidebar__icon"><UiIcon :name="item.icon" /></span>
+        <span class="app-sidebar__icon">
+          <UiIcon :name="item.icon" />
+          <b v-if="item.badge" class="app-sidebar__badge">{{ item.badge }}</b>
+        </span>
         <span class="app-sidebar__copy">
           <b>{{ item.label }}</b>
           <small>{{ item.description }}</small>
@@ -29,19 +32,21 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { authStore } from '../../stores/auth.store.js'
+import { useAdminLeadNotifications } from '../../composables/admin/useAdminLeadNotifications.js'
 import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 const { isEnabled: budgetEnabled } = useBudgetSettings()
 const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
+const { unreadLeadCount, loadUnreadLeadCount } = useAdminLeadNotifications()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
 
 const groups = [
@@ -63,7 +68,7 @@ const groups = [
       { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
       { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart' },
       { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity' },
-      { name: 'admin', label: 'Админка', description: 'Пользователи и доступы', icon: 'key' },
+      { name: 'admin-overview', label: 'Админка', description: 'Пользователи и заявки', icon: 'key' },
       { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
     ],
   },
@@ -71,15 +76,22 @@ const groups = [
 
 const visibleGroups = computed(() => groups.map((group) => ({
   ...group,
-  items: group.items.filter((item) => (
-    (item.name !== 'activity' || activityLogEnabled.value)
-    && (item.name !== 'budget' || budgetEnabled.value)
-    && (item.name !== 'time-tracking' || timeTrackingEnabled.value)
-    && (item.name !== 'sport' || readSubscriptionFeature('sport'))
-    && (item.name !== 'movies' || readSubscriptionFeature('movies'))
-    && (item.name !== 'admin' || authStore.isAdmin.value)
-  )),
+  items: group.items
+    .filter((item) => (
+      (item.name !== 'activity' || activityLogEnabled.value)
+      && (item.name !== 'budget' || budgetEnabled.value)
+      && (item.name !== 'time-tracking' || timeTrackingEnabled.value)
+      && (item.name !== 'sport' || readSubscriptionFeature('sport'))
+      && (item.name !== 'movies' || readSubscriptionFeature('movies'))
+      && (item.name !== 'admin-overview' || authStore.isAdmin.value)
+    ))
+    .map((item) => ({
+      ...item,
+      badge: item.name === 'admin-overview' ? unreadLeadCount.value : 0,
+    })),
 })))
+
+onMounted(loadUnreadLeadCount)
 </script>
 
 <style scoped>
@@ -170,6 +182,7 @@ const visibleGroups = computed(() => groups.map((group) => ({
 }
 
 .app-sidebar__icon {
+  position: relative;
   display: grid;
   place-items: center;
   width: 34px;
@@ -179,6 +192,23 @@ const visibleGroups = computed(() => groups.map((group) => ({
   background: var(--control-bg);
   font-size: 16px;
   font-weight: 800;
+}
+
+.app-sidebar__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border: 2px solid var(--sidebar-bg);
+  border-radius: 999px;
+  padding: 0 4px;
+  color: #fff;
+  background: var(--danger);
+  font-size: 9px;
+  line-height: 1;
 }
 
 .app-sidebar__copy b {

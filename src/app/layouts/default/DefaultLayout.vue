@@ -1,7 +1,7 @@
 <template>
   <RouterView v-if="isStandaloneRoute" v-slot="{ Component }">
     <transition name="page-shift" mode="out-in">
-      <component :is="Component" :key="$route.name" />
+      <component :is="Component" :key="standaloneRouteKey" />
     </transition>
   </RouterView>
 
@@ -98,6 +98,7 @@ import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { useLocalEventReminders } from '../../composables/notifications/useLocalEventReminders.js'
 import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
+import { useAdminLeadNotifications } from '../../composables/admin/useAdminLeadNotifications.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,11 +120,13 @@ const {
   start: startRealtimeNotifications,
   stop: stopRealtimeNotifications,
 } = useRealtimeNotifications()
+const { unreadLeadCount, startUnreadLeadPolling, stopUnreadLeadPolling } = useAdminLeadNotifications()
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const isAuthRoute = computed(() => route.name === 'login')
 const isStandaloneRoute = computed(() => isAuthRoute.value || route.meta.standalone)
+const standaloneRouteKey = computed(() => route.matched[0]?.path || route.name)
 let onboardingTimer = null
 const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
   members: workspaceStore.activeWorkspaceMembers.value,
@@ -143,7 +146,13 @@ const commands = computed(() => [
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
   ...(readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
   { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
-  ...(authStore.isAdmin.value ? [{ id: 'admin', label: 'Открыть админку', description: 'Пользователи и доступы', icon: 'key', action: () => router.push({ name: 'admin' }) }] : []),
+  ...(authStore.isAdmin.value ? [{
+    id: 'admin',
+    label: 'Открыть админку',
+    description: unreadLeadCount.value ? `${unreadLeadCount.value} новых заявок` : 'Пользователи и заявки',
+    icon: 'key',
+    action: () => router.push({ name: 'admin-overview' }),
+  }] : []),
   { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
   ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
     id: `event-${event.id}`,
@@ -243,6 +252,7 @@ function handleBackendSyncComplete() {
 
 onMounted(() => {
   runDailyAutoBackup()
+  startUnreadLeadPolling()
   document.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('backend-sync-error', handleBackendSyncError)
   window.addEventListener('backend-sync-complete', handleBackendSyncComplete)
@@ -266,6 +276,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('backend-sync-complete', handleBackendSyncComplete)
   stopLocalEventReminders()
   stopRealtimeNotifications()
+  stopUnreadLeadPolling()
   window.clearTimeout(onboardingTimer)
 })
 </script>
