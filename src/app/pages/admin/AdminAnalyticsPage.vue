@@ -51,6 +51,8 @@
           <p>{{ unreadLeadsLabel }} новых, {{ viewedLeadsLabel }} уже просмотрены.</p>
         </article>
       </section>
+
+      <AdminOverviewCharts :metrics="currentMetrics" />
     </template>
   </section>
 </template>
@@ -58,6 +60,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../../api/supabase/admin.api.js'
+import AdminOverviewCharts from '../../components/admin/AdminOverviewCharts.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 

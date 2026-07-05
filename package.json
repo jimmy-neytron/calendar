@@ -15,8 +15,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
     "@vitejs/plugin-vue": "latest",
+    "chart.js": "^4.5.1",
     "vite": "latest",
     "vue": "latest",
+    "vue-chartjs": "^5.3.3",
     "vue-router": "latest"
   },
   "devDependencies": {
