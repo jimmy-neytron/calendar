@@ -44,7 +44,7 @@
 
       <div class="admin-shell__content">
         <RouterView v-slot="{ Component }">
-          <transition name="admin-page" appear>
+          <transition name="admin-page" appear mode="out-in">
             <component :is="Component"/>
           </transition>
         </RouterView>
@@ -290,7 +290,7 @@ onMounted(startUnreadLeadPolling)
 }
 
 .admin-page-enter-active {
-  transition: opacity .16s var(--ease-out);
+  transition: opacity .2s var(--ease-out);
 }
 
 .admin-page-leave-active {
@@ -298,7 +298,7 @@ onMounted(startUnreadLeadPolling)
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  transition: opacity .12s ease-in;
+  transition: opacity .2s ease-in;
 }
 
 .admin-page-enter-from, .admin-page-leave-to {

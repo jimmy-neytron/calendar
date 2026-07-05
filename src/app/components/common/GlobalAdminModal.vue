@@ -266,6 +266,10 @@ onMounted(() => {
   loadActiveModal()
 })
 
+watch(() => authStore.currentUserId.value, (userId, previousUserId) => {
+  if (userId && userId !== previousUserId) loadActiveModal()
+})
+
 watch(isOpen, (value) => {
   if (!value && activeModal.value?.isBlocking) restoreBlockingModal()
 })

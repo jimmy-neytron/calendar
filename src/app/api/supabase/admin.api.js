@@ -14,6 +14,19 @@ export const adminApi = {
     })
   },
 
+  getUserDetail(userId) {
+    return requireSupabase().rpc('admin_get_user_detail', {
+      target_user_id: userId,
+    })
+  },
+
+  setUserModalOverride(userId, modalId) {
+    return requireSupabase().rpc('admin_set_user_modal_override', {
+      target_user_id: userId,
+      next_modal_id: modalId || null,
+    })
+  },
+
   listLeads() {
     return requireSupabase().rpc('admin_list_landing_leads')
   },

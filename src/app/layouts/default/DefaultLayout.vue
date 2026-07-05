@@ -57,7 +57,7 @@
       @smart-create="createSmartEvent"
     />
 
-    <AppOnboarding />
+<!--    <AppOnboarding />-->
     <PwaPrompt />
     <GlobalAdminModal />
 
