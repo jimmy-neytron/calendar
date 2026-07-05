@@ -66,6 +66,20 @@ html[data-theme='black'] {
   --spacing-xl: 24px;
   --spacing-2xl: 36px;
 
+  --density-font-size: 13px;
+  --density-page-gap: 12px;
+  --density-panel-gap: 12px;
+  --density-panel-padding: 16px;
+  --density-card-padding: 12px;
+  --density-control-height: 34px;
+  --density-control-padding-x: 12px;
+  --density-calendar-grid-gap: 6px;
+  --density-board-padding: 16px;
+  --density-day-cell-height: 112px;
+  --density-day-cell-gap: 6px;
+  --density-day-cell-padding: 8px;
+  --density-week-cell-height: 360px;
+
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --header-height: 58px;
   --sidebar-width: 224px;
@@ -124,4 +138,36 @@ html[data-theme='light'] {
   --page-gradient:
     radial-gradient(circle at 16% 0%, rgba(198, 143, 77, 0.16), transparent 24vw),
     linear-gradient(180deg, #f4f1ea 0%, #ebe6dc 100%);
+}
+
+html[data-density='compact'] {
+  --density-font-size: 12px;
+  --density-page-gap: 10px;
+  --density-panel-gap: 10px;
+  --density-panel-padding: 12px;
+  --density-card-padding: 10px;
+  --density-control-height: 32px;
+  --density-control-padding-x: 10px;
+  --density-calendar-grid-gap: 5px;
+  --density-board-padding: 12px;
+  --density-day-cell-height: 104px;
+  --density-day-cell-gap: 5px;
+  --density-day-cell-padding: 7px;
+  --density-week-cell-height: 320px;
+}
+
+html[data-density='normal'] {
+  --density-font-size: 13px;
+  --density-page-gap: 16px;
+  --density-panel-gap: 14px;
+  --density-panel-padding: 18px;
+  --density-card-padding: 16px;
+  --density-control-height: 38px;
+  --density-control-padding-x: 14px;
+  --density-calendar-grid-gap: 8px;
+  --density-board-padding: 18px;
+  --density-day-cell-height: 132px;
+  --density-day-cell-gap: 8px;
+  --density-day-cell-padding: 10px;
+  --density-week-cell-height: 410px;
 }

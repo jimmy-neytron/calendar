@@ -144,8 +144,8 @@ function difference(start, end) {
   top: calc(var(--header-height) + 14px);
   align-self: start;
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: var(--density-panel-gap, 10px);
+  padding: var(--density-panel-padding, 12px);
 }
 
 .today-rail__header {
@@ -175,14 +175,14 @@ function difference(start, end) {
 }
 
 .today-rail__header h2 { margin: 0; text-transform: capitalize; }
-.today-rail__overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.today-rail__overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--density-calendar-grid-gap, 6px); }
 .today-rail__overview article {
   display: grid;
   gap: 3px;
   min-width: 0;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 8px;
+  padding: var(--density-card-padding, 8px);
   background: var(--card-soft);
 }
 .today-rail__overview span,
@@ -190,9 +190,9 @@ function difference(start, end) {
 .today-rail__overview strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .today-rail__overview article > div { height: 4px; overflow: hidden; border-radius: 99px; background: var(--control-bg); }
 .today-rail__overview i { display: block; height: 100%; border-radius: inherit; background: var(--info); }
-.today-rail__section { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border-color); }
+.today-rail__section { display: grid; gap: var(--density-calendar-grid-gap, 8px); padding-top: var(--density-panel-gap, 10px); border-top: 1px solid var(--border-color); }
 .today-rail__section h3 { margin: 0; }
-.today-rail__events { display: grid; gap: 8px; }
+.today-rail__events { display: grid; gap: var(--density-calendar-grid-gap, 8px); }
 .today-rail__reminder {
   display: grid;
   gap: 2px;

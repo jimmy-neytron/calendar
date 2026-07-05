@@ -134,6 +134,11 @@ export const DEFAULT_PREFERENCES = {
   holidayCountry: 'RU',
 }
 
+export const DENSITY_OPTIONS = [
+  { value: 'compact', label: 'Компактная' },
+  { value: 'normal', label: 'Обычная' },
+]
+
 export const HOLIDAY_COUNTRY_OPTIONS = [
   { value: 'RU', label: 'Россия' },
   { value: 'BY', label: 'Беларусь' },

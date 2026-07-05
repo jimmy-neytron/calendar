@@ -111,7 +111,7 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
 
 <style scoped>
 .calendar-board {
-  padding: 16px;
+  padding: var(--density-board-padding, 16px);
   overflow: hidden;
   animation: fadeSlideUp 0.42s var(--ease-out);
 }
@@ -120,8 +120,8 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--density-panel-gap, 12px);
+  margin-bottom: var(--density-panel-gap, 12px);
 }
 
 .calendar-board__toolbar p {
@@ -171,8 +171,8 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
 .calendar-board__members {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: calc(var(--density-calendar-grid-gap, 6px) + 1px);
+  margin-bottom: var(--density-panel-gap, 12px);
 }
 
 .calendar-board__viewport {
@@ -184,11 +184,11 @@ const emit = defineEmits(['update:mode', 'previous', 'next', 'today', 'select-da
 .calendar-board__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--density-calendar-grid-gap, 6px);
 }
 
 .calendar-board__weekdays {
-  margin-bottom: 6px;
+  margin-bottom: var(--density-calendar-grid-gap, 6px);
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 700;

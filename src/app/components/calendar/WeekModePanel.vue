@@ -91,18 +91,18 @@ function formatHolidayNames(holidays) {
 .week-mode {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 7px;
+  gap: var(--density-calendar-grid-gap, 7px);
 }
 
 .week-mode__day {
   min-width: 0;
-  min-height: 360px;
+  min-height: var(--density-week-cell-height, 360px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--density-day-cell-gap, 8px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 9px;
+  padding: var(--density-day-cell-padding, 9px);
   background: var(--control-bg);
   overflow: hidden;
   transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
@@ -196,7 +196,7 @@ function formatHolidayNames(holidays) {
 .week-mode__events {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: var(--density-calendar-grid-gap, 6px);
 }
 
 .week-mode__empty {

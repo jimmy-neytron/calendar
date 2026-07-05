@@ -126,13 +126,13 @@ function isBirthdayEvent(event) {
 
 <style scoped>
 .calendar-day {
-  min-height: 112px;
+  min-height: var(--density-day-cell-height, 112px);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--density-day-cell-gap, 6px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 8px;
+  padding: var(--density-day-cell-padding, 8px);
   color: var(--text-primary);
   background: var(--control-bg);
   text-align: left;
@@ -270,7 +270,7 @@ function isBirthdayEvent(event) {
 
 .calendar-day__events {
   display: grid;
-  gap: 4px;
+  gap: max(3px, calc(var(--density-day-cell-gap, 6px) - 2px));
 }
 
 .calendar-day__event {
