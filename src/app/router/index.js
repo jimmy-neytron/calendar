@@ -10,7 +10,6 @@ import { readTimeTrackingSetting } from '../composables/preferences/useTimeTrack
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
-const SubscriptionsPage = () => import('../pages/subscriptions/SubscriptionsPage.vue')
 const BudgetPage = () => import('../pages/budget/BudgetPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
 const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
@@ -25,7 +24,7 @@ const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.v
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
-  IndexPage, SettingsPage, SubscriptionsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
+  IndexPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
   IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
@@ -40,7 +39,7 @@ export const routes = [
   { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
   { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
-  { path: '/subscriptions', name: 'subscriptions', component: SubscriptionsPage, meta: { title: 'Подписки' } },
+  { path: '/subscriptions', redirect: '/settings' },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
   { path: '/analytics/calendar', name: 'analytics-calendar', component: AnalyticsDetailPage, meta: { title: 'Аналитика календаря', analyticsSection: 'calendar' } },
@@ -85,7 +84,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresSubscriptionFeature && !readSubscriptionFeature(to.meta.requiresSubscriptionFeature)) {
-    return { name: 'subscriptions' }
+    return { name: 'settings' }
   }
 
   if (to.name === 'login' && authStore.isAuthenticated.value) {
@@ -99,7 +98,7 @@ router.beforeEach(async (to) => {
       || await workspaceStore.ensureActiveWorkspace()
     if (workspace) await loadWorkspaceFeatures(workspace.id)
     if (to.meta.requiresBudget && !readBudgetSetting()) {
-      return { name: 'subscriptions' }
+      return { name: 'settings' }
     }
     if (workspace) await loadWorkspaceData(workspace.id)
   }

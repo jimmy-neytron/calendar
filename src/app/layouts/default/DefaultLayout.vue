@@ -143,7 +143,6 @@ const commands = computed(() => [
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
   ...(readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
   { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
-  { id: 'subscriptions', label: 'Открыть подписки', description: 'Тарифы Free, Plus и Pro', icon: '★', action: () => router.push({ name: 'subscriptions' }) },
   { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
   ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
     id: `event-${event.id}`,
