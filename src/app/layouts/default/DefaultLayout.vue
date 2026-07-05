@@ -143,6 +143,7 @@ const commands = computed(() => [
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
   ...(readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
   { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
+  ...(authStore.isAdmin.value ? [{ id: 'admin', label: 'Открыть админку', description: 'Пользователи и доступы', icon: 'key', action: () => router.push({ name: 'admin' }) }] : []),
   { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
   ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
     id: `event-${event.id}`,

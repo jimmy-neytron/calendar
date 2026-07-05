@@ -35,6 +35,7 @@ import { useActivityLogSettings } from '../../composables/preferences/useActivit
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
+import { authStore } from '../../stores/auth.store.js'
 import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace
@@ -62,6 +63,7 @@ const groups = [
       { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
       { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart' },
       { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity' },
+      { name: 'admin', label: 'Админка', description: 'Пользователи и доступы', icon: 'key' },
       { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
     ],
   },
@@ -75,6 +77,7 @@ const visibleGroups = computed(() => groups.map((group) => ({
     && (item.name !== 'time-tracking' || timeTrackingEnabled.value)
     && (item.name !== 'sport' || readSubscriptionFeature('sport'))
     && (item.name !== 'movies' || readSubscriptionFeature('movies'))
+    && (item.name !== 'admin' || authStore.isAdmin.value)
   )),
 })))
 </script>

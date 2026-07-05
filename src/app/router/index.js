@@ -9,6 +9,7 @@ import { readTimeTrackingSetting } from '../composables/preferences/useTimeTrack
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
+const AdminPage = () => import('../pages/admin/AdminPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
 const BudgetPage = () => import('../pages/budget/BudgetPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
@@ -24,7 +25,7 @@ const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.v
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
-  IndexPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
+  IndexPage, AdminPage, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
   IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
@@ -33,6 +34,7 @@ let pagesPreloaded = false
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
+  { path: '/admin', name: 'admin', component: AdminPage, meta: { title: 'Админка', requiresAdmin: true } },
   { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
   { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет', requiresBudget: true } },
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт', requiresSubscriptionFeature: 'sport' } },
@@ -75,11 +77,22 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
+  if (!to.meta.public) {
+    const profile = await authStore.refreshCurrentUser()
+    if (profile.blocked || !authStore.isAuthenticated.value) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+  }
+
   if (to.meta.requiresActivityLog && !readActivityLogSetting()) {
     return { name: 'settings' }
   }
 
   if (to.meta.requiresTimeTracking && !readTimeTrackingSetting()) {
+    return { name: 'settings' }
+  }
+
+  if (to.meta.requiresAdmin && !authStore.isAdmin.value) {
     return { name: 'settings' }
   }
 

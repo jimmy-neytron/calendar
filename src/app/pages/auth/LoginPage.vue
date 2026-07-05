@@ -51,14 +51,36 @@
       </span>
       <strong>Готово</strong>
     </div>
+
+    <UiModal
+      v-model="isBlockedModalOpen"
+      title="Аккаунт заблокирован"
+      eyebrow="Доступ закрыт"
+      width="440px"
+      :close-on-overlay="false"
+      @close="authStore.dismissBlockedAccount"
+    >
+      <div class="blocked-account">
+        <span class="blocked-account__icon"><UiIcon name="warning" /></span>
+        <div>
+          <strong>Пользователь деактивирован администратором</strong>
+          <p>
+            {{ blockedAccountName }} больше не может пользоваться приложением,
+            открывать разделы, менять тариф или выполнять действия.
+          </p>
+        </div>
+      </div>
+    </UiModal>
   </main>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiButton from '../../components/ui/UiButton.vue'
+import UiIcon from '../../components/ui/UiIcon.vue'
 import UiInput from '../../components/ui/UiInput.vue'
+import UiModal from '../../components/ui/UiModal.vue'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 
@@ -68,6 +90,17 @@ const mode = ref('login')
 const message = ref('')
 const hasError = ref(false)
 const authStage = ref('idle')
+const isBlockedModalOpen = computed({
+  get: () => Boolean(authStore.blockedAccount.value),
+  set: (value) => {
+    if (!value) authStore.dismissBlockedAccount()
+  },
+})
+const blockedAccountName = computed(() => (
+  authStore.blockedAccount.value?.email
+  || authStore.blockedAccount.value?.name
+  || 'Этот аккаунт'
+))
 
 const form = reactive({
   name: '',
@@ -90,7 +123,9 @@ async function submit() {
   }
 
   hasError.value = !result.ok
-  message.value = result.needsEmailConfirmation
+  message.value = result.blocked
+    ? ''
+    : result.needsEmailConfirmation
     ? 'Проверь почту и подтверди регистрацию'
     : result.ok
     ? mode.value === 'login' ? 'Вход выполнен' : 'Аккаунт создан'

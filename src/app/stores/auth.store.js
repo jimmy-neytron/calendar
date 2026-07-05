@@ -9,10 +9,12 @@ const users = ref([])
 const currentUserId = ref(null)
 const initialized = ref(false)
 const loading = ref(false)
+const blockedAccount = ref(null)
 let initializePromise = null
 
 const currentUser = computed(() => users.value.find((user) => user.id === currentUserId.value) || null)
 const isAuthenticated = computed(() => Boolean(currentUserId.value))
+const isAdmin = computed(() => currentUser.value?.role === 'admin' && currentUser.value?.isActive !== false)
 
 function mapUser(profile, authUser) {
   const email = profile?.email || authUser?.email || ''
@@ -26,7 +28,10 @@ function mapUser(profile, authUser) {
     color: profile?.color || authUser?.user_metadata?.color || '#60a5fa',
     subscriptionTier,
     workspaceLimit: Number(profile?.workspace_limit || getSubscriptionPlan(subscriptionTier).workspaceLimit),
+    role: profile?.role || 'user',
+    isActive: profile?.is_active !== false,
     createdAt: profile?.created_at || authUser?.created_at,
+    updatedAt: profile?.updated_at || '',
   }
 }
 
@@ -38,6 +43,13 @@ async function applySession(session) {
   }
   const { data } = await authApi.getProfile(session.user.id)
   const user = mapUser(data, session.user)
+  if (!user.isActive) {
+    blockedAccount.value = { email: user.email, name: user.name }
+    await authApi.signOut()
+    users.value = []
+    currentUserId.value = null
+    return
+  }
   users.value = [user]
   currentUserId.value = user.id
 }
@@ -63,10 +75,12 @@ function initialize() {
 
 async function login(email, password) {
   loading.value = true
+  blockedAccount.value = null
   try {
     const { data, error } = await authApi.signIn(String(email).trim().toLowerCase(), password)
     if (error) return { ok: false, message: getAuthErrorMessage(error) }
     await applySession(data.session)
+    if (!currentUser.value) return { ok: false, blocked: true, message: 'Аккаунт деактивирован администратором' }
     return { ok: true, user: currentUser.value }
   } catch {
     return { ok: false, message: 'РќРµС‚ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ Supabase. РџСЂРѕРІРµСЂСЊ РёРЅС‚РµСЂРЅРµС‚ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕРµРєС‚Р°.' }
@@ -97,6 +111,29 @@ async function register(data) {
 async function logout() {
   await authApi.signOut()
   await applySession(null)
+}
+
+async function refreshCurrentUser() {
+  if (!currentUserId.value) return { ok: false }
+  const previousUser = currentUser.value
+  const { data, error } = await authApi.getProfile(currentUserId.value)
+  if (error) return { ok: false, message: error.message }
+
+  const user = mapUser(data, previousUser)
+  if (!user.isActive) {
+    blockedAccount.value = { email: user.email, name: user.name }
+    await authApi.signOut()
+    users.value = []
+    currentUserId.value = null
+    return { ok: false, blocked: true }
+  }
+
+  users.value = [user]
+  return { ok: true, user }
+}
+
+function dismissBlockedAccount() {
+  blockedAccount.value = null
 }
 
 async function updateCurrentUser(updates) {
@@ -136,6 +173,6 @@ function getAuthErrorMessage(error) {
 }
 
 export const authStore = {
-  users, currentUserId, currentUser, isAuthenticated, initialized, loading,
-  initialize, login, register, logout, updateCurrentUser, getUser, getUserByEmail, mergeUsers,
+  users, currentUserId, currentUser, isAuthenticated, isAdmin, initialized, loading, blockedAccount,
+  initialize, login, register, logout, refreshCurrentUser, updateCurrentUser, dismissBlockedAccount, getUser, getUserByEmail, mergeUsers,
 }
