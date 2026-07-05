@@ -13,6 +13,7 @@
             <header class="ui-modal__header">
               <div>
                 <p v-if="eyebrow" class="ui-modal__eyebrow">{{ eyebrow }}</p>
+                <slot name="header-badge" />
                 <h2>{{ title }}</h2>
               </div>
               <UiIconButton v-if="!hideClose" icon="close" label="Закрыть" @click="close" />
@@ -97,6 +98,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 .ui-modal__header h2 {
   margin: 0;
+}
+
+.ui-modal__header :slotted(.global-admin-modal__badge) {
+  margin-bottom: 8px;
 }
 
 .ui-modal__eyebrow {

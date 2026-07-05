@@ -4,7 +4,6 @@
     :key="renderKey"
     v-model="isOpen"
     :title="activeModal.title"
-    :eyebrow="activeModal.style.label"
     width="860px"
     :close-on-overlay="!activeModal.isBlocking"
     :close-on-escape="!activeModal.isBlocking"
@@ -13,11 +12,14 @@
     :dialog-class="[`global-admin-modal-dialog--${activeModal.modalType}`, { 'global-admin-modal-dialog--blocking': activeModal.isBlocking }]"
     @close="handleModalClose"
   >
-    <article class="global-admin-modal" :class="`global-admin-modal--${activeModal.modalType}`">
+    <template #header-badge>
       <div class="global-admin-modal__badge">
         <UiIcon :name="activeModal.style.icon" />
         <span>{{ activeModal.style.label }}</span>
       </div>
+    </template>
+
+    <article class="global-admin-modal" :class="`global-admin-modal--${activeModal.modalType}`">
       <div class="global-admin-modal__content" v-html="activeModal.contentHtml" />
       <footer v-if="activeModal.buttons.length">
         <a
