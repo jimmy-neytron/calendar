@@ -35,6 +35,13 @@ export interface NewTimeEntry {
   note?: string
 }
 
+export interface UpdateTimeEntry {
+  projectId: string
+  date: string
+  minutes: number
+  note?: string
+}
+
 export interface TimeChartItem {
   label: string
   value: number
@@ -202,32 +209,43 @@ async function addProject(name: string, color = '#60a5fa') {
 
 async function addEntry(data: NewTimeEntry) {
   if (!readTimeTrackingSetting()) return disabledResult()
-  const project = projectRepository.findById(data.projectId) as TimeProject | undefined
-  if (!project || project.workspaceId !== workspaceStore.activeWorkspaceId.value) {
-    return { ok: false, message: 'Выбери проект' }
-  }
-  const minutes = Math.round(Number(data.minutes))
-  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 24 * 60) {
-    return { ok: false, message: 'Длительность должна быть от 5 минут до 24 часов' }
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
-    return { ok: false, message: 'Выбери дату' }
-  }
+  const normalized = normalizeEntryData(data)
+  if (!normalized.ok) return normalized
 
   const now = new Date().toISOString()
   const entry: TimeEntry = {
     id: generateId(),
     workspaceId: workspaceStore.activeWorkspaceId.value || '',
-    projectId: project.id,
+    projectId: normalized.project.id,
     userId: authStore.currentUserId.value || '',
-    date: data.date,
-    minutes,
-    note: String(data.note || '').trim(),
+    date: normalized.date,
+    minutes: normalized.minutes,
+    note: normalized.note,
     createdAt: now,
     updatedAt: now,
   }
   const result = await entryRepository.createAndWait(entry)
   return result.ok ? { ok: true, entry } : result
+}
+
+async function updateEntry(id: string, data: UpdateTimeEntry) {
+  if (!readTimeTrackingSetting()) return disabledResult()
+  const entry = entryRepository.findById(id) as TimeEntry | undefined
+  if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value) {
+    return { ok: false, message: 'Запись не найдена' }
+  }
+
+  const normalized = normalizeEntryData(data)
+  if (!normalized.ok) return normalized
+
+  const result = await entryRepository.updateAndWait(id, {
+    projectId: normalized.project.id,
+    date: normalized.date,
+    minutes: normalized.minutes,
+    note: normalized.note,
+    updatedAt: new Date().toISOString(),
+  })
+  return result.ok ? { ok: true, entry: result.item } : result
 }
 
 async function removeEntry(id: string) {
@@ -267,6 +285,30 @@ async function loadWorkspace(workspaceId: string) {
 
 function disabledResult() {
   return { ok: false, disabled: true, message: 'Учёт времени выключен в настройках' }
+}
+
+function normalizeEntryData(data: NewTimeEntry | UpdateTimeEntry) {
+  const project = projectRepository.findById(data.projectId) as TimeProject | undefined
+  if (!project || project.workspaceId !== workspaceStore.activeWorkspaceId.value) {
+    return { ok: false as const, message: 'Выбери проект' }
+  }
+
+  const minutes = Math.round(Number(data.minutes))
+  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 24 * 60) {
+    return { ok: false as const, message: 'Длительность должна быть от 5 минут до 24 часов' }
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+    return { ok: false as const, message: 'Выбери дату' }
+  }
+
+  return {
+    ok: true as const,
+    project,
+    date: data.date,
+    minutes,
+    note: String(data.note || '').trim(),
+  }
 }
 
 function getWeekStart(date: Date) {
@@ -322,6 +364,7 @@ export const timeTrackingStore = {
   addProject,
   removeProject,
   addEntry,
+  updateEntry,
   removeEntry,
   loadWorkspace,
   syncError: entryRepository.lastError,

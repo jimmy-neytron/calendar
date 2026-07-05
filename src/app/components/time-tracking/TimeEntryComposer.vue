@@ -69,14 +69,26 @@
       <div class="duration-field">
         <span class="field-label">Длительность</span>
         <div class="duration-stepper">
-          <button type="button" aria-label="Уменьшить на 1 час" @click="changeDuration(-60)">
+          <button type="button" aria-label="Уменьшить на 30 минут" @click="changeDuration(-30)">
             <UiIcon name="minus" />
           </button>
           <strong>{{ formatDuration(minutes) }}</strong>
-          <button type="button" aria-label="Увеличить на 1 час" @click="changeDuration(60)">
+          <button type="button" aria-label="Увеличить на 30 минут" @click="changeDuration(30)">
             <UiIcon name="plus" />
           </button>
         </div>
+        <label class="duration-hours">
+          <span>Часы</span>
+          <input
+            v-model="hoursInput"
+            type="text"
+            inputmode="decimal"
+            placeholder="1.5"
+            @focus="isEditingHours = true"
+            @input="syncDurationFromHours"
+            @blur="finishHoursInput"
+          >
+        </label>
         <div class="duration-presets">
           <button
             v-for="preset in durationPresets"
@@ -135,16 +147,18 @@ const emit = defineEmits<{
 }>()
 
 const durationPresets = [
+  { minutes: 30, label: '0.5 ч' },
   { minutes: 60, label: '1 ч' },
+  { minutes: 90, label: '1.5 ч' },
   { minutes: 120, label: '2 ч' },
-  { minutes: 180, label: '3 ч' },
   { minutes: 240, label: '4 ч' },
-  { minutes: 300, label: '5 ч' },
 ]
 const projectColors = ['#60a5fa', '#22d3ee', '#10b981', '#eab308', '#fb923c', '#f472b6']
 const projectId = ref('')
 const date = ref(toDateKey(new Date()))
 const minutes = ref(60)
+const hoursInput = ref(toHoursInput(minutes.value))
+const isEditingHours = ref(false)
 const note = ref('')
 const showProjectForm = ref(false)
 const projectName = ref('')
@@ -161,8 +175,14 @@ watch(
   { immediate: true },
 )
 
+watch(minutes, (value) => {
+  if (!isEditingHours.value) {
+    hoursInput.value = toHoursInput(value)
+  }
+})
+
 function changeDuration(delta: number) {
-  minutes.value = Math.min(24 * 60, Math.max(60, minutes.value + delta))
+  setMinutes(minutes.value + delta)
 }
 
 function submitEntry() {
@@ -183,6 +203,32 @@ function createProject() {
   showProjectForm.value = false
 }
 
+function syncDurationFromHours() {
+  const hours = parseDurationHours(hoursInput.value)
+  if (hours === null) return
+  setMinutes(hours * 60)
+}
+
+function finishHoursInput() {
+  isEditingHours.value = false
+  syncDurationFromHours()
+  hoursInput.value = toHoursInput(minutes.value)
+}
+
+function setMinutes(value: number) {
+  minutes.value = Math.min(24 * 60, Math.max(5, Math.round(value)))
+}
+
+function parseDurationHours(value: string) {
+  if (!value.trim()) return null
+  const hours = Number(value.replace(',', '.'))
+  return Number.isFinite(hours) ? hours : null
+}
+
+function toHoursInput(value: number) {
+  return String(Math.round((value / 60) * 100) / 100)
+}
+
 function formatDuration(value: number) {
   const hours = Math.floor(value / 60)
   const rest = value % 60
@@ -200,5 +246,5 @@ function toDateKey(value: Date) {
 </script>
 
 <style scoped>
-.time-composer{display:grid;gap:16px;padding:18px;border-color:color-mix(in srgb,var(--cyan) 18%,var(--border-color));background:linear-gradient(180deg,color-mix(in srgb,var(--cyan) 4%,var(--panel-bg)),var(--panel-bg))}.time-composer__header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border-bottom:1px solid var(--border-color);padding-bottom:14px}.time-composer__header span,.field-label{display:block;color:var(--text-muted);font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.time-composer__header h2{margin:3px 0 0;font-size:20px}.project-create-toggle{display:flex;align-items:center;gap:6px;min-height:34px;border:1px solid var(--border-color);border-radius:10px;padding:0 10px;color:var(--text-secondary);background:var(--control-bg);font-size:10px;font-weight:750}.project-create-toggle:hover{border-color:var(--border-strong);color:var(--text-primary)}.project-create-toggle svg{font-size:13px}.project-form{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;align-items:end;gap:10px;border:1px solid color-mix(in srgb,var(--info) 22%,var(--border-color));border-radius:14px;padding:13px;background:color-mix(in srgb,var(--info) 5%,var(--card-soft))}.project-colors{display:flex;align-items:center;gap:5px;min-height:36px}.project-colors button{width:24px;height:24px;border:3px solid transparent;border-radius:50%;background:var(--project-color)}.project-colors button.active{border-color:var(--card-solid);outline:2px solid var(--project-color)}.entry-form{display:grid;gap:16px}.project-picker,.duration-field{display:grid;gap:8px;border:1px solid var(--border-color);border-radius:14px;padding:12px;background:var(--card-soft)}.project-picker__head,.project-picker__actions{display:flex;align-items:center;justify-content:space-between;gap:8px}.project-picker__actions>button{display:flex;align-items:center;gap:4px;border:0;padding:3px;color:var(--text-secondary);background:transparent;font-size:10px;font-weight:750}.project-picker__actions>button:hover{color:var(--text-primary)}.project-chips,.duration-presets{display:flex;flex-wrap:wrap;gap:6px}.project-chips button,.duration-presets button,.empty-project{display:flex;align-items:center;gap:7px;min-height:34px;border:1px solid var(--border-color);border-radius:10px;padding:0 11px;color:var(--text-secondary);background:var(--control-bg);font-size:11px;font-weight:700}.project-chips button i{width:8px;height:8px;border-radius:50%;background:var(--project-color)}.project-chips button.active{border-color:color-mix(in srgb,var(--project-color) 58%,var(--border-color));color:var(--text-primary);background:color-mix(in srgb,var(--project-color) 10%,var(--control-bg))}.empty-project{width:max-content;border-style:dashed}.duration-field{background:linear-gradient(145deg,var(--card-soft),color-mix(in srgb,var(--cyan) 4%,var(--card-soft)))}.duration-stepper{display:grid;grid-template-columns:46px minmax(130px,1fr) 46px;align-items:center;width:100%;border:1px solid var(--border-color);border-radius:14px;padding:5px;background:var(--control-bg)}.duration-stepper button{display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:11px;color:var(--text-primary);background:var(--card-soft)}.duration-stepper button:hover{background:var(--control-bg-hover)}.duration-stepper strong{text-align:center;font-size:26px;letter-spacing:0}.duration-presets{display:grid;grid-template-columns:repeat(5,1fr)}.duration-presets button{justify-content:center;padding:0 8px}.duration-presets button.active{color:var(--text-inverse);border-color:var(--accent);background:var(--accent)}.entry-meta{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:start;gap:10px}.entry-meta :deep(.ui-input:first-child){align-self:start}.entry-meta :deep(.ui-input:first-child .ui-input__control){min-height:42px}.entry-meta :deep(.ui-input__control--textarea){min-height:116px;line-height:1.45}.entry-form>:deep(.ui-button){justify-self:stretch;min-height:44px}@media(max-width:680px){.time-composer{padding:15px}.time-composer__header,.project-form{display:grid}.project-form{grid-template-columns:1fr}.project-colors{flex-wrap:wrap}.entry-meta{grid-template-columns:1fr}.duration-presets{grid-template-columns:repeat(3,1fr)}.duration-stepper{grid-template-columns:42px 1fr 42px}.duration-stepper button{width:38px;height:38px}.duration-stepper strong{font-size:22px}}
+.time-composer{display:grid;gap:16px;padding:18px;border-color:color-mix(in srgb,var(--cyan) 18%,var(--border-color));background:linear-gradient(180deg,color-mix(in srgb,var(--cyan) 4%,var(--panel-bg)),var(--panel-bg))}.time-composer__header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border-bottom:1px solid var(--border-color);padding-bottom:14px}.time-composer__header span,.field-label{display:block;color:var(--text-muted);font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.time-composer__header h2{margin:3px 0 0;font-size:20px}.project-create-toggle{display:flex;align-items:center;gap:6px;min-height:34px;border:1px solid var(--border-color);border-radius:10px;padding:0 10px;color:var(--text-secondary);background:var(--control-bg);font-size:10px;font-weight:750}.project-create-toggle:hover{border-color:var(--border-strong);color:var(--text-primary)}.project-create-toggle svg{font-size:13px}.project-form{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;align-items:end;gap:10px;border:1px solid color-mix(in srgb,var(--info) 22%,var(--border-color));border-radius:14px;padding:13px;background:color-mix(in srgb,var(--info) 5%,var(--card-soft))}.project-colors{display:flex;align-items:center;gap:5px;min-height:36px}.project-colors button{width:24px;height:24px;border:3px solid transparent;border-radius:50%;background:var(--project-color)}.project-colors button.active{border-color:var(--card-solid);outline:2px solid var(--project-color)}.entry-form{display:grid;gap:16px}.project-picker,.duration-field{display:grid;gap:8px;border:1px solid var(--border-color);border-radius:14px;padding:12px;background:var(--card-soft)}.project-picker__head,.project-picker__actions{display:flex;align-items:center;justify-content:space-between;gap:8px}.project-picker__actions>button{display:flex;align-items:center;gap:4px;border:0;padding:3px;color:var(--text-secondary);background:transparent;font-size:10px;font-weight:750}.project-picker__actions>button:hover{color:var(--text-primary)}.project-chips,.duration-presets{display:flex;flex-wrap:wrap;gap:6px}.project-chips button,.duration-presets button,.empty-project{display:flex;align-items:center;gap:7px;min-height:34px;border:1px solid var(--border-color);border-radius:10px;padding:0 11px;color:var(--text-secondary);background:var(--control-bg);font-size:11px;font-weight:700}.project-chips button i{width:8px;height:8px;border-radius:50%;background:var(--project-color)}.project-chips button.active{border-color:color-mix(in srgb,var(--project-color) 58%,var(--border-color));color:var(--text-primary);background:color-mix(in srgb,var(--project-color) 10%,var(--control-bg))}.empty-project{width:max-content;border-style:dashed}.duration-field{background:linear-gradient(145deg,var(--card-soft),color-mix(in srgb,var(--cyan) 4%,var(--card-soft)))}.duration-stepper{display:grid;grid-template-columns:46px minmax(130px,1fr) 46px;align-items:center;width:100%;border:1px solid var(--border-color);border-radius:14px;padding:5px;background:var(--control-bg)}.duration-stepper button{display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:11px;color:var(--text-primary);background:var(--card-soft)}.duration-stepper button:hover{background:var(--control-bg-hover)}.duration-stepper strong{text-align:center;font-size:26px;letter-spacing:0}.duration-hours{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}.duration-hours span{color:var(--text-muted);font-size:10px;font-weight:750}.duration-hours input{min-height:38px;border:1px solid var(--border-color);border-radius:10px;padding:0 10px;color:var(--text-primary);background:var(--field-bg);outline:none}.duration-hours input:focus{border-color:var(--accent-border);background:var(--field-bg-focus);box-shadow:0 0 0 2px var(--accent-soft)}.duration-presets{display:grid;grid-template-columns:repeat(5,1fr)}.duration-presets button{justify-content:center;padding:0 8px}.duration-presets button.active{color:var(--text-inverse);border-color:var(--accent);background:var(--accent)}.entry-meta{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:start;gap:10px}.entry-meta :deep(.ui-input:first-child){align-self:start}.entry-meta :deep(.ui-input:first-child .ui-input__control){min-height:42px}.entry-meta :deep(.ui-input__control--textarea){min-height:116px;line-height:1.45}.entry-form>:deep(.ui-button){justify-self:stretch;min-height:44px}@media(max-width:680px){.time-composer{padding:15px}.time-composer__header,.project-form{display:grid}.project-form{grid-template-columns:1fr}.project-colors{flex-wrap:wrap}.entry-meta{grid-template-columns:1fr}.duration-presets{grid-template-columns:repeat(3,1fr)}.duration-stepper{grid-template-columns:42px 1fr 42px}.duration-stepper button{width:38px;height:38px}.duration-stepper strong{font-size:22px}}
 </style>

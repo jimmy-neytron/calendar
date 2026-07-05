@@ -71,6 +71,7 @@
         :entries="entries"
         :projects="projects"
         @remove="removeEntry"
+        @update="updateEntry"
       />
     </div>
   </section>
@@ -129,6 +130,27 @@ async function addEntry(payload: { projectId: string; date: string; minutes: num
     result.ok ? `Добавлено ${formatDuration(payload.minutes)}` : result.message || 'Не удалось сохранить время',
     result.ok ? 'success' : 'danger',
   )
+}
+
+async function updateEntry(payload: {
+  id: string
+  projectId: string
+  date: string
+  minutes: number
+  note: string
+  onSaved?: () => void
+}) {
+  const result = await timeTrackingStore.updateEntry(payload.id, {
+    projectId: payload.projectId,
+    date: payload.date,
+    minutes: payload.minutes,
+    note: payload.note,
+  })
+  notify(
+    result.ok ? `Запись обновлена: ${formatDuration(payload.minutes)}` : result.message || 'Не удалось обновить запись',
+    result.ok ? 'success' : 'danger',
+  )
+  if (result.ok) payload.onSaved?.()
 }
 
 async function removeEntry(id: string) {
