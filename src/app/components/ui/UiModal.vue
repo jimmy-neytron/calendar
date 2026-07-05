@@ -1,15 +1,21 @@
 <template>
   <Teleport to="body">
     <transition name="fade">
-      <div v-if="modelValue" class="ui-modal" @mousedown.self="handleOverlayClick">
+      <div v-if="modelValue" class="ui-modal" :class="overlayClass" @mousedown.self="handleOverlayClick">
         <transition name="modal" appear>
-          <section class="ui-modal__dialog" :style="{ '--ui-modal-width': width }" role="dialog" aria-modal="true">
+          <section
+            class="ui-modal__dialog"
+            :class="dialogClass"
+            :style="{ '--ui-modal-width': width }"
+            role="dialog"
+            aria-modal="true"
+          >
             <header class="ui-modal__header">
               <div>
                 <p v-if="eyebrow" class="ui-modal__eyebrow">{{ eyebrow }}</p>
                 <h2>{{ title }}</h2>
               </div>
-              <UiIconButton icon="close" label="Закрыть" @click="close" />
+              <UiIconButton v-if="!hideClose" icon="close" label="Закрыть" @click="close" />
             </header>
             <div class="ui-modal__body">
               <slot />
@@ -30,7 +36,11 @@ const props = defineProps({
   title: { type: String, required: true },
   eyebrow: { type: String, default: '' },
   closeOnOverlay: { type: Boolean, default: true },
+  closeOnEscape: { type: Boolean, default: true },
+  hideClose: { type: Boolean, default: false },
   width: { type: String, default: '560px' },
+  overlayClass: { type: [String, Array, Object], default: '' },
+  dialogClass: { type: [String, Array, Object], default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
@@ -45,7 +55,7 @@ const handleOverlayClick = () => {
 }
 
 const handleKeydown = (event) => {
-  if (event.key === 'Escape' && props.modelValue) close()
+  if (event.key === 'Escape' && props.modelValue && props.closeOnEscape) close()
 }
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))

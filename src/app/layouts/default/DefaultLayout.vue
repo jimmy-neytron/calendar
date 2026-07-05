@@ -59,18 +59,20 @@
 
     <AppOnboarding />
     <PwaPrompt />
+    <GlobalAdminModal />
 
-    <div class="toast-stack">
-      <transition-group name="toast-list">
-        <AppToast
-          v-for="notification in notifications"
-          :key="notification.id"
-          :notification="notification"
-          @dismiss="dismiss"
-          @action="runNotificationAction"
-        />
-      </transition-group>
-    </div>
+  </div>
+
+  <div class="toast-stack">
+    <transition-group name="toast-list">
+      <AppToast
+        v-for="notification in notifications"
+        :key="notification.id"
+        :notification="notification"
+        @dismiss="dismiss"
+        @action="runNotificationAction"
+      />
+    </transition-group>
   </div>
 </template>
 
@@ -84,6 +86,7 @@ import CommandPalette from '../../components/common/CommandPalette.vue'
 import AppToast from '../../components/common/AppToast.vue'
 import AppOnboarding from '../../components/onboarding/AppOnboarding.vue'
 import PwaPrompt from '../../components/common/PwaPrompt.vue'
+import GlobalAdminModal from '../../components/common/GlobalAdminModal.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useAutoBackup } from '../../composables/storage/useAutoBackup.js'
 import { authStore } from '../../stores/auth.store.js'
@@ -345,7 +348,7 @@ onBeforeUnmount(() => {
   position: fixed;
   right: 14px;
   bottom: 14px;
-  z-index: 70;
+  z-index: 12000;
   display: grid;
   gap: 9px;
   pointer-events: none;

@@ -26,6 +26,39 @@ export const adminApi = {
     return requireSupabase().rpc('admin_get_overview_metrics')
   },
 
+  listModals() {
+    return requireSupabase().rpc('admin_list_modals')
+  },
+
+  saveModal(modal) {
+    return requireSupabase().rpc('admin_save_modal', {
+      modal_id: modal.id || null,
+      next_title: modal.title,
+      next_content_html: modal.contentHtml,
+      next_buttons: modal.buttons || [],
+      next_is_active: modal.isActive || false,
+      next_display_mode: modal.displayMode || 'always',
+      next_modal_type: modal.modalType || 'notice',
+      next_is_blocking: modal.isBlocking || false,
+      next_audience: modal.audience || { mode: 'all', userIds: [], emails: [], roles: [], tiers: [] },
+    })
+  },
+
+  setModalActive(modalId, isActive) {
+    return requireSupabase().rpc('admin_set_modal_active', {
+      modal_id: modalId,
+      next_is_active: isActive,
+    })
+  },
+
+  deleteModal(modalId) {
+    return requireSupabase().rpc('admin_delete_modal', { modal_id: modalId })
+  },
+
+  getActiveModal() {
+    return requireSupabase().rpc('get_active_admin_modal')
+  },
+
   markLeadViewed(leadId) {
     return requireSupabase().rpc('admin_mark_landing_lead_viewed', { lead_id: leadId })
   },

@@ -44,7 +44,7 @@
 
       <div class="admin-shell__content">
         <RouterView v-slot="{ Component }">
-          <transition name="admin-page" mode="out-in" appear>
+          <transition name="admin-page" appear>
             <component :is="Component"/>
           </transition>
         </RouterView>
@@ -83,6 +83,13 @@ const navItems = computed(() => [
     description: 'Лиды с landing page',
     icon: 'table',
     badge: unreadLeadCount.value,
+  },
+  {
+    name: 'admin-modals',
+    label: 'Модальные окна',
+    description: 'Сообщения для всех',
+    icon: 'grid',
+    badge: 0,
   },
 ])
 const activeTitle = computed(() => (
@@ -282,13 +289,19 @@ onMounted(startUnreadLeadPolling)
   min-width: 0
 }
 
-.admin-page-leave-active,
 .admin-page-enter-active {
-  transition: all 0.2s ease-in-out;
+  transition: opacity .16s var(--ease-out);
+}
+
+.admin-page-leave-active {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity .12s ease-in;
 }
 
 .admin-page-enter-from, .admin-page-leave-to {
-  filter: blur(10px);
   opacity: 0
 }
 

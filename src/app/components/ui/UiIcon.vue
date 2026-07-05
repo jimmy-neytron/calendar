@@ -54,6 +54,8 @@ const icons = {
   play: { paths: ['M8 5l11 7-11 7V5z'] },
   grid: { paths: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'] },
   table: { paths: ['M4 5h16v14H4z', 'M4 10h16', 'M4 15h16', 'M10 5v14'] },
+  list: { paths: ['M8 6h12', 'M8 12h12', 'M8 18h12', 'M4 6h.01', 'M4 12h.01', 'M4 18h.01'] },
+  link: { paths: ['M10 13a5 5 0 007.1 0l2-2a5 5 0 00-7.1-7.1l-1.1 1.1', 'M14 11a5 5 0 00-7.1 0l-2 2A5 5 0 0012 20.1l1.1-1.1'] },
 }
 const current = computed(() => icons[props.name] || icons.close)
 const paths = computed(() => current.value.paths || [])
