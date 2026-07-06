@@ -39,7 +39,7 @@ import { useBudgetSettings } from '../../composables/preferences/useBudgetSettin
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { authStore } from '../../stores/auth.store.js'
-import { useAdminLeadNotifications } from '../../composables/admin/useAdminLeadNotifications.js'
+import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
 import UiIcon from '../ui/UiIcon.vue'
 
 const activeWorkspace = workspaceStore.activeWorkspace

@@ -49,7 +49,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
+import { adminApi } from '../../modules/admin/api/admin.api.js'
 import { authStore } from '../../stores/auth.store.js'
 import UiIcon from '../ui/UiIcon.vue'
 import UiModal from '../ui/UiModal.vue'

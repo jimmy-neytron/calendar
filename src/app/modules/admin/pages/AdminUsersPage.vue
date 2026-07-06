@@ -134,14 +134,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import UiButton from '../../components/ui/UiButton.vue'
-import UiIcon from '../../components/ui/UiIcon.vue'
-import UiInput from '../../components/ui/UiInput.vue'
-import UiSelect from '../../components/ui/UiSelect.vue'
-import { useNotification } from '../../composables/ui/useNotification.js'
-import { authStore } from '../../stores/auth.store.js'
-import { SUBSCRIPTION_TIERS, normalizeSubscriptionTier } from '../../utils/constants/subscriptionConstants.js'
+import { adminApi } from '../api/admin.api.js'
+import UiButton from '../../../components/ui/UiButton.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import UiInput from '../../../components/ui/UiInput.vue'
+import UiSelect from '../../../components/ui/UiSelect.vue'
+import { useNotification } from '../../../composables/ui/useNotification.js'
+import { authStore } from '../../../stores/auth.store.js'
+import { SUBSCRIPTION_TIERS, normalizeSubscriptionTier } from '../../../utils/constants/subscriptionConstants.js'
 
 const { notify } = useNotification()
 const users = ref([])

@@ -190,13 +190,13 @@ import {
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 import { useRoute } from 'vue-router'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import UiButton from '../../components/ui/UiButton.vue'
-import UiIcon from '../../components/ui/UiIcon.vue'
-import UiSelect from '../../components/ui/UiSelect.vue'
-import { useNotification } from '../../composables/ui/useNotification.js'
-import { authStore } from '../../stores/auth.store.js'
-import { getSubscriptionPlan, normalizeSubscriptionTier, SUBSCRIPTION_TIERS } from '../../utils/constants/subscriptionConstants.js'
+import { adminApi } from '../api/admin.api.js'
+import UiButton from '../../../components/ui/UiButton.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import UiSelect from '../../../components/ui/UiSelect.vue'
+import { useNotification } from '../../../composables/ui/useNotification.js'
+import { authStore } from '../../../stores/auth.store.js'
+import { getSubscriptionPlan, normalizeSubscriptionTier, SUBSCRIPTION_TIERS } from '../../../utils/constants/subscriptionConstants.js'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, Legend, LinearScale, Tooltip)
 

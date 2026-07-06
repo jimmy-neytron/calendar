@@ -42,8 +42,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { reactive, watch } from 'vue'
-import UiIcon from '../ui/UiIcon.vue'
-import UiSelect from '../ui/UiSelect.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import UiSelect from '../../../components/ui/UiSelect.vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },

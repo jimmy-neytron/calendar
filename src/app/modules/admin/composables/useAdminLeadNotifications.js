@@ -1,6 +1,6 @@
 import { ref } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import { authStore } from '../../stores/auth.store.js'
+import { adminApi } from '../api/admin.api.js'
+import { authStore } from '../../../stores/auth.store.js'
 
 const unreadLeadCount = ref(0)
 const unreadLeadCountLoading = ref(false)

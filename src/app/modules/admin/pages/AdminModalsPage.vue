@@ -302,14 +302,14 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import AdminRichTextEditor from '../../components/admin/AdminRichTextEditor.vue'
-import UiButton from '../../components/ui/UiButton.vue'
-import UiIcon from '../../components/ui/UiIcon.vue'
-import UiInput from '../../components/ui/UiInput.vue'
-import UiSelect from '../../components/ui/UiSelect.vue'
-import UiToggle from '../../components/ui/UiToggle.vue'
-import { useNotification } from '../../composables/ui/useNotification.js'
+import { adminApi } from '../api/admin.api.js'
+import AdminRichTextEditor from '../components/AdminRichTextEditor.vue'
+import UiButton from '../../../components/ui/UiButton.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import UiInput from '../../../components/ui/UiInput.vue'
+import UiSelect from '../../../components/ui/UiSelect.vue'
+import UiToggle from '../../../components/ui/UiToggle.vue'
+import { useNotification } from '../../../composables/ui/useNotification.js'
 
 const { notify } = useNotification()
 const modals = ref([])

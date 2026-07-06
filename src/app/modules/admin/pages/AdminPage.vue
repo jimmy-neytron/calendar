@@ -56,8 +56,8 @@
 <script setup>
 import {computed, onMounted} from 'vue'
 import {RouterLink, RouterView, useRoute} from 'vue-router'
-import UiIcon from '../../components/ui/UiIcon.vue'
-import {useAdminLeadNotifications} from '../../composables/admin/useAdminLeadNotifications.js'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import {useAdminLeadNotifications} from '../composables/useAdminLeadNotifications.js'
 
 const route = useRoute()
 const {unreadLeadCount, startUnreadLeadPolling} = useAdminLeadNotifications()

@@ -59,10 +59,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import AdminOverviewCharts from '../../components/admin/AdminOverviewCharts.vue'
-import UiButton from '../../components/ui/UiButton.vue'
-import UiIcon from '../../components/ui/UiIcon.vue'
+import { adminApi } from '../api/admin.api.js'
+import AdminOverviewCharts from '../components/AdminOverviewCharts.vue'
+import UiButton from '../../../components/ui/UiButton.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
 
 const isLoading = ref(false)
 const errorMessage = ref('')

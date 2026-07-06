@@ -101,7 +101,7 @@ import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { useLocalEventReminders } from '../../composables/notifications/useLocalEventReminders.js'
 import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
-import { useAdminLeadNotifications } from '../../composables/admin/useAdminLeadNotifications.js'
+import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
 
 const route = useRoute()
 const router = useRouter()

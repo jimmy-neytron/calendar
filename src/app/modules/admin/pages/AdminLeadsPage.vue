@@ -105,13 +105,13 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { adminApi } from '../../api/supabase/admin.api.js'
-import UiButton from '../../components/ui/UiButton.vue'
-import UiIcon from '../../components/ui/UiIcon.vue'
-import UiInput from '../../components/ui/UiInput.vue'
-import UiSelect from '../../components/ui/UiSelect.vue'
-import { useAdminLeadNotifications } from '../../composables/admin/useAdminLeadNotifications.js'
-import { useNotification } from '../../composables/ui/useNotification.js'
+import { adminApi } from '../api/admin.api.js'
+import UiButton from '../../../components/ui/UiButton.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import UiInput from '../../../components/ui/UiInput.vue'
+import UiSelect from '../../../components/ui/UiSelect.vue'
+import { useAdminLeadNotifications } from '../composables/useAdminLeadNotifications.js'
+import { useNotification } from '../../../composables/ui/useNotification.js'
 
 const { notify } = useNotification()
 const { setUnreadLeadCount } = useAdminLeadNotifications()

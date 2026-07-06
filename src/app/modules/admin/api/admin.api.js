@@ -1,4 +1,4 @@
-import { requireSupabase } from './client.js'
+import { requireSupabase } from '../../../api/supabase/client.js'
 
 export const adminApi = {
   listUsers() {
