@@ -216,7 +216,7 @@ function difference(start, end) {
 }
 .today-rail__free-windows small { color: var(--text-muted); font-size: 9px; }
 
-@media (max-width: 1100px) {
+@media (max-width: 1260px) {
   .today-rail {
     position: static;
     max-height: calc(100dvh - var(--header-height) - 86px);

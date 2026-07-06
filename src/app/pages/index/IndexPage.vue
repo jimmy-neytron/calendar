@@ -409,7 +409,7 @@ defineExpose({
   display: none;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1260px) {
   .index-page {
     grid-template-columns: 1fr;
   }
