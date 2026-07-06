@@ -11,6 +11,7 @@ import { adminPageLoaders, adminRoutes } from '../modules/admin/routes.js'
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
+const IntegrationsPage = () => import('../modules/integrations/pages/IntegrationsPage.vue')
 const BudgetPage = () => import('../pages/budget/BudgetPage.vue')
 const WorkspacePage = () => import('../pages/workspace/WorkspacePage.vue')
 const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
@@ -25,7 +26,7 @@ const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.v
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
-  IndexPage, ...adminPageLoaders, SettingsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
+  IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
   IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
@@ -41,6 +42,8 @@ export const routes = [
   { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
   { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
+  { path: '/integrations', name: 'integrations', component: IntegrationsPage, meta: { title: 'Интеграции' } },
+  { path: '/integrations/:integrationId', name: 'integration-detail', component: IntegrationsPage, meta: { title: 'Интеграция' } },
   { path: '/subscriptions', redirect: '/settings' },
   { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
   { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },

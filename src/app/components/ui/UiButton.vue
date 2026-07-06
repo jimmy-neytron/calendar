@@ -44,6 +44,7 @@ const iconName = computed(() => ({
   'sparkles': 'sparkles',
   'trash': 'trash',
   'link': 'link',
+  'copy': 'copy',
   'close': 'close',
 }[props.icon] || ''))
 </script>

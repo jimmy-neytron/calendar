@@ -68,6 +68,7 @@ const groups = [
       { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
       { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart' },
       { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity' },
+      { name: 'integrations', label: 'Интеграции', description: 'Telegram и внешние сервисы', icon: 'link' },
       { name: 'admin-overview', label: 'Админка', description: 'Пользователи и заявки', icon: 'key' },
       { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
     ],
