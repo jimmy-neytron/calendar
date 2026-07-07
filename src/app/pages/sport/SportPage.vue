@@ -16,6 +16,21 @@
     </header>
 
     <section class="sport-hero">
+      <RouterLink class="sport-focus-card" :to="{ name: 'sport-focus' }">
+        <span class="sport-focus-card__icon"><UiIcon name="music" /></span>
+        <div class="sport-focus-card__body">
+          <span>Full Focus</span>
+          <strong>Музыка для тренировки</strong>
+          <small>Выбери настроение и включи фокус-радио</small>
+          <div class="sport-focus-card__chips">
+            <b>Hip-Hop</b>
+            <b>Lo-Fi</b>
+            <b>Pop</b>
+          </div>
+        </div>
+        <i><UiIcon name="right" /></i>
+      </RouterLink>
+
       <article class="sport-hero__card">
         <span>Прогресс недели</span>
         <strong>{{ weekProgress.percent }}%</strong>
@@ -99,6 +114,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import UiButton from '../../components/ui/UiButton.vue'
+import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import ExerciseDrawer from '../../components/sport/ExerciseDrawer.vue'
 import { sportStore } from '../../stores/sport.store.js'
@@ -265,8 +281,91 @@ function pluralize(value, words) {
 
 .sport-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
+  grid-template-columns: minmax(260px, 1.2fr) minmax(0, 1fr) minmax(220px, 0.65fr);
   gap: 10px;
+}
+
+.sport-focus-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  min-height: 132px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  color: var(--text-primary);
+  background: var(--card-solid);
+  text-decoration: none;
+  transition: 0.18s var(--ease-out);
+}
+
+.sport-focus-card:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+
+.sport-focus-card__icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 20px;
+}
+
+.sport-focus-card__body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sport-focus-card__body > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sport-focus-card strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-focus-card small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-focus-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.sport-focus-card__chips b {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 3px 7px;
+  color: var(--text-muted);
+  background: var(--control-bg);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.sport-focus-card > i {
+  color: var(--text-muted);
+  font-style: normal;
 }
 
 .sport-hero__card,

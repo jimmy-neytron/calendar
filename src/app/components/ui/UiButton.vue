@@ -41,6 +41,7 @@ const iconName = computed(() => ({
   'refresh': 'refresh',
   'heart': 'heart',
   'play': 'play',
+  'pause': 'minus',
   'sparkles': 'sparkles',
   'trash': 'trash',
   'link': 'link',

@@ -88,7 +88,7 @@ const visibleGroups = computed(() => groups.map((group) => ({
     ))
     .map((item) => ({
       ...item,
-      badge: item.name === 'admin-overview' ? unreadLeadCount.value : 0,
+      badge: item.name === 'admin-overview' ? unreadLeadCount.value : item.badge || 0,
     })),
 })))
 
