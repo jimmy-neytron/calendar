@@ -2,7 +2,7 @@ import { ref, watch } from 'vue'
 import { createStorage } from './useStorage.js'
 
 /**
- * Reactive localStorage state.
+ * Реактивное состояние, сохраняемое в localStorage.
  * @param {string} key
  * @param {any} initialValue
  */

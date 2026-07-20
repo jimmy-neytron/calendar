@@ -9,7 +9,7 @@ import {
 import { DateHelper } from '../date/dateHelper.js'
 
 /**
- * Validates calendar event form data.
+ * Проверяет данные формы события календаря.
  * @param {Record<string, any>} event
  * @returns {{ valid: boolean, errors: Record<string, string> }}
  */
@@ -84,7 +84,7 @@ export function validateEvent(event) {
 }
 
 /**
- * Validates family member.
+ * Проверяет данные участника семьи.
  * @param {Record<string, any>} member
  * @returns {{ valid: boolean, errors: Record<string, string> }}
  */

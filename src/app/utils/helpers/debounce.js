@@ -1,5 +1,5 @@
 /**
- * Creates a debounced function.
+ * Создаёт функцию с отложенным выполнением после паузы в вызовах.
  * @param {Function} callback
  * @param {number} delay
  * @returns {Function}

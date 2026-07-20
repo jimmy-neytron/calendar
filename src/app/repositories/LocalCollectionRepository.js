@@ -1,8 +1,8 @@
 import { useLocalStorage } from '../composables/storage/useLocalStorage.js'
 
 /**
- * Repository over a local reactive collection.
- * It isolates domain composables from a concrete persistence implementation.
+ * Репозиторий локальной реактивной коллекции.
+ * Изолирует доменную логику от конкретного механизма хранения данных.
  */
 export class LocalCollectionRepository {
   constructor(key, initialValue = []) {

@@ -14,6 +14,7 @@
 - программы тренировок и отметки выполнения;
 - проекты и записи учёта времени;
 - идеи, дни рождения, фильмы и сериалы;
+- интерактивное семейное дерево на Cytoscape с поиском, фильтрами и JSON-импортом/экспортом;
 - журнал активности и аналитика;
 - тарифы `free`, `plus` и `pro`, а также функции пространства;
 - административный раздел для пользователей, заявок, аналитики и глобальных модальных сообщений;
@@ -23,6 +24,7 @@
 ## Технологии
 
 - Vue 3 и Composition API;
+- TanStack Vue Query для серверного состояния и кэширования;
 - Vue Router;
 - Vite;
 - Supabase Auth, PostgreSQL, Row Level Security, Realtime, RPC и Edge Functions;
@@ -51,6 +53,7 @@ Supabase является основным backend приложения:
 | --- | --- |
 | Пользователи и пространства | `profiles`, `workspaces`, `workspace_members`, `workspace_invites`, `workspace_features` |
 | Календарь | `calendar_collections`, `events` |
+| Семейное дерево | `family_trees` (документ JSONB на пространство) |
 | Совместная работа | `notifications`, `activity_entries` |
 | Личные разделы | `ideas`, `birthdays`, `movie_watchlist` |
 | Спорт | `sport_exercises`, `sport_completions` |
@@ -63,7 +66,7 @@ Supabase является основным backend приложения:
 
 ## Локальный запуск
 
-Требуется актуальная LTS-версия Node.js и проект Supabase с применёнными миграциями.
+Требуется Node.js 24 (минимум 22.18.0) внутри WSL и проект Supabase с применёнными миграциями.
 
 1. Установите зависимости:
 
@@ -153,7 +156,8 @@ src/
     composables/        # переиспользуемая логика
     modules/            # admin, integrations, full-focus
     pages/              # страницы приложения
-    repositories/       # локальный cache и синхронизация коллекций
+    query/              # QueryClient и централизованные ключи серверного кэша
+    repositories/       # локальный кэш и синхронизация коллекций
     services/           # backend и внешние сервисы
     stores/             # состояние предметных областей
 supabase/
@@ -162,6 +166,11 @@ supabase/
   imports/              # подготовленные импорты данных
   migrations/           # схема и последовательные миграции
 ```
+
+## Архитектурная документация
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — слои, границы состояния и правила Query.
+- [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) — Node 24, зафиксированные версии и установка в WSL.
 
 ## Безопасность
 

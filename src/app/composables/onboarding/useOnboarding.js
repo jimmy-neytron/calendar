@@ -80,7 +80,7 @@ function markCompleted() {
   try {
     localStorage.setItem(storageKey(), String(ONBOARDING_VERSION))
   } catch {
-    // The prompt can still close when storage is unavailable.
+    // Окно можно закрыть, даже если хранилище недоступно.
   }
 }
 

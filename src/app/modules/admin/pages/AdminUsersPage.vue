@@ -133,26 +133,31 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { adminApi } from '../api/admin.api.js'
+import { computed, ref } from 'vue'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { authStore } from '../../../stores/auth.store.js'
-import { SUBSCRIPTION_TIERS, normalizeSubscriptionTier } from '../../../utils/constants/subscriptionConstants.js'
+import { SUBSCRIPTION_TIERS } from '../../../utils/constants/subscriptionConstants.js'
+import { useAdminUsersQuery } from '../composables/useAdminUsersQuery.js'
 
 const { notify } = useNotification()
-const users = ref([])
-const isLoading = ref(false)
-const savingUserId = ref('')
-const errorMessage = ref('')
+const {
+  users,
+  isLoading,
+  errorMessage,
+  refetch: loadUsers,
+  savingUserId,
+  updateUser: updateUserRequest,
+} = useAdminUsersQuery()
+
 const searchQuery = ref('')
 const statusFilter = ref('all')
 const roleFilter = ref('all')
-
 const plans = Object.values(SUBSCRIPTION_TIERS)
+
 const activeCount = computed(() => users.value.filter((user) => user.isActive).length)
 const adminCount = computed(() => users.value.filter((user) => user.role === 'admin').length)
 const filteredUsers = computed(() => {
@@ -169,41 +174,6 @@ const filteredUsers = computed(() => {
   })
 })
 
-function mapAdminUser(row) {
-  const name = row.name || row.email?.split('@')[0] || 'Пользователь'
-  return {
-    id: row.id,
-    email: row.email || '',
-    name,
-    avatar: row.avatar || name.slice(0, 1).toUpperCase(),
-    color: row.color || '#60a5fa',
-    subscriptionTier: normalizeSubscriptionTier(row.subscription_tier),
-    workspaceLimit: Number(row.workspace_limit || 0),
-    role: row.role || 'user',
-    isActive: row.is_active !== false,
-    createdAt: row.created_at || '',
-    updatedAt: row.updated_at || '',
-  }
-}
-
-async function loadUsers() {
-  if (isLoading.value) return
-  isLoading.value = true
-  errorMessage.value = ''
-  try {
-    const { data, error } = await adminApi.listUsers()
-    if (error) {
-      errorMessage.value = error.message || 'Не удалось загрузить пользователей'
-      return
-    }
-    users.value = (data || []).map(mapAdminUser)
-  } catch (error) {
-    errorMessage.value = error.message || 'Не удалось загрузить пользователей'
-  } finally {
-    isLoading.value = false
-  }
-}
-
 function isCurrentUser(user) {
   return user.id === authStore.currentUserId.value
 }
@@ -219,26 +189,14 @@ async function updateUser(user, updates) {
     return
   }
 
-  savingUserId.value = user.id
   try {
-    const { data, error } = await adminApi.updateUser(user.id, updates)
-    if (error) {
-      notify(error.message || 'Не удалось обновить пользователя', 'danger')
-      return
-    }
-
-    const updated = mapAdminUser(data)
-    users.value = users.value.map((item) => (item.id === user.id ? updated : item))
+    const updated = await updateUserRequest(user.id, updates)
     if (isCurrentUser(updated)) authStore.mergeUsers([updated])
     notify('Пользователь обновлён', 'success')
   } catch (error) {
-    notify(error.message || 'Не удалось обновить пользователя', 'danger')
-  } finally {
-    savingUserId.value = ''
+    notify(error?.message || 'Не удалось обновить пользователя', 'danger')
   }
 }
-
-onMounted(loadUsers)
 </script>
 
 <style scoped>

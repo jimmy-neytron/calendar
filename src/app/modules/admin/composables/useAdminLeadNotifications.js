@@ -1,43 +1,53 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { adminApi } from '../api/admin.api.js'
 import { authStore } from '../../../stores/auth.store.js'
+import { queryKeys } from '../../../query/queryKeys.js'
 
-const unreadLeadCount = ref(0)
-const unreadLeadCountLoading = ref(false)
-let pollingTimer = null
-
+/**
+ * Счётчик непросмотренных заявок администратора.
+ *
+ * Query объединяет запросы от layout, sidebar и admin-страниц в один кэш.
+ * Polling включается только пока он нужен хотя бы активному сценарию.
+ */
 export function useAdminLeadNotifications() {
-  async function loadUnreadLeadCount() {
-    if (!authStore.isAdmin.value || unreadLeadCountLoading.value) return
-
-    unreadLeadCountLoading.value = true
-    try {
+  const client = useQueryClient()
+  const pollingEnabled = ref(false)
+  const queryKey = queryKeys.admin.unreadLeads()
+  const query = useQuery({
+    queryKey,
+    enabled: computed(() => authStore.isAdmin.value && pollingEnabled.value),
+    refetchInterval: computed(() => pollingEnabled.value ? 45_000 : false),
+    queryFn: async () => {
       const { data, error } = await adminApi.countUnreadLeads()
-      if (!error) unreadLeadCount.value = Number(data || 0)
-    } finally {
-      unreadLeadCountLoading.value = false
-    }
+      if (error) throw error
+      return Math.max(0, Number(data || 0))
+    },
+  })
+
+  const unreadLeadCount = computed(() => Number(query.data.value || 0))
+
+  async function loadUnreadLeadCount() {
+    if (!authStore.isAdmin.value) return
+    return query.refetch()
   }
 
   function setUnreadLeadCount(value) {
-    unreadLeadCount.value = Math.max(0, Number(value || 0))
+    client.setQueryData(queryKey, Math.max(0, Number(value || 0)))
   }
 
   function startUnreadLeadPolling() {
-    if (pollingTimer || !authStore.isAdmin.value) return
-    loadUnreadLeadCount()
-    pollingTimer = window.setInterval(loadUnreadLeadCount, 45_000)
+    if (!authStore.isAdmin.value) return
+    pollingEnabled.value = true
   }
 
   function stopUnreadLeadPolling() {
-    if (!pollingTimer) return
-    window.clearInterval(pollingTimer)
-    pollingTimer = null
+    pollingEnabled.value = false
   }
 
   return {
     unreadLeadCount,
-    unreadLeadCountLoading,
+    unreadLeadCountLoading: query.isFetching,
     loadUnreadLeadCount,
     setUnreadLeadCount,
     startUnreadLeadPolling,

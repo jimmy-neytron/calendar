@@ -104,8 +104,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { adminApi } from '../api/admin.api.js'
+import { computed, ref, watch } from 'vue'
+import { useAdminLeadsQuery } from '../composables/useAdminLeadsQuery.js'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
@@ -115,10 +115,14 @@ import { useNotification } from '../../../composables/ui/useNotification.js'
 
 const { notify } = useNotification()
 const { setUnreadLeadCount } = useAdminLeadNotifications()
-const leads = ref([])
-const isLoading = ref(false)
-const savingLeadId = ref('')
-const errorMessage = ref('')
+const {
+  leads,
+  isLoading,
+  savingLeadId,
+  errorMessage,
+  refetch: loadLeads,
+  markViewed: markViewedRequest,
+} = useAdminLeadsQuery()
 const searchQuery = ref('')
 const statusFilter = ref('all')
 
@@ -138,58 +142,17 @@ const filteredLeads = computed(() => {
   })
 })
 
-function mapLead(row) {
-  return {
-    id: row.id,
-    formName: row.form_name || 'landing',
-    name: row.name || '',
-    contact: row.contact || '',
-    message: row.message || '',
-    source: row.source || 'landing',
-    userAgent: row.user_agent || '',
-    createdAt: row.created_at || '',
-    viewedAt: row.viewed_at || '',
-  }
-}
-
-async function loadLeads() {
-  if (isLoading.value) return
-  isLoading.value = true
-  errorMessage.value = ''
-  try {
-    const { data, error } = await adminApi.listLeads()
-    if (error) {
-      errorMessage.value = error.message || 'Не удалось загрузить заявки'
-      return
-    }
-    leads.value = (data || []).map(mapLead)
-    setUnreadLeadCount(unreadCount.value)
-  } catch (error) {
-    errorMessage.value = error.message || 'Не удалось загрузить заявки'
-  } finally {
-    isLoading.value = false
-  }
-}
-
 async function markViewed(lead) {
   if (savingLeadId.value) return
-  savingLeadId.value = lead.id
   try {
-    const { data, error } = await adminApi.markLeadViewed(lead.id)
-    if (error) {
-      notify(error.message || 'Не удалось обновить заявку', 'danger')
-      return
-    }
-    const updated = mapLead(data)
-    leads.value = leads.value.map((item) => (item.id === updated.id ? updated : item))
-    setUnreadLeadCount(unreadCount.value)
+    await markViewedRequest(lead.id)
     notify('Заявка отмечена просмотренной', 'success')
   } catch (error) {
-    notify(error.message || 'Не удалось обновить заявку', 'danger')
-  } finally {
-    savingLeadId.value = ''
+    notify(error?.message || 'Не удалось обновить заявку', 'danger')
   }
 }
+
+watch(unreadCount, (count) => setUnreadLeadCount(count), { immediate: true })
 
 function formatDate(value) {
   if (!value) return 'Без даты'
@@ -202,7 +165,6 @@ function formatDate(value) {
   }).format(new Date(value))
 }
 
-onMounted(loadLeads)
 </script>
 
 <style scoped>

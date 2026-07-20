@@ -1,7 +1,7 @@
 import { EVENT_CATEGORIES } from '../constants/calendarConstants.js'
 
 /**
- * Finds category metadata.
+ * Находит метаданные категории.
  * @param {string} value
  * @returns {{ value: string, label: string, color: string }}
  */
@@ -10,7 +10,7 @@ export function getCategoryMeta(value) {
 }
 
 /**
- * Gets member names for event.
+ * Возвращает имена участников события.
  * @param {string[]} memberIds
  * @param {Array<{id: string, name: string}>} members
  * @returns {string}
@@ -24,7 +24,7 @@ export function formatEventMembers(memberIds, members) {
 }
 
 /**
- * Gets the first member color for the event.
+ * Возвращает цвет первого участника события.
  * @param {string[]} memberIds
  * @param {Array<{id: string, color: string}>} members
  * @returns {string}
@@ -35,7 +35,7 @@ export function getEventAccent(memberIds, members) {
 }
 
 /**
- * Returns a clean event title. Older budget events used a currency prefix.
+ * Возвращает очищенный заголовок события. В старых бюджетных событиях использовался префикс валюты.
  * @param {{ title?: string, linkedEntityType?: string }} event
  * @returns {string}
  */

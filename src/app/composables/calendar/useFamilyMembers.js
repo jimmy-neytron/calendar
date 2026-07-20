@@ -2,8 +2,8 @@ import { computed } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 
 /**
- * Workspace members used as calendar participants.
- * New members join through a secure Supabase invite.
+ * Участники рабочего пространства, доступные в календаре.
+ * Новые участники присоединяются по защищённому приглашению Supabase.
  */
 export function useFamilyMembers() {
   const members = workspaceStore.activeWorkspaceMembers

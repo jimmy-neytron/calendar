@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <section class="settings-page">
     <header class="settings-hero panel">
       <div class="settings-hero__copy">
@@ -319,7 +319,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
@@ -339,7 +339,7 @@ import { workspaceStore } from '../../stores/workspace.store.js'
 import { budgetStore } from '../../stores/budget.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { discardSyncOperations } from '../../repositories/SyncedCollectionRepository.js'
-import { releaseNotesApi } from '../../api/supabase/releaseNotes.api.js'
+import { useReleaseNotesQuery } from '../../composables/releases/useReleaseNotesQuery.js'
 
 const { notify } = useNotification()
 const router = useRouter()
@@ -363,9 +363,11 @@ const preferencesSaved = ref(false)
 const isLoggingOut = ref(false)
 const isWhatsNewOpen = ref(false)
 const selectedReleaseId = ref('')
-const versionReleases = ref([])
-const releaseNotesLoading = ref(false)
-const releaseNotesError = ref('')
+const {
+  releases: versionReleases,
+  loading: releaseNotesLoading,
+  error: releaseNotesError,
+} = useReleaseNotesQuery()
 const currentUser = authStore.currentUser
 let preferencesSavedTimer = null
 
@@ -405,26 +407,11 @@ const workspaceLimitLabel = computed(() => {
 })
 const holidayCountryOptions = HOLIDAY_COUNTRY_OPTIONS
 
-async function loadReleaseNotes() {
-  if (releaseNotesLoading.value) return
-  releaseNotesLoading.value = true
-  releaseNotesError.value = ''
 
-  try {
-    const { data, error } = await releaseNotesApi.list()
-    if (error) {
-      releaseNotesError.value = 'Не удалось загрузить историю обновлений'
-      return
-    }
-    versionReleases.value = data
-    selectedReleaseId.value = data[0]?.id || emptyRelease.id
-  } catch {
-    releaseNotesError.value = 'Не удалось загрузить историю обновлений'
-  } finally {
-    releaseNotesLoading.value = false
-  }
-}
-
+watch(versionReleases, (releases) => {
+  if (releases.some((release) => release.id === selectedReleaseId.value)) return
+  selectedReleaseId.value = releases[0]?.id || emptyRelease.id
+}, { immediate: true })
 function setPreference(key, value) {
   preferences.value[key] = value
   markPreferencesSaved()
@@ -511,7 +498,6 @@ async function logout() {
   }
 }
 
-onMounted(loadReleaseNotes)
 onBeforeUnmount(() => window.clearTimeout(preferencesSavedTimer))
 </script>
 

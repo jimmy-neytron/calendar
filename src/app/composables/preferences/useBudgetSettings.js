@@ -1,5 +1,7 @@
 import { computed, ref } from 'vue'
 import { workspaceFeaturesApi } from '../../api/supabase/workspaceFeatures.api.js'
+import { queryClient } from '../../query/queryClient.js'
+import { queryKeys } from '../../query/queryKeys.js'
 import { readSubscriptionFeature } from './useSubscriptionSettings.js'
 
 const workspaceBudgetEnabled = ref(false)
@@ -8,126 +10,111 @@ const loading = ref(false)
 const error = ref('')
 
 const hasBudgetAccess = computed(() => readSubscriptionFeature('budget'))
+const isEnabled = computed(() => hasBudgetAccess.value && workspaceBudgetEnabled.value)
 
-const isEnabled = computed(() => {
-    return hasBudgetAccess.value && workspaceBudgetEnabled.value === true
-})
-
-function normalizeBudgetEnabled(value) {
-    return value === true
-}
-
+/**
+ * Настройки бюджета объединяют серверный feature flag и доступ по подписке.
+ * Синхронные computed сохранены для router guards, а серверный снимок хранится в Query.
+ */
 export function useBudgetSettings() {
-    return {
-        enabled: isEnabled,
-        isEnabled,
-
-        // доступ по тарифу
-        hasAccess: hasBudgetAccess,
-
-        // настройка конкретного workspace
-        workspaceEnabled: computed(() => workspaceBudgetEnabled.value === true),
-
-        loading: computed(() => loading.value),
-        error: computed(() => error.value),
-
-        loadWorkspace: loadWorkspaceFeatures,
-        setEnabled: setBudgetEnabled,
-    }
+  return {
+    enabled: isEnabled,
+    isEnabled,
+    hasAccess: hasBudgetAccess,
+    workspaceEnabled: computed(() => workspaceBudgetEnabled.value),
+    loading: computed(() => loading.value),
+    error: computed(() => error.value),
+    loadWorkspace: loadWorkspaceFeatures,
+    setEnabled: setBudgetEnabled,
+  }
 }
 
+/** Загружает feature flags workspace с дедупликацией параллельных запросов. */
 export async function loadWorkspaceFeatures(workspaceId) {
-    if (!workspaceId) {
-        loadedWorkspaceId.value = ''
-        workspaceBudgetEnabled.value = false
-        return { ok: true }
-    }
+  if (!workspaceId) {
+    loadedWorkspaceId.value = ''
+    workspaceBudgetEnabled.value = false
+    return { ok: true }
+  }
 
-    loading.value = true
-    error.value = ''
-
-    try {
+  loading.value = true
+  error.value = ''
+  try {
+    const data = await queryClient.fetchQuery({
+      queryKey: queryKeys.workspace.features(workspaceId),
+      queryFn: async () => {
         const result = await workspaceFeaturesApi.get(workspaceId)
-
-        if (result.error) {
-            error.value = result.error.message || 'Не удалось загрузить настройки пространства'
-            return { ok: false, message: error.value }
-        }
-
-        loadedWorkspaceId.value = workspaceId
-        workspaceBudgetEnabled.value = normalizeBudgetEnabled(result.data?.budget_enabled)
-
-        return { ok: true, data: result.data }
-    } catch (exception) {
-        error.value = exception?.message || 'Не удалось загрузить настройки пространства'
-        return { ok: false, message: error.value }
-    } finally {
-        loading.value = false
-    }
+        if (result.error) throw result.error
+        return result.data
+      },
+    })
+    applyWorkspaceFeatures(workspaceId, data)
+    return { ok: true, data }
+  } catch (exception) {
+    error.value = exception?.message || 'Не удалось загрузить настройки пространства'
+    return { ok: false, message: error.value }
+  } finally {
+    loading.value = false
+  }
 }
 
+/** Сохраняет feature flag и атомарно обновляет Query-кэш и синхронный снимок. */
 export async function setBudgetEnabled(value, workspaceId = loadedWorkspaceId.value) {
-    const nextValue = value === true
-
-    if (nextValue && !readSubscriptionFeature('budget')) {
-        return {
-            ok: false,
-            code: 'subscription_required',
-            message: 'Бюджет недоступен на тарифе Free. Перейди на Plus или Pro, чтобы включить этот раздел.',
-        }
+  const nextValue = value === true
+  if (nextValue && !readSubscriptionFeature('budget')) {
+    return {
+      ok: false,
+      code: 'subscription_required',
+      message: 'Бюджет недоступен на тарифе Free. Перейди на Plus или Pro.',
     }
+  }
+  if (!workspaceId) return { ok: false, message: 'Сначала выбери пространство' }
 
-    if (!workspaceId) {
-        return {
-            ok: false,
-            message: 'Сначала выбери пространство',
-        }
-    }
+  loading.value = true
+  error.value = ''
+  try {
+    const result = await workspaceFeaturesApi.upsert(workspaceId, {
+      budget_enabled: nextValue,
+    })
+    if (result.error) throw result.error
 
-    loading.value = true
-    error.value = ''
+    queryClient.setQueryData(queryKeys.workspace.features(workspaceId), result.data)
+    applyWorkspaceFeatures(workspaceId, result.data)
+    dispatchBudgetChange(workspaceId)
+    return { ok: true, data: result.data }
+  } catch (exception) {
+    error.value = exception?.message || 'Не удалось сохранить настройку бюджета'
+    return { ok: false, message: error.value }
+  } finally {
+    loading.value = false
+  }
+}
 
-    try {
-        const result = await workspaceFeaturesApi.upsert(workspaceId, {
-            budget_enabled: nextValue,
-        })
+function applyWorkspaceFeatures(workspaceId, data) {
+  loadedWorkspaceId.value = workspaceId
+  workspaceBudgetEnabled.value = data?.budget_enabled === true
+}
 
-        if (result.error) {
-            error.value = result.error.message || 'Не удалось сохранить настройку бюджета'
-            return { ok: false, message: error.value }
-        }
-
-        loadedWorkspaceId.value = workspaceId
-        workspaceBudgetEnabled.value = normalizeBudgetEnabled(result.data?.budget_enabled)
-
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('budget-setting-change', {
-                detail: {
-                    workspaceId,
-                    enabled: isEnabled.value,
-                    workspaceEnabled: workspaceBudgetEnabled.value,
-                    hasAccess: hasBudgetAccess.value,
-                },
-            }))
-        }
-
-        return { ok: true, data: result.data }
-    } catch (exception) {
-        error.value = exception?.message || 'Не удалось сохранить настройку бюджета'
-        return { ok: false, message: error.value }
-    } finally {
-        loading.value = false
-    }
+function dispatchBudgetChange(workspaceId) {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('budget-setting-change', {
+    detail: {
+      workspaceId,
+      enabled: isEnabled.value,
+      workspaceEnabled: workspaceBudgetEnabled.value,
+      hasAccess: hasBudgetAccess.value,
+    },
+  }))
 }
 
 export function readBudgetSetting() {
-    return isEnabled.value
+  return isEnabled.value
 }
 
 export function readBudgetWorkspaceSetting() {
-    return workspaceBudgetEnabled.value === true
+  return workspaceBudgetEnabled.value
 }
 
 export function readBudgetAccess() {
-    return hasBudgetAccess.value
+  return hasBudgetAccess.value
 }

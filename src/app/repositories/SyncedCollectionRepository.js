@@ -3,6 +3,8 @@ import { createCollectionApi } from '../api/supabase/collections.api.js'
 import { fromDatabaseRow, toDatabaseRow } from '../api/supabase/entityMapper.js'
 import { isSyncTableEnabled } from '../config/featureFlags.js'
 import { LocalCollectionRepository } from './LocalCollectionRepository.js'
+import { queryClient } from '../query/queryClient.js'
+import { queryKeys } from '../query/queryKeys.js'
 
 const QUEUE_KEY = 'workspace-calendar:sync-queue'
 const RETRY_DELAY = 15_000
@@ -33,6 +35,10 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
     if (isOnline()) window.setTimeout(() => flushSyncQueue(), 0)
   }
 
+  /**
+   * Загружает коллекцию workspace через общий QueryClient.
+   * Offline-очередь накладывается поверх серверного снимка до записи в локальный кэш.
+   */
   async loadWorkspace(workspaceId) {
     if (!workspaceId) return []
     if (!this.isEnabled()) return []
@@ -40,17 +46,14 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
     if (!isOnline()) return localItems
 
     try {
-      const { data, error } = await this.api.list(workspaceId)
-      if (error) {
-        if (isNetworkError(error)) {
-          scheduleRetry()
-          return localItems
-        }
-        this.handlePermanentError(error)
-        return null
-      }
-
-      const remoteItems = (data || []).map(this.fromRow)
+      const remoteItems = await queryClient.fetchQuery({
+        queryKey: queryKeys.collections.workspace(this.table, workspaceId),
+        queryFn: async () => {
+          const { data, error } = await this.api.list(workspaceId)
+          if (error) throw error
+          return (data || []).map(this.fromRow)
+        },
+      })
       const mergedItems = applyPendingOperations(
         remoteItems,
         getTableOperations(this.table, workspaceId),
@@ -59,6 +62,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
       )
       const otherWorkspaces = this.items.value.filter((item) => item.workspaceId !== workspaceId)
       this.replaceAll([...otherWorkspaces, ...mergedItems])
+      queryClient.setQueryData(queryKeys.collections.workspace(this.table, workspaceId), mergedItems)
       this.lastError.value = ''
       flushSyncQueue()
       return mergedItems
@@ -75,6 +79,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   create(item) {
     if (!this.isEnabled()) return item
     super.create(item)
+    this.cacheWorkspace(item.workspaceId)
     this.syncOperation({ type: 'create', entityId: this.getEntityId(item), payload: this.toRow(item) })
     return item
   }
@@ -82,6 +87,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
   async createAndWait(item) {
     if (!this.isEnabled()) return { ok: true, disabled: true, item }
     super.create(item)
+    this.cacheWorkspace(item.workspaceId)
     const result = await this.syncOperation(
       { type: 'create', entityId: this.getEntityId(item), payload: this.toRow(item) },
       { wait: true }
@@ -197,6 +203,17 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
     console.error('Supabase sync failed:', error)
   }
 
+  /**
+   * Синхронизирует Query-кэш с локальным оптимистичным состоянием workspace.
+   */
+  cacheWorkspace(workspaceId) {
+    if (!workspaceId) return
+    queryClient.setQueryData(
+      queryKeys.collections.workspace(this.table, workspaceId),
+      this.items.value.filter((item) => item.workspaceId === workspaceId)
+    )
+  }
+
   findById(id) {
     return this.findLocal(id)
   }
@@ -212,11 +229,14 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
       updatedItem = { ...item, ...updates }
       return updatedItem
     })
+    if (updatedItem) this.cacheWorkspace(updatedItem.workspaceId)
     return updatedItem
   }
 
   deleteLocal(id) {
+    const previous = this.findLocal(id)
     this.items.value = this.items.value.filter((item) => this.getEntityId(item) !== id)
+    if (previous) this.cacheWorkspace(previous.workspaceId)
   }
 }
 

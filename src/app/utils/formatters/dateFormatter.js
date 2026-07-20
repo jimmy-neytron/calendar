@@ -4,7 +4,7 @@ import { DateHelper } from '../date/dateHelper.js'
 const DEFAULT_LOCALE = 'ru-RU'
 
 /**
- * Returns YYYY-MM-DD from a Date.
+ * Возвращает дату в формате YYYY-MM-DD.
  * @param {Date} date
  * @returns {string}
  */
@@ -13,7 +13,7 @@ export function toDateKey(date) {
 }
 
 /**
- * Parses YYYY-MM-DD safely as local date.
+ * Безопасно разбирает YYYY-MM-DD как локальную дату.
  * @param {string} value
  * @returns {Date}
  */
@@ -22,7 +22,7 @@ export function parseDateKey(value) {
 }
 
 /**
- * Formats a date for UI.
+ * Форматирует дату для интерфейса.
  * @param {Date|string} value
  * @param {Intl.LocalesArgument} locale
  * @returns {string}
@@ -37,7 +37,7 @@ export function formatDate(value, locale = DEFAULT_LOCALE) {
 }
 
 /**
- * Formats a date as short month/day.
+ * Форматирует дату в виде короткого месяца и дня.
  * @param {Date|string} value
  * @returns {string}
  */
@@ -50,7 +50,7 @@ export function formatDateShort(value) {
 }
 
 /**
- * Returns weekday label.
+ * Возвращает название дня недели.
  * @param {Date|string} value
  * @returns {string}
  */
@@ -60,7 +60,7 @@ export function formatWeekday(value) {
 }
 
 /**
- * Checks if date key is today.
+ * Проверяет, соответствует ли ключ даты сегодняшнему дню.
  * @param {string} value
  * @returns {boolean}
  */
@@ -69,7 +69,7 @@ export function isToday(value) {
 }
 
 /**
- * Adds days to date.
+ * Добавляет указанное количество дней к дате.
  * @param {Date} date
  * @param {number} amount
  * @returns {Date}
@@ -79,7 +79,7 @@ export function addDays(date, amount) {
 }
 
 /**
- * Returns month matrix with leading/trailing days.
+ * Возвращает сетку месяца с днями соседних месяцев.
  * @param {Date} activeDate
  * @returns {Array<{date: Date, key: string, isCurrentMonth: boolean, isToday: boolean}>}
  */
@@ -107,7 +107,7 @@ export function getMonthGrid(activeDate) {
 }
 
 /**
- * Returns week days around active date, starting Sunday.
+ * Возвращает дни недели вокруг активной даты, начиная с воскресенья.
  * @param {Date} activeDate
  * @returns {Array<{date: Date, key: string, isToday: boolean}>}
  */
@@ -116,7 +116,7 @@ export function getWeekRange(activeDate) {
 }
 
 /**
- * Formats time range.
+ * Форматирует диапазон времени.
  * @param {string} startTime
  * @param {string} endTime
  * @param {boolean} allDay
@@ -130,7 +130,7 @@ export function formatTimeRange(startTime, endTime, allDay = false) {
 }
 
 /**
- * Creates a readable month heading.
+ * Создаёт читаемый заголовок месяца.
  * @param {Date} date
  * @returns {string}
  */
@@ -142,7 +142,7 @@ export function formatMonthHeading(date) {
 }
 
 /**
- * Creates a readable day heading.
+ * Создаёт читаемый заголовок дня.
  * @param {Date} date
  * @returns {string}
  */

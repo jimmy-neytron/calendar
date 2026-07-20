@@ -158,7 +158,7 @@ function saveStoredForecast(cacheKey: string, forecast: WeatherForecast) {
     storedForecasts[cacheKey] = { savedAt: Date.now(), forecast }
     localStorage.setItem(WEATHER_FORECAST_CACHE_KEY, JSON.stringify(storedForecasts))
   } catch {
-    // Cache failures should never block the calendar.
+    // Ошибки кеша не должны блокировать работу календаря.
   }
 }
 

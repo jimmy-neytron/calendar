@@ -9,24 +9,38 @@ import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { loadWorkspaceFeatures } from '../../composables/preferences/useBudgetSettings.js'
+import { queryClient } from '../../query/queryClient.js'
+import { queryKeys } from '../../query/queryKeys.js'
 
-let loadedDataKey = ''
-let loadingDataKey = ''
-let loadingPromise = null
-
+/**
+ * Загружает все серверные данные выбранного workspace.
+ * TanStack Query дедуплицирует параллельные вызовы из router/layout и хранит
+ * успешный результат до явной инвалидации workspace.
+ */
 export async function loadWorkspaceData(workspaceId, { force = false } = {}) {
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
-  const dataKey = `${authStore.currentUserId.value || 'guest'}:${workspaceId}`
-  if (!force && loadedDataKey === dataKey) return { ok: true, cached: true }
-  if (!force && loadingDataKey === dataKey && loadingPromise) return loadingPromise
+  const queryKey = queryKeys.workspace.data(workspaceId, authStore.currentUserId.value)
 
-  loadingDataKey = dataKey
-  loadingPromise = fetchWorkspaceData(workspaceId)
-  const result = await loadingPromise
-  if (result.ok) loadedDataKey = dataKey
-  loadingDataKey = ''
-  loadingPromise = null
-  return result
+  if (force) {
+    await queryClient.invalidateQueries({ queryKey, exact: true })
+  }
+
+  try {
+    return await queryClient.fetchQuery({
+      queryKey,
+      staleTime: force ? 0 : Infinity,
+      queryFn: async () => {
+        const result = await fetchWorkspaceData(workspaceId)
+        if (!result.ok) throw new Error(result.message)
+        return result
+      },
+    })
+  } catch (error) {
+    return {
+      ok: false,
+      message: error?.message || 'Не удалось загрузить данные пространства',
+    }
+  }
 }
 
 async function fetchWorkspaceData(workspaceId) {
@@ -34,6 +48,7 @@ async function fetchWorkspaceData(workspaceId) {
   const collections = await calendarCollectionStore.loadWorkspace(workspaceId)
   if (collections === null) return { ok: false, message: 'Не удалось загрузить календари' }
   await calendarCollectionStore.ensureWorkspaceCollections()
+
   const results = await Promise.all([
     calendarStore.loadWorkspace(workspaceId),
     ideaStore.loadWorkspace(workspaceId),
@@ -44,11 +59,18 @@ async function fetchWorkspaceData(workspaceId) {
     useActivityLog().loadWorkspace(workspaceId),
     timeTrackingStore.loadWorkspace(workspaceId),
   ])
+
   return results.some((result) => result === null)
     ? { ok: false, message: 'Часть данных не загрузилась из Supabase' }
     : { ok: true }
 }
 
+/**
+ * Помечает снимок workspace устаревшим. Следующий переход повторно запросит данные.
+ */
 export function invalidateWorkspaceData(workspaceId = '') {
-  if (!workspaceId || loadedDataKey.endsWith(`:${workspaceId}`)) loadedDataKey = ''
+  const queryKey = workspaceId
+    ? queryKeys.workspace.data(workspaceId, authStore.currentUserId.value).slice(0, 2)
+    : queryKeys.workspace.root
+  return queryClient.invalidateQueries({ queryKey })
 }

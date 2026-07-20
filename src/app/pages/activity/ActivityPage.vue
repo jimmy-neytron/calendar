@@ -93,90 +93,110 @@ import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
-import { deleteActivity, listActivity } from '../../api/supabase/activity.api.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
+import { useActivityQuery } from '../../composables/activity/useActivityQuery.js'
 
 const pageSize = 15
 const page = ref(1)
-const total = ref(0)
-const entries = ref([])
-const loading = ref(false)
-const deleting = ref(false)
 const selectedIds = ref([])
 const members = workspaceStore.activeWorkspaceMembers
+const workspaceId = computed(() => workspaceStore.activeWorkspaceId.value)
 const { notify } = useNotification()
 const { forgetActivity } = useActivityLog()
 const filters = reactive({ query: '', action: 'all', userId: 'all' })
+const appliedFilters = ref({ ...filters })
 const isAdmin = computed(() => ['owner', 'admin'].includes(workspaceStore.getCurrentUserRole()))
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
-const visiblePages = computed(() => Array.from({ length: pageCount.value }, (_, index) => index + 1).filter((number) => Math.abs(number - page.value) <= 2))
-const allPageSelected = computed(() => entries.value.length > 0 && entries.value.every((entry) => selectedIds.value.includes(entry.id)))
 
-async function load() {
-  const workspaceId = workspaceStore.activeWorkspace.value?.id
-  if (!workspaceId) return
-  loading.value = true
-  const { data, count, error } = await listActivity({ workspaceId, page: page.value, pageSize, ...filters })
-  loading.value = false
-  if (error) return
-  entries.value = (data || []).map((row) => ({
-    id: row.id, action: row.action, text: row.message, userId: row.actor_id,
-    userName: row.metadata?.userName || 'Пользователь', createdAt: row.created_at,
-  }))
-  total.value = count || 0
-  selectedIds.value = selectedIds.value.filter((id) => entries.value.some((entry) => entry.id === id))
+const {
+  entries,
+  total,
+  loading,
+  deleting,
+  removeActivity: removeActivityRequest,
+} = useActivityQuery({
+  workspaceId,
+  page,
+  pageSize,
+  filters: appliedFilters,
+})
+
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const visiblePages = computed(() => Array.from(
+  { length: pageCount.value },
+  (_, index) => index + 1
+).filter((number) => Math.abs(number - page.value) <= 2))
+const allPageSelected = computed(() => (
+  entries.value.length > 0
+  && entries.value.every((entry) => selectedIds.value.includes(entry.id))
+))
+
+/** Применяет черновик фильтров одним атомарным изменением query key. */
+function applyFilters() {
+  selectedIds.value = []
+  page.value = 1
+  appliedFilters.value = { ...filters }
 }
-function applyFilters() { selectedIds.value = []; page.value = 1; load() }
-function goPage(value) { selectedIds.value = []; page.value = Math.min(pageCount.value, Math.max(1, value)); load() }
-function isSelected(id) { return selectedIds.value.includes(id) }
+
+function goPage(value) {
+  selectedIds.value = []
+  page.value = Math.min(pageCount.value, Math.max(1, value))
+}
+
+function isSelected(id) {
+  return selectedIds.value.includes(id)
+}
+
 function toggleEntry(id) {
   selectedIds.value = isSelected(id)
     ? selectedIds.value.filter((item) => item !== id)
     : [...selectedIds.value, id]
 }
+
 function togglePageSelection() {
   selectedIds.value = allPageSelected.value ? [] : entries.value.map((entry) => entry.id)
 }
+
 async function deleteSelected() {
   if (!selectedIds.value.length || !isAdmin.value) return
-  if (!window.confirm(`Удалить выбранные записи (${selectedIds.value.length})?`)) return
+  if (!window.confirm('Удалить выбранные записи (' + selectedIds.value.length + ')?')) return
   await removeActivity(selectedIds.value)
 }
+
 async function clearAll() {
   if (!isAdmin.value || !total.value) return
-  if (!window.confirm(`Полностью очистить журнал активности (${total.value} записей)? Это действие нельзя отменить.`)) return
+  if (!window.confirm('Полностью очистить журнал активности (' + total.value + ' записей)? Это действие нельзя отменить.')) return
   await removeActivity(null)
 }
+
 async function removeActivity(entryIds) {
-  const workspaceId = workspaceStore.activeWorkspaceId.value
-  if (!workspaceId) return
+  if (!workspaceId.value) return
   if (!navigator.onLine) {
     notify('Для очистки общей истории нужен интернет', 'warning')
     return
   }
-  deleting.value = true
+
   try {
-    const { data, error } = await deleteActivity({ workspaceId, entryIds })
-    if (error) {
-      notify(error.code === '42883'
-        ? 'Выполни миграцию очистки активности в Supabase'
-        : error.message, 'danger')
-      return
-    }
-    forgetActivity(workspaceId, entryIds)
+    const deletedCount = await removeActivityRequest(entryIds)
+    forgetActivity(workspaceId.value, entryIds)
     selectedIds.value = []
     if (entryIds && entries.value.length === entryIds.length && page.value > 1) page.value -= 1
     if (!entryIds) page.value = 1
-    await load()
-    notify(entryIds ? `Удалено записей: ${data || entryIds.length}` : 'Журнал активности очищен', 'success')
+    notify(
+      entryIds ? 'Удалено записей: ' + (deletedCount || entryIds.length) : 'Журнал активности очищен',
+      'success'
+    )
   } catch (error) {
-    notify(error.message || 'Не удалось удалить активность', 'danger')
-  } finally {
-    deleting.value = false
+    notify(
+      error?.code === '42883'
+        ? 'Выполни миграцию очистки активности в Supabase'
+        : (error?.message || 'Не удалось удалить активность'),
+      'danger'
+    )
   }
 }
+
 const entryIcon = (action) => {
   if (action.endsWith(':delete') || action === 'movie:remove') return 'trash'
   if (action.startsWith('event')) return 'calendar'
@@ -189,6 +209,7 @@ const entryIcon = (action) => {
   if (action.startsWith('workspace')) return 'settings'
   return 'activity'
 }
+
 const actionLabel = (action) => ({
   create: 'Создание',
   update: 'Изменение',
@@ -213,8 +234,19 @@ const actionLabel = (action) => ({
   'gift-toggle': 'Статус подарка',
   'gift-delete': 'Удаление подарка',
 }[action.split(':')[1]] || 'Изменение')
-const formatDate = (value) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
-watch(() => workspaceStore.activeWorkspaceId.value, () => { selectedIds.value = []; page.value = 1; load() }, { immediate: true })
+
+const formatDate = (value) => new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+}).format(new Date(value))
+
+watch(workspaceId, () => {
+  selectedIds.value = []
+  page.value = 1
+})
 </script>
 
 <style scoped>

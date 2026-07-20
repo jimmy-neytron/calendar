@@ -1,5 +1,5 @@
 /**
- * Storage abstraction for replacing localStorage with Supabase/IndexedDB later.
+ * Абстракция хранилища для последующей замены localStorage на Supabase или IndexedDB.
  */
 export class DataStore {
   /**
@@ -64,7 +64,7 @@ export class IndexedDBAdapter {
 }
 
 /**
- * Creates a store using the selected adapter.
+ * Создаёт хранилище с выбранным адаптером.
  * @returns {DataStore}
  */
 export function createStorage() {

@@ -1,5 +1,5 @@
 /**
- * Generates a browser-safe unique identifier.
+ * Генерирует уникальный идентификатор, безопасный для использования в браузере.
  * @returns {string}
  */
 export function generateId() {
@@ -11,7 +11,7 @@ export function generateId() {
 }
 
 /**
- * Generates a short display-friendly id.
+ * Генерирует короткий идентификатор для отображения в интерфейсе.
  * @returns {string}
  */
 export function generateShortId() {
