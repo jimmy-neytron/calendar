@@ -19,6 +19,7 @@ const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
 const AnalyticsDetailPage = () => import('../pages/analytics/AnalyticsDetailPage.vue')
 const IdeasPage = () => import('../pages/ideas/IdeasPage.vue')
 const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
+const FamilyTreePage = () => import('../pages/family-tree/FamilyTreePage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
@@ -28,7 +29,7 @@ const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, FullFocusPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, BirthdaysPage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
+  IdeasPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
 let pagesPreloaded = false
@@ -59,6 +60,7 @@ export const routes = [
   { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
+  { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево' } },
   { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresSubscriptionFeature: 'movies' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
