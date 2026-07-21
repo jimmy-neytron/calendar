@@ -29,7 +29,7 @@ let cy = null
 let initialLayoutCompleted = false
 
 function personData(person) {
-  const name = [person.firstName, person.lastName].filter(Boolean).join(' ')
+  const name = [person.lastName, person.firstName, person.patronymic].filter(Boolean).join(' ')
   const years = formatLifeYears(person)
   return {
     id: person.id,
@@ -114,8 +114,15 @@ function syncGraph() {
     props.relationships.forEach((relationship) => {
       if (!peopleById.has(relationship.from) || !peopleById.has(relationship.to)) return
       const existing = cy.getElementById(relationship.id)
-      if (existing.length) existing.data(relationshipData(relationship))
-      else cy.add({ group: 'edges', data: relationshipData(relationship) })
+      const data = relationshipData(relationship)
+      if (existing.length) {
+        if (existing.source().id() !== data.source || existing.target().id() !== data.target) {
+          existing.move({ source: data.source, target: data.target })
+        }
+        existing.data('type', data.type)
+      } else {
+        cy.add({ group: 'edges', data })
+      }
     })
   })
 

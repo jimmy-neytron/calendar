@@ -76,7 +76,7 @@ defineProps({
 defineEmits(['close', 'edit', 'delete', 'select'])
 
 function fullName(person) {
-  return [person?.firstName, person?.lastName].filter(Boolean).join(' ') || 'Без имени'
+  return [person?.lastName, person?.firstName, person?.patronymic].filter(Boolean).join(' ') || 'Без имени'
 }
 
 function initials(person) {

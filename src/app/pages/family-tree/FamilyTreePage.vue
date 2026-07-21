@@ -67,7 +67,8 @@
     </div>
 
     <UiModal
-      v-model="editorOpen"
+      :model-value="editorOpen"
+      @update:model-value="handleEditorVisibility"
       :title="editingId ? 'Редактировать человека' : 'Новый человек'"
       eyebrow="Семейное дерево"
       width="720px"
@@ -106,6 +107,7 @@
         </div>
 
         <UiInput v-model="form.firstName" label="Имя" required placeholder="Анна" />
+        <UiInput v-model="form.patronymic" label="Отчество" placeholder="Сергеевна" />
         <UiInput v-model="form.lastName" label="Фамилия" placeholder="Соколова" />
 
         <label class="person-form__field">
@@ -133,27 +135,16 @@
           placeholder="ветвь Ивановых, Москва"
         />
 
-        <label class="person-form__field">
-          <span>Связать с</span>
-          <UiSelect v-model="form.relativeId">
-            <option value="">Без новой связи</option>
-            <option v-for="person in otherPeople" :key="person.id" :value="person.id">
-              {{ fullName(person) }}
-            </option>
-          </UiSelect>
-        </label>
-
-        <label class="person-form__field">
-          <span>Тип связи</span>
-          <UiSelect v-model="form.relationshipType" :disabled="!form.relativeId">
-            <option value="parent">Этот человек — родитель</option>
-            <option value="child">Этот человек — ребёнок</option>
-            <option value="partner">Партнёры</option>
-          </UiSelect>
-        </label>
+        <FamilyRelationshipsEditor
+          ref="relationshipsEditor"
+          v-model="form.connections"
+          class="person-form__wide"
+          :people="otherPeople"
+          :subject-name="fullName(form)"
+        />
 
         <footer class="person-form__footer person-form__wide">
-          <UiButton type="button" variant="secondary" @click="editorOpen = false">Отмена</UiButton>
+          <UiButton type="button" variant="secondary" @click="closeEditor">Закрыть</UiButton>
           <UiButton type="submit" :loading="isSaving">Сохранить</UiButton>
         </footer>
       </form>
@@ -164,6 +155,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import FamilyPersonDetailsPanel from '../../components/family-tree/FamilyPersonDetailsPanel.vue'
+import FamilyRelationshipsEditor from '../../components/family-tree/FamilyRelationshipsEditor.vue'
 import FamilyTreeCanvas from '../../components/family-tree/FamilyTreeCanvas.vue'
 import FamilyTreeFiltersPanel from '../../components/family-tree/FamilyTreeFiltersPanel.vue'
 import FamilyTreeToolbar from '../../components/family-tree/FamilyTreeToolbar.vue'
@@ -180,6 +172,8 @@ import { workspaceStore } from '../../stores/workspace.store.js'
 const EMPTY_TREE = { version: 2, people: [], relationships: [], positions: {} }
 const MAX_PHOTO_FILE_SIZE = 10 * 1024 * 1024
 const PHOTO_MAX_SIDE = 720
+const PERSON_DRAFT_PREFIX = 'family-tree:person-draft:v1'
+const PERSON_DRAFT_DELAY = 300
 
 const workspaceId = computed(() => workspaceStore.activeWorkspace.value?.id || '')
 const { data, isPending, isError, save, isSaving } = useFamilyTree(workspaceId)
@@ -196,12 +190,16 @@ const livingOnly = ref(false)
 const filtersOpen = ref(false)
 const filtersPanel = ref(null)
 const photoInput = ref(null)
+const relationshipsEditor = ref(null)
 let initializedWorkspaceId = ''
 let positionTimer = null
+let personDraftTimer = null
+let draftStorageWarningShown = false
 let positionSaveRevision = 0
 
 const emptyForm = () => ({
   firstName: '',
+  patronymic: '',
   lastName: '',
   gender: 'other',
   birthDate: '',
@@ -210,8 +208,7 @@ const emptyForm = () => ({
   notes: '',
   tagsText: '',
   photo: '',
-  relativeId: '',
-  relationshipType: 'parent',
+  connections: [],
 })
 const form = reactive(emptyForm())
 
@@ -223,6 +220,7 @@ const otherPeople = computed(() => people.value.filter((person) => person.id !==
 const hasActiveFilters = computed(() => Boolean(search.value.trim() || genderFilter.value || livingOnly.value))
 const formPreviewPerson = computed(() => ({
   firstName: form.firstName,
+  patronymic: form.patronymic,
   lastName: form.lastName,
 }))
 
@@ -233,6 +231,7 @@ const visibleIds = computed(() => {
     .filter((person) => !livingOnly.value || !person.deathDate)
     .filter((person) => terms.every((term) => normalize([
       person.firstName,
+      person.patronymic,
       person.lastName,
       person.birthDate,
       person.deathDate,
@@ -279,6 +278,12 @@ watch(data, (value) => {
   initializedWorkspaceId = workspaceId.value
 }, { immediate: true })
 
+watch(form, () => {
+  if (!editorOpen.value) return
+  window.clearTimeout(personDraftTimer)
+  personDraftTimer = window.setTimeout(savePersonDraft, PERSON_DRAFT_DELAY)
+}, { deep: true })
+
 watch(visibleIds, (ids) => {
   if (selectedId.value && !ids.includes(selectedId.value)) {
     selectedId.value = ''
@@ -306,7 +311,7 @@ function normalizeDocument(value) {
 }
 
 function fullName(person) {
-  return [person?.firstName, person?.lastName].filter(Boolean).join(' ') || 'Без имени'
+  return [person?.lastName, person?.firstName, person?.patronymic].filter(Boolean).join(' ') || 'Без имени'
 }
 
 function initials(person) {
@@ -318,6 +323,31 @@ function initials(person) {
     .toUpperCase()
 }
 
+/** Приводит текущие рёбра графа к модели редактора связей. */
+function relationshipDraftsForPerson(personId) {
+  return relationships.value.flatMap((relationship) => {
+    if (relationship.from !== personId && relationship.to !== personId) return []
+    const relativeId = relationship.from === personId
+      ? relationship.to
+      : relationship.from
+    let type = 'partner'
+    if (relationship.type !== 'partner') {
+      type = relationship.from === personId ? 'parent' : 'child'
+    }
+    return [{ id: relationship.id, relativeId, type }]
+  })
+}
+
+/** Преобразует строку редактора обратно в направленное ребро Cytoscape. */
+function relationshipFromDraft(connection, personId) {
+  const isChild = connection.type === 'child'
+  return {
+    id: connection.id || crypto.randomUUID(),
+    from: isChild ? connection.relativeId : personId,
+    to: isChild ? personId : connection.relativeId,
+    type: connection.type === 'partner' ? 'partner' : 'parent',
+  }
+}
 function resetFilters() {
   search.value = ''
   genderFilter.value = ''
@@ -326,20 +356,91 @@ function resetFilters() {
 
 function openCreate() {
   editingId.value = ''
-  Object.assign(form, emptyForm())
+  const draft = readPersonDraft('')
+  Object.assign(form, emptyForm(), draft || {})
   editorOpen.value = true
+  if (draft) notify('Черновик восстановлен', 'success')
 }
 
 function editSelected() {
   if (!selected.value) return
   editingId.value = selected.value.id
-  Object.assign(form, emptyForm(), selected.value, {
+  const initialForm = {
+    ...emptyForm(),
+    ...selected.value,
     photo: selected.value.photo || '',
     tagsText: (selected.value.tags || []).join(', '),
-  })
+    connections: relationshipDraftsForPerson(selected.value.id),
+  }
+  const draft = readPersonDraft(selected.value.id)
+  Object.assign(form, initialForm, draft || {})
   detailsOpen.value = false
   selectedId.value = ''
   editorOpen.value = true
+  if (draft) notify('Черновик восстановлен', 'success')
+}
+
+/** Ключ изолирует черновики по рабочему пространству и редактируемому человеку. */
+function personDraftKey(personId = editingId.value) {
+  if (!workspaceId.value) return ''
+  return [PERSON_DRAFT_PREFIX, workspaceId.value, personId || 'new'].join(':')
+}
+
+function readPersonDraft(personId) {
+  const key = personDraftKey(personId)
+  if (!key) return null
+  try {
+    const draft = JSON.parse(window.localStorage.getItem(key) || 'null')
+    if (!draft?.form || typeof draft.form !== 'object') return null
+    return {
+      ...draft.form,
+      connections: Array.isArray(draft.form.connections) ? draft.form.connections : [],
+    }
+  } catch {
+    window.localStorage.removeItem(key)
+    return null
+  }
+}
+
+function savePersonDraft() {
+  const key = personDraftKey()
+  if (!key) return
+  window.clearTimeout(personDraftTimer)
+  try {
+    window.localStorage.setItem(key, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      form: cloneDocument(form),
+    }))
+  } catch {
+    if (!draftStorageWarningShown) {
+      draftStorageWarningShown = true
+      notify('Не удалось сохранить черновик в браузере', 'warning')
+    }
+  }
+}
+
+function clearPersonDraft() {
+  window.clearTimeout(personDraftTimer)
+  const key = personDraftKey()
+  if (key) window.localStorage.removeItem(key)
+}
+
+function appendPendingConnection() {
+  const pending = relationshipsEditor.value?.getPendingRelationship?.()
+  if (!pending) return
+  if (form.connections.some((connection) => connection.relativeId === pending.relativeId)) return
+  form.connections.push(pending)
+}
+
+function closeEditor() {
+  appendPendingConnection()
+  savePersonDraft()
+  editorOpen.value = false
+}
+
+function handleEditorVisibility(value) {
+  if (value) editorOpen.value = true
+  else closeEditor()
 }
 
 function selectPerson(id) {
@@ -383,6 +484,7 @@ async function savePerson() {
     ...previous,
     id,
     firstName: form.firstName.trim(),
+    patronymic: form.patronymic.trim(),
     lastName: form.lastName.trim(),
     gender: form.gender,
     birthDate: form.birthDate,
@@ -398,23 +500,24 @@ async function savePerson() {
   if (index < 0) next.people.push(person)
   else next.people[index] = person
 
-  if (form.relativeId && !editingId.value) {
-    let from = id
-    let to = form.relativeId
-    if (form.relationshipType === 'child') {
-      from = form.relativeId
-      to = id
-    }
-    next.relationships.push({
-      id: crypto.randomUUID(),
-      from,
-      to,
-      type: form.relationshipType === 'partner' ? 'partner' : 'parent',
-    })
-  }
+  // Текущий выбор тоже сохраняется, даже если пользователь не нажал отдельную кнопку «Добавить».
+  const pendingConnection = relationshipsEditor.value?.getPendingRelationship?.()
+  const connections = pendingConnection
+    ? [...form.connections, pendingConnection]
+    : form.connections
+
+  // Все связи человека заменяются содержимым редактора.
+  // ID существующих рёбер сохраняются, поэтому Cytoscape обновляет их без пересоздания.
+  next.relationships = [
+    ...next.relationships.filter((relationship) => (
+      relationship.from !== id && relationship.to !== id
+    )),
+    ...connections.map((connection) => relationshipFromDraft(connection, id)),
+  ]
 
   const saved = await persistDocument(next, 'Дерево сохранено')
   if (!saved) return
+  clearPersonDraft()
   selectedId.value = id
   detailsOpen.value = true
   editorOpen.value = false
@@ -551,8 +654,13 @@ function handleGlobalKeydown(event) {
 
 onMounted(() => window.addEventListener('keydown', handleGlobalKeydown))
 onBeforeUnmount(() => {
+  if (editorOpen.value) {
+    appendPendingConnection()
+    savePersonDraft()
+  }
   window.removeEventListener('keydown', handleGlobalKeydown)
   window.clearTimeout(positionTimer)
+  window.clearTimeout(personDraftTimer)
 })
 </script>
 

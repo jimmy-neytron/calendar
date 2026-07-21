@@ -35,6 +35,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Контрастный фокус виден при навигации с клавиатуры и не мешает кликам мышью. */
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-hover) 88%, white);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 8px 24px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
 a {
   color: inherit;
 }

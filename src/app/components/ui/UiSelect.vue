@@ -47,9 +47,22 @@
           :aria-label="ariaLabel || undefined"
           @keydown="handlePanelKeydown"
         >
+          <label v-if="searchable" class="ui-select__search">
+            <span class="ui-select__search-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.25" /><path d="m12.4 12.4 4.1 4.1" /></svg></span>
+            <input
+              ref="searchInputRef"
+              v-model="searchQuery"
+              type="search"
+              :placeholder="searchPlaceholder"
+              aria-label="Поиск по вариантам"
+              autocomplete="off"
+              @input="handleSearchInput"
+            />
+          </label>
+
           <div class="ui-select__options">
             <button
-              v-for="(option, index) in options"
+              v-for="(option, index) in filteredOptions"
               :key="option.key"
               class="ui-select__option"
               :class="{
@@ -68,6 +81,7 @@
                 <path d="m3.25 8.25 3 3 6.5-6.5" />
               </svg>
             </button>
+            <p v-if="!filteredOptions.length" class="ui-select__empty">Ничего не найдено</p>
           </div>
         </div>
       </Transition>
@@ -92,6 +106,8 @@ const props = defineProps({
   modelModifiers: { type: Object, default: () => ({}) },
   ariaLabel: { type: String, default: '' },
   placeholder: { type: String, default: 'Выберите' },
+  searchable: { type: Boolean, default: false },
+  searchPlaceholder: { type: String, default: 'Найти…' },
   compact: { type: Boolean, default: false },
   pill: { type: Boolean, default: false },
   error: { type: [String, Boolean], default: false },
@@ -104,12 +120,21 @@ const instance = getCurrentInstance()
 const rootRef = ref(null)
 const triggerRef = ref(null)
 const panelRef = ref(null)
+const searchInputRef = ref(null)
 const isOpen = ref(false)
+const searchQuery = ref('')
 const highlightedIndex = ref(-1)
 const panelStyle = ref({})
 const listboxId = `ui-select-${instance?.uid ?? Math.random().toString(36).slice(2)}`
 
 const options = computed(() => collectOptions(slots.default?.() || []))
+const filteredOptions = computed(() => {
+  const query = normalizeSearch(searchQuery.value)
+  if (!props.searchable || !query) return options.value
+  return options.value.filter((option) => (
+    option.value !== '' && normalizeSearch(option.label).includes(query)
+  ))
+})
 const selectedOption = computed(() => options.value.find(isSelected))
 
 function collectOptions(nodes, result = []) {
@@ -140,6 +165,10 @@ function getNodeText(children) {
   return ''
 }
 
+function normalizeSearch(value) {
+  return String(value || '').toLocaleLowerCase('ru-RU').replace(/ё/g, 'е').trim()
+}
+
 function isSelected(option) {
   return option.value === props.modelValue
 }
@@ -150,15 +179,18 @@ function toggle() {
 }
 
 async function open() {
+  searchQuery.value = ''
   isOpen.value = true
-  highlightedIndex.value = Math.max(0, options.value.findIndex(isSelected))
+  highlightedIndex.value = Math.max(0, filteredOptions.value.findIndex(isSelected))
   await nextTick()
   updatePanelPosition()
-  panelRef.value?.focus?.()
+  if (props.searchable) searchInputRef.value?.focus?.()
+  else panelRef.value?.focus?.()
 }
 
 function close({ restoreFocus = false } = {}) {
   isOpen.value = false
+  searchQuery.value = ''
   highlightedIndex.value = -1
   if (restoreFocus) nextTick(() => triggerRef.value?.focus())
 }
@@ -173,12 +205,13 @@ function selectOption(option) {
 }
 
 function moveHighlight(direction) {
-  if (!options.value.length) return
+  const visibleOptions = filteredOptions.value
+  if (!visibleOptions.length) return
 
   let nextIndex = highlightedIndex.value
   do {
-    nextIndex = (nextIndex + direction + options.value.length) % options.value.length
-  } while (options.value[nextIndex]?.disabled && nextIndex !== highlightedIndex.value)
+    nextIndex = (nextIndex + direction + visibleOptions.length) % visibleOptions.length
+  } while (visibleOptions[nextIndex]?.disabled && nextIndex !== highlightedIndex.value)
 
   highlightedIndex.value = nextIndex
   nextTick(() => {
@@ -200,7 +233,7 @@ function handleTriggerKeydown(event) {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     if (isOpen.value && highlightedIndex.value >= 0) {
-      selectOption(options.value[highlightedIndex.value])
+      selectOption(filteredOptions.value[highlightedIndex.value])
     } else {
       open()
     }
@@ -210,13 +243,20 @@ function handleTriggerKeydown(event) {
   }
 }
 
+function handleSearchInput() {
+  nextTick(() => {
+    highlightedIndex.value = filteredOptions.value.findIndex((option) => !option.disabled)
+    updatePanelPosition()
+  })
+}
+
 function handlePanelKeydown(event) {
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
     moveHighlight(event.key === 'ArrowDown' ? 1 : -1)
   } else if (event.key === 'Enter' && highlightedIndex.value >= 0) {
     event.preventDefault()
-    selectOption(options.value[highlightedIndex.value])
+    selectOption(filteredOptions.value[highlightedIndex.value])
   } else if (event.key === 'Escape') {
     event.preventDefault()
     close({ restoreFocus: true })
@@ -230,7 +270,8 @@ function updatePanelPosition() {
   if (!trigger) return
 
   const rect = trigger.getBoundingClientRect()
-  const estimatedHeight = Math.min(options.value.length * 38 + 12, 280)
+  const searchHeight = props.searchable ? 40 : 0
+  const estimatedHeight = Math.min(filteredOptions.value.length * 38 + searchHeight + 12, 328)
   const spaceBelow = window.innerHeight - rect.bottom
   const openAbove = spaceBelow < estimatedHeight && rect.top > spaceBelow
   const width = Math.min(rect.width, window.innerWidth - 16)
@@ -372,12 +413,74 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(20px) saturate(140%);
 }
 
+.ui-select__search {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  padding: 0 7px;
+  color: var(--text-muted);
+  background: var(--field-bg);
+}
+
+.ui-select__search:focus-within {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.ui-select__search-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+.ui-select__search-icon svg {
+  width: 14px;
+  height: 14px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.7;
+}
+
+.ui-select__search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  border: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background: transparent;
+  outline: 0;
+}
+
+.ui-select__search input::placeholder {
+  color: var(--text-muted);
+}
+
+.ui-select__search input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
 .ui-select__options {
   display: grid;
   gap: 2px;
   max-height: 268px;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.ui-select__empty {
+  margin: 0;
+  padding: 16px 10px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 11px;
 }
 
 .ui-select__option {
