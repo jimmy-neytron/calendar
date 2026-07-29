@@ -131,6 +131,10 @@ const metricCards = computed(() => [
   },
 ])
 
+function formatNumber(value) {
+  return new Intl.NumberFormat('ru-RU').format(Number(value || 0))
+}
+
 </script>
 
 <style scoped>
