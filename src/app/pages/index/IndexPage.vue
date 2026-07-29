@@ -82,7 +82,7 @@
       @delete="handleDeleteEvent"
       @duplicate="handleDuplicateEvent"
       @comment="handleAddComment"
-      @open-linked="openLinkedBudget"
+      @open-linked="openLinkedEntity"
     />
   </section>
 </template>
@@ -109,6 +109,7 @@ import { authStore } from '../../stores/auth.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { budgetStore } from '../../stores/budget.store.js'
+import { coursesIntegrationApi } from '../../modules/integrations/courses/api/coursesIntegration.api.js'
 
 const props = defineProps({
   forceCreateToken: { type: Number, default: 0 },
@@ -296,6 +297,24 @@ async function openLinkedBudget(event) {
   budgetStore.setSelectedMonth(String(event.date).slice(0, 7))
   closeEventDrawer()
   await router.push({ name: 'budget', query: { payment: event.linkedEntityId } })
+}
+
+async function openLinkedEntity(event) {
+  if (event?.linkedEntityType === 'budget-payment') {
+    await openLinkedBudget(event)
+    return
+  }
+  if (event?.linkedEntityType !== 'course-lesson' || !event.linkedEntityId) return
+  try {
+    const session = await coursesIntegrationApi.getSession(event.linkedEntityId)
+    if (!session?.lesson_url) {
+      notify('Ссылка на урок недоступна', 'danger')
+      return
+    }
+    window.open(session.lesson_url, '_blank', 'noopener,noreferrer')
+  } catch (error) {
+    notify(error.message || 'Не удалось открыть урок', 'danger')
+  }
 }
 
 function updateFilter(key, value) {

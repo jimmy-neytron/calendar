@@ -74,7 +74,7 @@
                 <div class="day-mode__event-body">
                   <h4>
                     {{ formatEventTitle(event) }}
-                    <small v-if="event.linkedEntityType === 'budget-payment'" class="day-mode__source">Бюджет</small>
+                    <small v-if="linkedSource(event)" class="day-mode__source">{{ linkedSource(event) }}</small>
                   </h4>
                   <p>{{ formatEventMembers(event.memberIds, members) }}</p>
                   <small v-if="event.location">{{ event.location }}</small>
@@ -165,6 +165,13 @@ function handleHourDrop(hour, dropEvent) {
 
 function moveEvent(payload) {
   emit('move-event', payload)
+}
+
+function linkedSource(event) {
+  return {
+    'budget-payment': 'Бюджет',
+    'course-lesson': 'Courses',
+  }[event?.linkedEntityType] || ''
 }
 
 function getEventColor(event) {

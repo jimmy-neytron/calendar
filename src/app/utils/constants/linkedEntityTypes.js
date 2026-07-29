@@ -1,5 +1,6 @@
 export const LINKED_ENTITY_TYPES = Object.freeze({
   BUDGET_PAYMENT: 'budget-payment',
+  COURSE_LESSON: 'course-lesson',
   BIRTHDAY: 'birthday',
   BIRTHDAY_REMINDER: 'birthday-reminder',
   IDEA: 'idea',

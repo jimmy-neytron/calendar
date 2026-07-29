@@ -26,8 +26,8 @@
       <strong>{{ formatEventTitle(event) }}</strong>
       <span v-if="event.location">{{ event.location }}</span>
       <small>
-        <b v-if="isBudgetEvent" class="event-card__source">Бюджет</b>
-        <template v-if="isBudgetEvent"> · </template>
+        <b v-if="linkedSource" class="event-card__source">{{ linkedSource }}</b>
+        <template v-if="linkedSource"> · </template>
         {{ category.label }}
         <template v-if="importanceLabel">
           · <b class="event-card__priority">{{ importanceLabel }}</b>
@@ -58,7 +58,10 @@ const { beginTouchDrag } = useTouchEventDrag()
 
 const accent = computed(() => getEventAccent(props.event.memberIds, props.members))
 const category = computed(() => getCategoryMeta(props.event.category))
-const isBudgetEvent = computed(() => props.event.linkedEntityType === 'budget-payment')
+const linkedSource = computed(() => ({
+  'budget-payment': 'Бюджет',
+  'course-lesson': 'Courses',
+})[props.event.linkedEntityType] || '')
 const importanceLabel = computed(() => ({
   important: 'Важное',
   urgent: 'Срочное',

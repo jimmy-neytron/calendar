@@ -20,8 +20,9 @@
         >
           <div class="integration-card__glow" aria-hidden="true" />
           <header>
-            <span class="integration-card__icon integration-card__icon--image">
-              <img :src="item.image" :alt="item.name">
+            <span class="integration-card__icon" :class="{ 'integration-card__icon--image': item.image }">
+              <img v-if="item.image" :src="item.image" :alt="item.name">
+              <UiIcon v-else :name="item.icon" />
             </span>
             <b :class="{ on: item.connected, paused: item.paused }">{{ item.status }}</b>
           </header>
@@ -37,6 +38,8 @@
         </button>
       </section>
     </template>
+
+    <CoursesIntegrationPage v-else-if="activeIntegrationId === 'courses'" />
 
     <template v-else-if="activeIntegrationId === 'telegram'">
       <header class="planera-hero">
@@ -195,7 +198,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
@@ -203,7 +206,10 @@ import UiModal from '../../../components/ui/UiModal.vue'
 import UiToggle from '../../../components/ui/UiToggle.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { useSubscriptionSettings } from '../../../composables/preferences/useSubscriptionSettings.js'
+import { workspaceStore } from '../../../stores/workspace.store.js'
 import { integrationsApi } from '../api/integrations.api.js'
+import { coursesIntegrationApi } from '../courses/api/coursesIntegration.api.js'
+import CoursesIntegrationPage from '../courses/pages/CoursesIntegrationPage.vue'
 
 const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || ''
 
@@ -219,6 +225,7 @@ const isSaving = ref(false)
 const isGeneratingCode = ref(false)
 const isDisconnecting = ref(false)
 const isUnavailableModalOpen = ref(false)
+const coursesConnected = ref(false)
 
 const activeIntegrationId = computed(() => String(route.params.integrationId || ''))
 const isHub = computed(() => !activeIntegrationId.value)
@@ -254,6 +261,18 @@ const integrationCards = computed(() => [
     meta: isPlaneraPaused.value ? 'Доступно на Pro' : '08:00 по Москве',
     image: '/images/integrations/planera-daily-icon.png',
   },
+  {
+    id: 'courses',
+    name: 'Courses',
+    kicker: 'Обучение',
+    description: 'Курсы и уроки превращаются в понятный план занятий в календаре.',
+    icon: 'play',
+    connected: coursesConnected.value && isPro.value,
+    paused: !isPro.value,
+    status: !isPro.value ? 'Pro' : (coursesConnected.value ? 'Подключено' : 'Настроить'),
+    meta: 'Гибкое расписание',
+    image: '',
+  },
 ])
 const digestFeatures = [
   {
@@ -274,7 +293,7 @@ const digestFeatures = [
 ]
 
 function openIntegration(id) {
-  if (id === 'telegram' && !isPro.value) {
+  if (!isPro.value) {
     isUnavailableModalOpen.value = true
     return
   }
@@ -295,6 +314,17 @@ async function loadTelegram() {
     notify(error.message || 'Не удалось загрузить интеграцию', 'danger')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadCoursesStatus() {
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  if (!workspaceId || !isPro.value) return
+  try {
+    const result = await coursesIntegrationApi.getStatus(workspaceId)
+    coursesConnected.value = result.integration?.connected === true
+  } catch {
+    coursesConnected.value = false
   }
 }
 
@@ -380,7 +410,10 @@ function formatDate(value) {
   }).format(new Date(value))
 }
 
-onMounted(loadTelegram)
+onMounted(() => Promise.all([loadTelegram(), loadCoursesStatus()]))
+watch(isHub, (value) => {
+  if (value) loadCoursesStatus()
+})
 </script>
 
 <style scoped>

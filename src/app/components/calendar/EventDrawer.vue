@@ -52,6 +52,16 @@
             </UiButton>
           </section>
 
+          <section v-if="isCourseLinkedEvent" class="event-drawer__linked-budget card">
+            <div>
+              <span>▶ Занятие из Courses</span>
+              <p>Можно перенести занятие на другой день или время. Расписание курса обновится автоматически.</p>
+            </div>
+            <UiButton type="button" size="sm" variant="secondary" @click="$emit('open-linked', editingEvent)">
+              Открыть урок
+            </UiButton>
+          </section>
+
           <section v-if="!editingEvent" class="event-drawer__templates">
             <span>Шаблоны</span>
             <div>
@@ -72,7 +82,7 @@
             label="Название"
             placeholder="Встреча, врач, тренировка..."
             required
-            :disabled="isBudgetLinkedEvent"
+            :disabled="isBudgetLinkedEvent || isCourseLinkedEvent"
             :error="errors.title"
             @keydown.ctrl.enter="submit"
           />
@@ -338,6 +348,7 @@ const RESPONSE_OPTIONS = [
 ]
 const categoryMeta = computed(() => getCategoryMeta(form.category))
 const isBudgetLinkedEvent = computed(() => props.editingEvent?.linkedEntityType === 'budget-payment')
+const isCourseLinkedEvent = computed(() => props.editingEvent?.linkedEntityType === 'course-lesson')
 const selectedCalendar = computed(() => props.calendars.find((calendar) => calendar.id === form.calendarId))
 const eventAccent = computed(() => selectedCalendar.value?.color || categoryMeta.value.color || 'var(--accent)')
 const calendarName = computed(() => selectedCalendar.value?.name || '')
