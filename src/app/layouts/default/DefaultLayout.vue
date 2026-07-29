@@ -94,11 +94,11 @@ import { workspaceStore } from '../../stores/workspace.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
-import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { useLocalEventReminders } from '../../composables/notifications/useLocalEventReminders.js'
 import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
 import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
@@ -113,7 +113,7 @@ const paletteQuery = ref('')
 const { notifications, dismiss, notify } = useNotification()
 const { start: startOnboarding } = useOnboarding()
 const { isEnabled: budgetEnabled } = useBudgetSettings()
-const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
+const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const { runDailyAutoBackup } = useAutoBackup()
 const {
   start: startLocalEventReminders,
@@ -141,14 +141,15 @@ const commands = computed(() => [
   { id: 'month', label: 'Режим месяца', description: 'Показать сетку месяца', icon: '▦', shortcut: 'M', action: () => setCalendarMode('month') },
   { id: 'week', label: 'Режим недели', description: 'Показать неделю', icon: '▤', shortcut: 'W', action: () => setCalendarMode('week') },
   { id: 'day', label: 'Режим дня', description: 'Показать расписание дня', icon: '◫', shortcut: 'D', action: () => setCalendarMode('day') },
-  { id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) },
+  ...(readSubscriptionFeature('analytics') ? [{ id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) }] : []),
   { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
   ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
-  ...(timeTrackingEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
-  ...(readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) }] : []),
+  ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
+  ...(extraSectionsEnabled.value && readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) }] : []),
+  ...(extraSectionsEnabled.value ? [{ id: 'family-tree', label: 'Открыть семейное дерево', description: 'Люди, поколения и связи', icon: 'users', action: () => router.push({ name: 'family-tree' }) }] : []),
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
-  ...(readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
-  { id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) },
+  ...(extraSectionsEnabled.value && readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
+  ...(readSubscriptionFeature('workspace') ? [{ id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) }] : []),
   ...(authStore.isAdmin.value ? [{
     id: 'admin',
     label: 'Открыть админку',

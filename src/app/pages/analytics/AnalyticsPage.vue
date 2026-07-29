@@ -63,16 +63,21 @@
 import { computed } from 'vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { useAnalyticsData } from './useAnalyticsData.js'
 
 const analytics = useAnalyticsData()
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
+const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 
 const pulseScore = computed(() => Math.min(100, Math.round(
   Math.min(35, analytics.weekEvents.value.length * 5)
   + Math.min(25, analytics.weekActivity.value.length * 2)
-  + Math.min(25, analytics.sportProgress.value.percent * .25)
-  + Math.min(15, (analytics.plannedMovies.value + analytics.plannedIdeas.value) * 3)
+  + (extraSectionsEnabled.value ? Math.min(25, analytics.sportProgress.value.percent * .25) : 0)
+  + Math.min(15, (
+    (extraSectionsEnabled.value ? analytics.plannedMovies.value : 0)
+    + analytics.plannedIdeas.value
+  ) * 3)
 )))
 
 const overviewStats = computed(() => [
@@ -80,8 +85,14 @@ const overviewStats = computed(() => [
   ...(activityLogEnabled.value
     ? [{ label: 'действий за неделю', value: analytics.weekActivity.value.length, icon: 'activity' }]
     : []),
-  { label: 'спортивный прогресс', value: `${analytics.sportProgress.value.percent}%`, icon: 'sport' },
-  { label: 'планов в календаре', value: analytics.plannedMovies.value + analytics.plannedIdeas.value, icon: 'check' },
+  ...(extraSectionsEnabled.value
+    ? [{ label: 'спортивный прогресс', value: `${analytics.sportProgress.value.percent}%`, icon: 'sport' }]
+    : []),
+  {
+    label: 'планов в календаре',
+    value: (extraSectionsEnabled.value ? analytics.plannedMovies.value : 0) + analytics.plannedIdeas.value,
+    icon: 'check',
+  },
 ])
 const activeDirections = computed(() => overviewStats.value.filter((item) => Number.parseFloat(item.value) > 0).length)
 
@@ -96,16 +107,18 @@ const sections = computed(() => [
     description: 'Динамика действий и самые активные направления.', value: analytics.weekActivity.value.length,
     note: 'за 7 дней', color: 'var(--cyan)',
   }] : []),
-  {
-    route: 'analytics-sport', title: 'Спорт', caption: 'Личный прогресс', icon: 'sport',
-    description: 'Выполнение программы и ритм тренировок.', value: `${analytics.sportProgress.value.percent}%`,
-    note: 'выполнено', color: 'var(--success)',
-  },
-  {
-    route: 'analytics-movies', title: 'Фильмы', caption: 'Хочу посмотреть', icon: 'movie',
-    description: 'Фильмы, сериалы и планы на просмотр.', value: analytics.watchlist.value.length,
-    note: 'в списке', color: 'var(--pink)',
-  },
+  ...(extraSectionsEnabled.value ? [
+    {
+      route: 'analytics-sport', title: 'Спорт', caption: 'Личный прогресс', icon: 'sport',
+      description: 'Выполнение программы и ритм тренировок.', value: `${analytics.sportProgress.value.percent}%`,
+      note: 'выполнено', color: 'var(--success)',
+    },
+    {
+      route: 'analytics-movies', title: 'Фильмы', caption: 'Хочу посмотреть', icon: 'movie',
+      description: 'Фильмы, сериалы и планы на просмотр.', value: analytics.watchlist.value.length,
+      note: 'в списке', color: 'var(--pink)',
+    },
+  ] : []),
   {
     route: 'analytics-ideas', title: 'Идеи', caption: 'Планы и вдохновение', icon: 'sparkles',
     description: 'Что накопилось и что уже попало в календарь.', value: analytics.ideas.value.length,

@@ -62,6 +62,10 @@
           <UiIcon name="grid" />
           {{ currentPlan.workspaceLimit }} {{ workspaceLimitLabel }}
         </span>
+        <span>
+          <UiIcon name="check" />
+          {{ hasProAccess ? 'Все разделы и интеграции' : 'Календарь, бюджет, дни рождения и идеи' }}
+        </span>
       </div>
     </section>
 
@@ -224,19 +228,21 @@
             <UiToggle
               :model-value="activityLogEnabled"
               label="Журнал активности"
+              :disabled="!hasActivityAccess"
               @update:model-value="toggleActivityLog"
             />
           </label>
 
           <label class="setting-switch">
             <span>
-              <strong>Учёт времени</strong>
-              <small>Добавляет отдельный раздел для проектов и часов. Когда выключено, таблицы учёта времени не загружаются и в Supabase ничего не записывается.</small>
+              <strong>Дополнительные разделы</strong>
+              <small>Фильмы, семейное дерево, спорт и учёт времени. Когда выключено, разделы и связанные с ними события скрыты.</small>
             </span>
             <UiToggle
-              :model-value="timeTrackingEnabled"
-              label="Учёт времени"
-              @update:model-value="toggleTimeTracking"
+              :model-value="extraSectionsEnabled"
+              label="Дополнительные разделы"
+              :disabled="!hasProAccess"
+              @update:model-value="toggleExtraSections"
             />
           </label>
 
@@ -329,14 +335,16 @@ import UiToggle from '../../components/ui/UiToggle.vue'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { useSubscriptionSettings } from '../../composables/preferences/useSubscriptionSettings.js'
-import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { useCalendarPreferences } from '../../composables/preferences/useCalendarPreferences.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { HOLIDAY_COUNTRY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 import { authStore } from '../../stores/auth.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { budgetStore } from '../../stores/budget.store.js'
+import { sportStore } from '../../stores/sport.store.js'
+import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { discardSyncOperations } from '../../repositories/SyncedCollectionRepository.js'
 import { useReleaseNotesQuery } from '../../composables/releases/useReleaseNotesQuery.js'
@@ -349,14 +357,16 @@ const {
   setEnabled: setActivityLogEnabled,
 } = useActivityLogSettings()
 const {
-  isEnabled: timeTrackingEnabled,
-  setEnabled: setTimeTrackingEnabled,
-} = useTimeTrackingSettings()
-const {
   isEnabled: budgetEnabled,
   setEnabled: setBudgetEnabled,
 } = useBudgetSettings()
-const { currentPlan } = useSubscriptionSettings()
+const {
+  isEnabled: extraSectionsEnabled,
+  setEnabled: setExtraSectionsEnabled,
+} = useExtraSectionsSettings()
+const { currentPlan, featureEnabled } = useSubscriptionSettings()
+const hasProAccess = featureEnabled('extraSections')
+const hasActivityAccess = featureEnabled('activity')
 const { start: startOnboarding } = useOnboarding()
 
 const preferencesSaved = ref(false)
@@ -426,6 +436,10 @@ function markPreferencesSaved() {
 }
 
 function toggleActivityLog(enabled) {
+  if (!hasActivityAccess.value) {
+    notify('Журнал активности доступен на тарифе Pro', 'info')
+    return
+  }
   setActivityLogEnabled(enabled)
   markPreferencesSaved()
   notify(
@@ -434,17 +448,27 @@ function toggleActivityLog(enabled) {
   )
 }
 
-async function toggleTimeTracking(enabled) {
-  setTimeTrackingEnabled(enabled)
-  if (enabled && workspaceStore.activeWorkspaceId.value) {
-    await timeTrackingStore.loadWorkspace(workspaceStore.activeWorkspaceId.value)
-  } else {
-    discardSyncOperations('time_entries')
-    discardSyncOperations('time_projects')
+async function toggleExtraSections(enabled) {
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  const saved = await setExtraSectionsEnabled(enabled, workspaceId)
+  if (!saved.ok) {
+    notify(saved.message || 'Не удалось обновить дополнительные разделы', 'danger')
+    return
   }
+
+  if (enabled && workspaceId) {
+    await Promise.all([
+      sportStore.loadWorkspace(workspaceId),
+      movieWatchlistStore.loadWorkspace(workspaceId),
+      timeTrackingStore.loadWorkspace(workspaceId),
+    ])
+  }
+
   markPreferencesSaved()
   notify(
-    enabled ? 'Учёт времени включён' : 'Учёт времени выключен — запись в базу остановлена',
+    enabled
+      ? 'Дополнительные разделы включены'
+      : 'Дополнительные разделы и связанные события скрыты',
     enabled ? 'success' : 'info',
   )
 }

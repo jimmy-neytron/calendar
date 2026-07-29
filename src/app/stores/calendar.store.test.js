@@ -41,6 +41,7 @@ const mockState = vi.hoisted(() => ({
   notifyEventChange: vi.fn(),
   notifyEventComment: vi.fn(),
   notifyEventReminder: vi.fn(),
+  extraSectionsEnabled: true,
 }))
 
 class MockSyncedCollectionRepository {
@@ -168,6 +169,10 @@ vi.mock('../composables/preferences/useBudgetSettings.js', () => ({
   readBudgetSetting: () => true,
 }))
 
+vi.mock('../composables/preferences/useExtraSectionsSettings.js', () => ({
+  readExtraSectionsSetting: () => mockState.extraSectionsEnabled,
+}))
+
 vi.mock('../composables/recurrence/useRecurringEvents.js', () => ({
   useRecurringEvents: () => ({
     expandRecurringEvents: (events) => events,
@@ -210,13 +215,6 @@ vi.mock('./auth.store.js', () => ({
   },
 }))
 
-vi.mock('../utils/constants/linkedEntityTypes.js', () => ({
-  CALENDAR_LINK_CHANGE_EVENT: 'calendar-linked-event-change',
-  LINKED_ENTITY_TYPES: {
-    BUDGET_PAYMENT: 'budget-payment',
-  },
-}))
-
 describe('calendarStore: события календаря', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -238,6 +236,7 @@ describe('calendarStore: события календаря', () => {
       name: 'Аня',
       email: 'anya@example.com',
     }
+    mockState.extraSectionsEnabled = true
   })
 
   it('создаёт событие, нормализует поля и отправляет уведомление', async () => {
@@ -282,6 +281,27 @@ describe('calendarStore: события календаря', () => {
     expect(result.errors.title).toBe('Введите название события')
     expect(repository.items.value).toHaveLength(0)
     expect(mockState.notifyEventChange).not.toHaveBeenCalled()
+  })
+
+  it('скрывает события дополнительных разделов, не удаляя их', async () => {
+    const { calendarStore, repository } = await importCalendarStore()
+    calendarStore.addEvent({
+      title: 'Посмотреть фильм',
+      date: '2026-07-01',
+      linkedEntityType: 'movie-watchlist',
+      linkedEntityId: 'movie-1',
+    })
+    calendarStore.addEvent({
+      title: 'Рабочая встреча',
+      date: '2026-07-01',
+      category: 'work',
+    })
+
+    expect(repository.items.value).toHaveLength(2)
+    mockState.extraSectionsEnabled = false
+
+    expect(calendarStore.events.value.map((event) => event.title)).toEqual(['Рабочая встреча'])
+    expect(repository.items.value).toHaveLength(2)
   })
 
   it('переносит событие на другую дату и сохраняет длительность', async () => {

@@ -3,6 +3,7 @@ import { workspaceFeaturesApi } from '../../api/supabase/workspaceFeatures.api.j
 import { queryClient } from '../../query/queryClient.js'
 import { queryKeys } from '../../query/queryKeys.js'
 import { readSubscriptionFeature } from './useSubscriptionSettings.js'
+import { applyExtraSectionsSetting } from './useExtraSectionsSettings.js'
 
 const workspaceBudgetEnabled = ref(false)
 const loadedWorkspaceId = ref('')
@@ -34,6 +35,7 @@ export async function loadWorkspaceFeatures(workspaceId) {
   if (!workspaceId) {
     loadedWorkspaceId.value = ''
     workspaceBudgetEnabled.value = false
+    applyExtraSectionsSetting('', null)
     return { ok: true }
   }
 
@@ -65,7 +67,7 @@ export async function setBudgetEnabled(value, workspaceId = loadedWorkspaceId.va
     return {
       ok: false,
       code: 'subscription_required',
-      message: 'Бюджет недоступен на тарифе Free. Перейди на Plus или Pro.',
+      message: 'Бюджет недоступен для текущего тарифа.',
     }
   }
   if (!workspaceId) return { ok: false, message: 'Сначала выбери пространство' }
@@ -93,6 +95,7 @@ export async function setBudgetEnabled(value, workspaceId = loadedWorkspaceId.va
 function applyWorkspaceFeatures(workspaceId, data) {
   loadedWorkspaceId.value = workspaceId
   workspaceBudgetEnabled.value = data?.budget_enabled === true
+  applyExtraSectionsSetting(workspaceId, data)
 }
 
 function dispatchBudgetChange(workspaceId) {

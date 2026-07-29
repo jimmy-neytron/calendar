@@ -1,7 +1,8 @@
 import { requireAuthenticatedSupabase } from './client.js'
 
 const DEFAULT_FEATURES = {
-    budget_enabled: false,
+    budget_enabled: true,
+    extra_sections_enabled: true,
 }
 
 export const workspaceFeaturesApi = {

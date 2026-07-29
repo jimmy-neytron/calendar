@@ -29,9 +29,9 @@
       </div>
 
       <nav class="not-found__links">
-        <RouterLink :to="{ name: 'movies' }"><UiIcon name="movie" /> Фильмы</RouterLink>
+        <RouterLink v-if="extraSectionsEnabled" :to="{ name: 'movies' }"><UiIcon name="movie" /> Фильмы</RouterLink>
         <RouterLink :to="{ name: 'ideas' }"><UiIcon name="sparkles" /> Идеи</RouterLink>
-        <RouterLink :to="{ name: 'sport' }"><UiIcon name="sport" /> Спорт</RouterLink>
+        <RouterLink v-if="extraSectionsEnabled" :to="{ name: 'sport' }"><UiIcon name="sport" /> Спорт</RouterLink>
         <RouterLink :to="{ name: 'analytics' }"><UiIcon name="chart" /> Аналитика</RouterLink>
       </nav>
     </div>
@@ -40,10 +40,12 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 
 const router = useRouter()
+const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const goCalendar = () => router.push({ name: 'calendar' })
 const goBack = () => window.history.length > 1 ? router.back() : goCalendar()
 </script>

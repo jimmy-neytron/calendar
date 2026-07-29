@@ -17,7 +17,7 @@
       </div>
     </header>
 
-    <section class="today-rail__overview">
+    <section class="today-rail__overview" :class="{ 'today-rail__overview--compact': !extraSectionsEnabled }">
       <article>
         <span>Дальше</span>
         <strong>{{ nextEvent ? formatEventTitle(nextEvent) : 'Свободное время' }}</strong>
@@ -28,7 +28,7 @@
         <strong>{{ busyMinutesLabel }}</strong>
         <div><i :style="{ width: `${dayLoadPercent}%` }" /></div>
       </article>
-      <article>
+      <article v-if="extraSectionsEnabled">
         <span>Спорт</span>
         <strong>{{ sportProgress.done }}/{{ sportProgress.total }}</strong>
         <small>выполнено</small>
@@ -86,6 +86,7 @@ import EventCard from './EventCard.vue'
 import WeatherRailCard from '../weather/WeatherRailCard.vue'
 import { formatDateShort, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventTitle } from '../../utils/formatters/calendarFormatter.js'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { sportStore } from '../../stores/sport.store.js'
 
 const props = defineProps({
@@ -105,6 +106,7 @@ const props = defineProps({
 
 defineEmits(['create-event', 'edit-event', 'quick-create', 'close'])
 
+const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const todayKey = new Date().toISOString().slice(0, 10)
 const timedEvents = computed(() => props.selectedEvents
   .filter((event) => !event.allDay && event.startTime && event.endTime)
@@ -176,6 +178,7 @@ function difference(start, end) {
 
 .today-rail__header h2 { margin: 0; text-transform: capitalize; }
 .today-rail__overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--density-calendar-grid-gap, 6px); }
+.today-rail__overview--compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .today-rail__overview article {
   display: grid;
   gap: 3px;

@@ -10,6 +10,8 @@ import { authStore } from '../../stores/auth.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { budgetStore } from '../../stores/budget.store.js'
 import { loadWorkspaceFeatures } from '../../composables/preferences/useBudgetSettings.js'
+import { readExtraSectionsSetting } from '../../composables/preferences/useExtraSectionsSettings.js'
+import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { queryClient } from '../../query/queryClient.js'
 import { queryKeys } from '../../query/queryKeys.js'
 
@@ -54,12 +56,18 @@ async function fetchWorkspaceData(workspaceId) {
     calendarStore.loadWorkspace(workspaceId),
     ideaStore.loadWorkspace(workspaceId),
     birthdayStore.loadWorkspace(workspaceId),
-    sportStore.loadWorkspace(workspaceId),
     notificationStore.loadWorkspace(workspaceId),
-    movieWatchlistStore.loadWorkspace(workspaceId),
-    useActivityLog().loadWorkspace(workspaceId),
-    timeTrackingStore.loadWorkspace(workspaceId),
   ])
+  if (readSubscriptionFeature('activity')) {
+    results.push(await useActivityLog().loadWorkspace(workspaceId))
+  }
+  if (readExtraSectionsSetting()) {
+    results.push(...await Promise.all([
+      sportStore.loadWorkspace(workspaceId),
+      movieWatchlistStore.loadWorkspace(workspaceId),
+      timeTrackingStore.loadWorkspace(workspaceId),
+    ]))
+  }
 
   budgetStore.setSelectedMonth(getCurrentMonth())
   const budgetResult = await budgetStore.loadWorkspace(workspaceId)

@@ -32,13 +32,13 @@
 
     <p v-if="wakeLockError" class="day-display__notice">{{ wakeLockError }}</p>
 
-    <section class="day-display__summary">
+    <section class="day-display__summary" :class="{ 'day-display__summary--compact': !extraSectionsEnabled }">
       <article>
         <span>Событий сегодня</span>
         <strong>{{ todayEvents.length }}</strong>
         <small>{{ nextEventLabel }}</small>
       </article>
-      <article>
+      <article v-if="extraSectionsEnabled">
         <span>Спорт</span>
         <strong>{{ sportProgress.done }}/{{ sportProgress.total }}</strong>
         <div><i :style="{ width: `${sportProgress.percent}%` }" /></div>
@@ -86,7 +86,7 @@
       </section>
 
       <div class="day-display__side">
-        <section class="day-display__panel day-display__sport">
+        <section v-if="extraSectionsEnabled" class="day-display__panel day-display__sport">
           <header>
             <div>
               <span>Активность</span>
@@ -141,6 +141,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import { useScreenWakeLock } from '../../composables/display/useScreenWakeLock.js'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { ideaStore } from '../../stores/idea.store.js'
@@ -151,6 +152,7 @@ import { formatEventTitle, getCategoryMeta, getEventAccent } from '../../utils/f
 const now = ref(new Date())
 const isFullscreen = ref(Boolean(document.fullscreenElement))
 const { error: wakeLockError, isActive, enable, disable } = useScreenWakeLock()
+const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const todayEvents = computed(() => calendarStore.todayEvents.value)
 const todayExercises = sportStore.todayExercises
 const sportProgress = sportStore.todayProgress
@@ -316,6 +318,10 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.day-display__summary--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .day-display__summary article {

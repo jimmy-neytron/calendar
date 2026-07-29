@@ -348,7 +348,6 @@ const roleOptions = [
 ]
 const tierOptions = [
   { value: 'free', label: 'Free' },
-  { value: 'plus', label: 'Plus' },
   { value: 'pro', label: 'Pro' },
 ]
 const safePreviewHtml = computed(() => sanitizeHtml(form.contentHtml))

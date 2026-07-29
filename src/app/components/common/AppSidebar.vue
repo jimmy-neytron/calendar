@@ -36,8 +36,8 @@ import { computed, onMounted } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
+import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
-import { useTimeTrackingSettings } from '../../composables/preferences/useTimeTrackingSettings.js'
 import { authStore } from '../../stores/auth.store.js'
 import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
 import UiIcon from '../ui/UiIcon.vue'
@@ -45,7 +45,7 @@ import UiIcon from '../ui/UiIcon.vue'
 const activeWorkspace = workspaceStore.activeWorkspace
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 const { isEnabled: budgetEnabled } = useBudgetSettings()
-const { isEnabled: timeTrackingEnabled } = useTimeTrackingSettings()
+const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const { unreadLeadCount, loadUnreadLeadCount } = useAdminLeadNotifications()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
 
@@ -56,42 +56,49 @@ const groups = [
       { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: 'calendar' },
       { name: 'budget', label: 'Бюджет', description: 'Доходы и план расходов', icon: 'wallet' },
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
-      { name: 'family-tree', label: 'Семейное дерево', description: 'Люди, поколения и связи', icon: 'users' },
       { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: 'sparkles' },
-      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport' },
-      { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock' },
-      { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie' },
+    ],
+  },
+  {
+    label: 'Дополнительно',
+    extra: true,
+    items: [
+      { name: 'family-tree', label: 'Семейное дерево', description: 'Люди, поколения и связи', icon: 'users', feature: 'extraSections' },
+      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport', feature: 'sport' },
+      { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock', feature: 'timeTracking' },
+      { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie', feature: 'movies' },
     ],
   },
   {
     label: 'Пространство',
     items: [
-      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users' },
-      { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart' },
-      { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity' },
-      { name: 'integrations', label: 'Интеграции', description: 'Telegram и внешние сервисы', icon: 'link' },
+      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users', feature: 'workspace' },
+      { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart', feature: 'analytics' },
+      { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity', feature: 'activity' },
+      { name: 'integrations', label: 'Интеграции', description: 'Telegram и внешние сервисы', icon: 'link', feature: 'integrations' },
       { name: 'admin-overview', label: 'Админка', description: 'Пользователи и заявки', icon: 'key' },
       { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
     ],
   },
 ]
 
-const visibleGroups = computed(() => groups.map((group) => ({
-  ...group,
-  items: group.items
-    .filter((item) => (
-      (item.name !== 'activity' || activityLogEnabled.value)
-      && (item.name !== 'budget' || budgetEnabled.value)
-      && (item.name !== 'time-tracking' || timeTrackingEnabled.value)
-      && (item.name !== 'sport' || readSubscriptionFeature('sport'))
-      && (item.name !== 'movies' || readSubscriptionFeature('movies'))
-      && (item.name !== 'admin-overview' || authStore.isAdmin.value)
-    ))
-    .map((item) => ({
-      ...item,
-      badge: item.name === 'admin-overview' ? unreadLeadCount.value : item.badge || 0,
-    })),
-})))
+const visibleGroups = computed(() => groups
+  .filter((group) => !group.extra || extraSectionsEnabled.value)
+  .map((group) => ({
+    ...group,
+    items: group.items
+      .filter((item) => (
+        (item.name !== 'activity' || activityLogEnabled.value)
+        && (item.name !== 'budget' || budgetEnabled.value)
+        && (!item.feature || readSubscriptionFeature(item.feature))
+        && (item.name !== 'admin-overview' || authStore.isAdmin.value)
+      ))
+      .map((item) => ({
+        ...item,
+        badge: item.name === 'admin-overview' ? unreadLeadCount.value : item.badge || 0,
+      })),
+  }))
+  .filter((group) => group.items.length))
 
 onMounted(loadUnreadLeadCount)
 </script>

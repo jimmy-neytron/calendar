@@ -7,14 +7,6 @@ export const SUBSCRIPTION_TIERS = {
         workspaceLimit: 1,
         icon: 'calendar',
     },
-    plus: {
-        id: 'plus',
-        name: 'Plus',
-        price: '$4.99',
-        period: 'в месяц',
-        workspaceLimit: 3,
-        icon: 'star',
-    },
     pro: {
         id: 'pro',
         name: 'Pro',
@@ -27,25 +19,29 @@ export const SUBSCRIPTION_TIERS = {
 
 export const SUBSCRIPTION_FEATURES = {
     free: {
+        calendar: true,
         birthdays: true,
         ideas: true,
-        budget: false,
+        budget: true,
+        workspace: false,
+        analytics: false,
+        activity: false,
+        integrations: false,
+        extraSections: false,
         timeTracking: false,
         sport: false,
         movies: false,
     },
-    plus: {
-        birthdays: true,
-        ideas: true,
-        budget: true,
-        timeTracking: true,
-        sport: true,
-        movies: true,
-    },
     pro: {
+        calendar: true,
         birthdays: true,
         ideas: true,
         budget: true,
+        workspace: true,
+        analytics: true,
+        activity: true,
+        integrations: true,
+        extraSections: true,
         timeTracking: true,
         sport: true,
         movies: true,
@@ -54,7 +50,8 @@ export const SUBSCRIPTION_FEATURES = {
 
 export function normalizeSubscriptionTier(value) {
     const tier = String(value || '').toLowerCase()
-    return SUBSCRIPTION_TIERS[tier] ? tier : 'pro'
+    if (tier === 'plus') return 'pro'
+    return SUBSCRIPTION_TIERS[tier] ? tier : 'free'
 }
 
 export function getSubscriptionPlan(value) {
@@ -68,5 +65,5 @@ export function getSubscriptionFeatureMap(value) {
 }
 
 export function isSubscriptionFeatureEnabled(value, feature) {
-    return getSubscriptionFeatureMap(value)?.[feature] !== false
+    return getSubscriptionFeatureMap(value)?.[feature] === true
 }

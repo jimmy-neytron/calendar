@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { APP_CONFIG } from '../config/app.config.js'
-import { readTimeTrackingSetting } from '../composables/preferences/useTimeTrackingSettings.js'
+import { readExtraSectionsSetting } from '../composables/preferences/useExtraSectionsSettings.js'
 import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import { generateId } from '../utils/helpers/idGenerator.js'
 import { authStore } from './auth.store.js'
@@ -71,7 +71,7 @@ const entryRepository = new SyncedCollectionRepository(
 )
 
 const projects = computed<TimeProject[]>(() => {
-  if (!readTimeTrackingSetting()) return []
+  if (!readExtraSectionsSetting()) return []
   return projectRepository.items.value
     .filter((project: TimeProject) => (
       project.workspaceId === workspaceStore.activeWorkspaceId.value && !project.archived
@@ -80,7 +80,7 @@ const projects = computed<TimeProject[]>(() => {
 })
 
 const entries = computed<TimeEntry[]>(() => {
-  if (!readTimeTrackingSetting()) return []
+  if (!readExtraSectionsSetting()) return []
   return entryRepository.items.value
     .filter((entry: TimeEntry) => entry.workspaceId === workspaceStore.activeWorkspaceId.value)
     .sort((a: TimeEntry, b: TimeEntry) => (
@@ -186,7 +186,7 @@ function getProjectAnalytics(projectId: string, anchorDate = new Date()): TimePr
 }
 
 async function addProject(name: string, color = '#60a5fa') {
-  if (!readTimeTrackingSetting()) return disabledResult()
+  if (!readExtraSectionsSetting()) return disabledResult()
   const title = String(name || '').trim()
   if (!title) return { ok: false, message: 'Укажи название проекта' }
   if (projects.value.some((project) => project.name.toLocaleLowerCase() === title.toLocaleLowerCase())) {
@@ -208,7 +208,7 @@ async function addProject(name: string, color = '#60a5fa') {
 }
 
 async function addEntry(data: NewTimeEntry) {
-  if (!readTimeTrackingSetting()) return disabledResult()
+  if (!readExtraSectionsSetting()) return disabledResult()
   const normalized = normalizeEntryData(data)
   if (!normalized.ok) return normalized
 
@@ -229,7 +229,7 @@ async function addEntry(data: NewTimeEntry) {
 }
 
 async function updateEntry(id: string, data: UpdateTimeEntry) {
-  if (!readTimeTrackingSetting()) return disabledResult()
+  if (!readExtraSectionsSetting()) return disabledResult()
   const entry = entryRepository.findById(id) as TimeEntry | undefined
   if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value) {
     return { ok: false, message: 'Запись не найдена' }
@@ -249,7 +249,7 @@ async function updateEntry(id: string, data: UpdateTimeEntry) {
 }
 
 async function removeEntry(id: string) {
-  if (!readTimeTrackingSetting()) return disabledResult()
+  if (!readExtraSectionsSetting()) return disabledResult()
   const entry = entryRepository.findById(id) as TimeEntry | undefined
   if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value) {
     return { ok: false, message: 'Запись не найдена' }
@@ -258,7 +258,7 @@ async function removeEntry(id: string) {
 }
 
 async function removeProject(id: string) {
-  if (!readTimeTrackingSetting()) return disabledResult()
+  if (!readExtraSectionsSetting()) return disabledResult()
   const project = projectRepository.findById(id) as TimeProject | undefined
   if (!project) return { ok: false, message: 'Проект не найден' }
 
@@ -275,7 +275,7 @@ async function removeProject(id: string) {
 }
 
 async function loadWorkspace(workspaceId: string) {
-  if (!readTimeTrackingSetting()) return []
+  if (!readExtraSectionsSetting()) return []
   const [loadedProjects, loadedEntries] = await Promise.all([
     projectRepository.loadWorkspace(workspaceId),
     entryRepository.loadWorkspace(workspaceId),
@@ -284,7 +284,7 @@ async function loadWorkspace(workspaceId: string) {
 }
 
 function disabledResult() {
-  return { ok: false, disabled: true, message: 'Учёт времени выключен в настройках' }
+  return { ok: false, disabled: true, message: 'Дополнительные разделы выключены в настройках' }
 }
 
 function normalizeEntryData(data: NewTimeEntry | UpdateTimeEntry) {

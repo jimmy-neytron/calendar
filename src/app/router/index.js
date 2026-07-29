@@ -4,8 +4,8 @@ import { workspaceStore } from '../stores/workspace.store.js'
 import { loadWorkspaceData } from '../services/backend/workspaceData.service.js'
 import { readActivityLogSetting } from '../composables/preferences/useActivityLogSettings.js'
 import { loadWorkspaceFeatures, readBudgetSetting } from '../composables/preferences/useBudgetSettings.js'
+import { readExtraSectionsSetting } from '../composables/preferences/useExtraSectionsSettings.js'
 import { readSubscriptionFeature } from '../composables/preferences/useSubscriptionSettings.js'
-import { readTimeTrackingSetting } from '../composables/preferences/useTimeTrackingSettings.js'
 import { adminPageLoaders, adminRoutes } from '../modules/admin/routes.js'
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
@@ -40,28 +40,28 @@ export const routes = [
   ...adminRoutes,
   { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
   { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет', requiresBudget: true } },
-  { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт', requiresSubscriptionFeature: 'sport' } },
-  { path: '/sport/focus', name: 'sport-focus', component: FullFocusPage, meta: { title: 'Full Focus' } },
-  { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
-  { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresTimeTracking: true, requiresSubscriptionFeature: 'timeTracking' } },
+  { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт', requiresExtraSections: true, requiresSubscriptionFeature: 'sport' } },
+  { path: '/sport/focus', name: 'sport-focus', component: FullFocusPage, meta: { title: 'Full Focus', requiresExtraSections: true, requiresSubscriptionFeature: 'sport' } },
+  { path: '/time', name: 'time-tracking', component: TimeTrackingPage, meta: { title: 'Учёт времени', requiresExtraSections: true, requiresSubscriptionFeature: 'timeTracking' } },
+  { path: '/time/projects/:projectId', name: 'time-project', component: TimeProjectPage, meta: { title: 'Проект · Учёт времени', requiresExtraSections: true, requiresSubscriptionFeature: 'timeTracking' } },
   { path: '/settings', name: 'settings', component: SettingsPage, meta: { title: 'Настройки' } },
-  { path: '/integrations', name: 'integrations', component: IntegrationsPage, meta: { title: 'Интеграции' } },
-  { path: '/integrations/:integrationId', name: 'integration-detail', component: IntegrationsPage, meta: { title: 'Интеграция' } },
+  { path: '/integrations', name: 'integrations', component: IntegrationsPage, meta: { title: 'Интеграции', requiresSubscriptionFeature: 'integrations' } },
+  { path: '/integrations/:integrationId', name: 'integration-detail', component: IntegrationsPage, meta: { title: 'Интеграция', requiresSubscriptionFeature: 'integrations' } },
   { path: '/full-focus', redirect: '/sport/focus' },
   { path: '/subscriptions', redirect: '/settings' },
-  { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство' } },
-  { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика' } },
-  { path: '/analytics/calendar', name: 'analytics-calendar', component: AnalyticsDetailPage, meta: { title: 'Аналитика календаря', analyticsSection: 'calendar' } },
-  { path: '/analytics/activity', name: 'analytics-activity', component: AnalyticsDetailPage, meta: { title: 'Аналитика активности', analyticsSection: 'activity', requiresActivityLog: true } },
-  { path: '/analytics/sport', name: 'analytics-sport', component: AnalyticsDetailPage, meta: { title: 'Аналитика спорта', analyticsSection: 'sport' } },
-  { path: '/analytics/movies', name: 'analytics-movies', component: AnalyticsDetailPage, meta: { title: 'Аналитика фильмов', analyticsSection: 'movies' } },
-  { path: '/analytics/ideas', name: 'analytics-ideas', component: AnalyticsDetailPage, meta: { title: 'Аналитика идей', analyticsSection: 'ideas' } },
-  { path: '/analytics/birthdays', name: 'analytics-birthdays', component: AnalyticsDetailPage, meta: { title: 'Аналитика дней рождения', analyticsSection: 'birthdays' } },
-  { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true } },
+  { path: '/workspace', name: 'workspace', component: WorkspacePage, meta: { title: 'Пространство', requiresSubscriptionFeature: 'workspace' } },
+  { path: '/analytics', name: 'analytics', component: AnalyticsPage, meta: { title: 'Аналитика', requiresSubscriptionFeature: 'analytics' } },
+  { path: '/analytics/calendar', name: 'analytics-calendar', component: AnalyticsDetailPage, meta: { title: 'Аналитика календаря', analyticsSection: 'calendar', requiresSubscriptionFeature: 'analytics' } },
+  { path: '/analytics/activity', name: 'analytics-activity', component: AnalyticsDetailPage, meta: { title: 'Аналитика активности', analyticsSection: 'activity', requiresActivityLog: true, requiresSubscriptionFeature: 'analytics' } },
+  { path: '/analytics/sport', name: 'analytics-sport', component: AnalyticsDetailPage, meta: { title: 'Аналитика спорта', analyticsSection: 'sport', requiresExtraSections: true, requiresSubscriptionFeature: 'analytics' } },
+  { path: '/analytics/movies', name: 'analytics-movies', component: AnalyticsDetailPage, meta: { title: 'Аналитика фильмов', analyticsSection: 'movies', requiresExtraSections: true, requiresSubscriptionFeature: 'analytics' } },
+  { path: '/analytics/ideas', name: 'analytics-ideas', component: AnalyticsDetailPage, meta: { title: 'Аналитика идей', analyticsSection: 'ideas', requiresSubscriptionFeature: 'analytics' } },
+  { path: '/analytics/birthdays', name: 'analytics-birthdays', component: AnalyticsDetailPage, meta: { title: 'Аналитика дней рождения', analyticsSection: 'birthdays', requiresSubscriptionFeature: 'analytics' } },
+  { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true, requiresSubscriptionFeature: 'activity' } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
-  { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево' } },
-  { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresSubscriptionFeature: 'movies' } },
+  { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
+  { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresExtraSections: true, requiresSubscriptionFeature: 'movies' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/ideas' },
@@ -96,10 +96,6 @@ router.beforeEach(async (to) => {
     return { name: 'settings' }
   }
 
-  if (to.meta.requiresTimeTracking && !readTimeTrackingSetting()) {
-    return { name: 'settings' }
-  }
-
   if (to.meta.requiresAdmin && !authStore.isAdmin.value) {
     return { name: 'settings' }
   }
@@ -118,6 +114,9 @@ router.beforeEach(async (to) => {
     const workspace = workspaceStore.activeWorkspace.value
       || await workspaceStore.ensureActiveWorkspace()
     if (workspace) await loadWorkspaceFeatures(workspace.id)
+    if (to.meta.requiresExtraSections && !readExtraSectionsSetting()) {
+      return { name: 'settings' }
+    }
     if (to.meta.requiresBudget && !readBudgetSetting()) {
       return { name: 'settings' }
     }
