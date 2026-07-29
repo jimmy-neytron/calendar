@@ -271,7 +271,7 @@ const integrationCards = computed(() => [
     paused: !isPro.value,
     status: !isPro.value ? 'Pro' : (coursesConnected.value ? 'Подключено' : 'Настроить'),
     meta: 'Гибкое расписание',
-    image: '',
+    image: '/images/integrations/courses-icon.svg',
   },
 ])
 const digestFeatures = [

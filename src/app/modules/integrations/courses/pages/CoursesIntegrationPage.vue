@@ -1,15 +1,23 @@
 <template>
   <div class="courses-page">
     <header class="courses-hero">
-      <RouterLink :to="{ name: 'integrations' }"><UiIcon name="left" /> Интеграции</RouterLink>
-      <div>
-        <span class="courses-hero__mark"><UiIcon name="play" /></span>
-        <div>
-          <small>Обучение</small>
-          <h1>Courses</h1>
-          <p>Выберите курс, удобные дни — занятия сами появятся в календаре.</p>
+      <div class="courses-hero__mesh" aria-hidden="true" />
+      <div class="courses-hero__copy">
+        <RouterLink :to="{ name: 'integrations' }"><UiIcon name="left" /> Интеграции</RouterLink>
+        <div class="courses-hero__title">
+          <span class="courses-hero__mark">
+            <img src="/images/integrations/courses-icon.svg" alt="">
+          </span>
+          <div>
+            <small>Обучение</small>
+            <h1>Courses</h1>
+          </div>
         </div>
+        <p>Открывайте уроки прямо отсюда или превращайте весь курс в удобный план занятий.</p>
       </div>
+      <figure class="courses-hero__cover" aria-hidden="true">
+        <img src="/images/integrations/courses-app-hero-v3.png" alt="">
+      </figure>
     </header>
 
     <section v-if="isLoading" class="courses-state">
@@ -17,26 +25,30 @@
       <span>Загружаем интеграцию…</span>
     </section>
 
-    <section v-else-if="!isConnected" class="courses-connect">
-      <div class="courses-connect__copy">
-        <span><UiIcon name="key" /></span>
-        <div>
-          <h2>Подключите Courses</h2>
-          <p>Создайте персональный токен в настройках приложения Courses и вставьте его сюда.</p>
+    <template v-else-if="!isConnected">
+      <CourseIntegrationGuide :settings-url="coursesSettingsUrl" />
+
+      <section class="courses-connect">
+        <div class="courses-connect__copy">
+          <span><UiIcon name="key" /></span>
+          <div>
+            <h2>Вставьте персональный токен</h2>
+            <p>Используйте токен, который только что создали в разделе «Настройки → Персональные токены».</p>
+          </div>
         </div>
-      </div>
-      <UiInput
-        v-model="token"
-        type="password"
-        label="Персональный токен"
-        placeholder="crs_..."
-        autocomplete="off"
-        @keydown.enter="connect"
-      />
-      <UiButton icon="link" :loading="isConnecting" :disabled="token.trim().length < 16" @click="connect">
-        Подключить
-      </UiButton>
-    </section>
+        <UiInput
+          v-model="token"
+          type="password"
+          label="Персональный токен"
+          placeholder="crs_..."
+          autocomplete="off"
+          @keydown.enter="connect"
+        />
+        <UiButton icon="link" :loading="isConnecting" :disabled="token.trim().length < 16" @click="connect">
+          Подключить
+        </UiButton>
+      </section>
+    </template>
 
     <template v-else>
       <section class="courses-summary">
@@ -53,6 +65,8 @@
           <div><small>Планы</small><strong>{{ plans.length }}</strong></div>
         </article>
       </section>
+
+      <CourseCatalogBrowser :courses="courses" @open="openCourseLessons" />
 
       <section class="courses-plans">
         <header>
@@ -103,6 +117,15 @@
       :courses="courses"
       :calendars="calendars"
       @created="handleCreated"
+    />
+
+    <CourseLessonsModal
+      v-model="isLessonsModalOpen"
+      :course="selectedCourse"
+      :manifest="selectedManifest"
+      :loading="isLoadingLessons"
+      :error="lessonsError"
+      @retry="loadSelectedManifest(true)"
     />
 
     <UiModal
@@ -180,6 +203,9 @@ import { calendarStore } from '../../../../stores/calendar.store.js'
 import { calendarCollectionStore } from '../../../../stores/calendarCollection.store.js'
 import { workspaceStore } from '../../../../stores/workspace.store.js'
 import { coursesIntegrationApi } from '../api/coursesIntegration.api.js'
+import CourseCatalogBrowser from '../components/CourseCatalogBrowser.vue'
+import CourseIntegrationGuide from '../components/CourseIntegrationGuide.vue'
+import CourseLessonsModal from '../components/CourseLessonsModal.vue'
 import CoursePlanWizard from '../components/CoursePlanWizard.vue'
 
 const { notify } = useNotification()
@@ -194,12 +220,21 @@ const isRefreshing = ref(false)
 const isDisconnecting = ref(false)
 const isDeletingPlan = ref(false)
 const isWizardOpen = ref(false)
+const isLessonsModalOpen = ref(false)
 const isDeletePlanModalOpen = ref(false)
 const isDisconnectModalOpen = ref(false)
+const isLoadingLessons = ref(false)
 const planToDelete = ref(null)
+const selectedCourse = ref(null)
+const selectedManifest = ref(null)
+const lessonsError = ref('')
 const workspaceId = computed(() => workspaceStore.activeWorkspaceId.value || '')
 const calendars = calendarCollectionStore.activeCollections
 const isConnected = computed(() => integration.value?.connected === true)
+const coursesSettingsUrl = computed(() => {
+  const baseUrl = String(import.meta.env.VITE_COURSES_APP_URL || '').trim().replace(/\/+$/, '')
+  return baseUrl ? `${baseUrl}/app/settings` : ''
+})
 
 onMounted(load)
 
@@ -334,6 +369,32 @@ async function openWizard() {
   isWizardOpen.value = true
 }
 
+async function openCourseLessons(course) {
+  selectedCourse.value = course
+  selectedManifest.value = null
+  lessonsError.value = ''
+  isLessonsModalOpen.value = true
+  await loadSelectedManifest()
+}
+
+async function loadSelectedManifest(force = false) {
+  if (!selectedCourse.value || isLoadingLessons.value) return
+  isLoadingLessons.value = true
+  lessonsError.value = ''
+  try {
+    selectedManifest.value = await coursesIntegrationApi.getManifest(
+      workspaceId.value,
+      selectedCourse.value.id,
+      selectedCourse.value.releaseId,
+      { force },
+    )
+  } catch (error) {
+    lessonsError.value = error.message || 'Не удалось загрузить уроки курса'
+  } finally {
+    isLoadingLessons.value = false
+  }
+}
+
 async function handleCreated(result) {
   await Promise.all([
     loadPlans(),
@@ -359,4 +420,17 @@ function formatDate(value) {
 
 <style scoped>
 .courses-page{display:grid;gap:14px;width:min(100%,1020px);margin:0 auto}.courses-hero,.courses-connect,.courses-plans,.courses-summary article,.courses-state{border:1px solid var(--border-color);border-radius:18px;background:var(--panel-bg);box-shadow:var(--shadow-sm)}.courses-hero{display:grid;gap:22px;padding:20px 22px;background:radial-gradient(circle at 92% 0,color-mix(in srgb,#8b5cf6 18%,transparent),transparent 260px),var(--panel-bg)}.courses-hero>a{display:flex;align-items:center;gap:5px;width:max-content;color:var(--text-secondary);text-decoration:none}.courses-hero>div{display:flex;align-items:center;gap:15px}.courses-hero__mark,.courses-connect__copy>span{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;color:#fff;background:linear-gradient(145deg,#8b5cf6,#4f46e5);font-size:22px}.courses-hero small,.courses-plans header small{color:#a78bfa;font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}.courses-hero h1,.courses-plans h2,.courses-connect h2{margin:3px 0}.courses-hero p,.courses-connect p{margin:0;color:var(--text-secondary)}.courses-state{display:flex;justify-content:center;align-items:center;gap:9px;min-height:160px;color:var(--text-secondary)}.courses-connect{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:14px;padding:20px}.courses-connect__copy{grid-column:1/-1;display:flex;align-items:center;gap:13px}.courses-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.courses-summary article{display:flex;align-items:center;gap:10px;padding:13px}.courses-summary article>span{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;color:#a78bfa;background:color-mix(in srgb,#8b5cf6 14%,transparent)}.courses-summary small,.courses-summary strong{display:block}.courses-summary small{color:var(--text-muted);font-size:9px;text-transform:uppercase}.courses-summary strong{margin-top:2px}.courses-plans{display:grid;gap:14px;padding:16px}.courses-plans>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.courses-plans__list{display:grid;gap:8px}.courses-plans__list article{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:11px;border:1px solid var(--border-color);border-radius:13px;padding:10px;background:var(--card-bg)}.courses-plans__cover{display:grid;place-items:center;width:44px;height:44px;overflow:hidden;border-radius:11px;color:white;background:linear-gradient(145deg,var(--course-color),color-mix(in srgb,var(--course-color) 40%,#111827))}.courses-plans__cover img{width:100%;height:100%;object-fit:cover}.courses-plans__list strong,.courses-plans__list small{display:block}.courses-plans__list small{margin-top:3px;color:var(--text-muted)}.courses-plans__actions{display:flex;align-items:center;gap:7px}.courses-plans__actions b{border-radius:99px;padding:5px 8px;color:#34d399;background:color-mix(in srgb,#34d399 10%,transparent);font-size:9px;text-transform:uppercase}.courses-plans__empty{display:grid;justify-items:center;gap:6px;padding:34px;color:var(--text-secondary);text-align:center}.courses-plans__empty>span{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;color:#a78bfa;background:color-mix(in srgb,#8b5cf6 12%,transparent);font-size:20px}.courses-plans__empty p{margin:0;color:var(--text-muted)}.courses-footer{display:flex;justify-content:space-between}.courses-error{margin:0;border-radius:11px;padding:11px;color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}.courses-confirm{display:grid;justify-items:center;gap:14px;text-align:center}.courses-confirm__icon{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;color:var(--danger);background:color-mix(in srgb,var(--danger) 11%,var(--control-bg));font-size:22px}.courses-confirm p{margin:6px 0 0;color:var(--text-secondary);line-height:1.55}.courses-confirm footer{display:flex;justify-content:center;gap:8px;width:100%;border-top:1px solid var(--border-color);padding-top:14px}.courses-disconnect{display:grid;gap:9px}.courses-disconnect__intro{display:flex;align-items:center;gap:10px;margin-bottom:3px}.courses-disconnect__intro>span{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;color:#a78bfa;background:color-mix(in srgb,#8b5cf6 12%,transparent)}.courses-disconnect__intro p{margin:0;color:var(--text-secondary)}.courses-disconnect>button:not(.ui-button){display:grid;grid-template-columns:40px minmax(0,1fr) 18px;align-items:center;gap:11px;width:100%;border:1px solid var(--border-color);border-radius:14px;padding:12px;color:var(--text-primary);background:var(--card-bg);text-align:left}.courses-disconnect>button:not(.ui-button):hover{border-color:var(--border-strong);background:var(--control-bg)}.courses-disconnect>button:not(.ui-button)>span{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;color:#a78bfa;background:color-mix(in srgb,#8b5cf6 10%,transparent)}.courses-disconnect>button.danger>span{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}.courses-disconnect>button strong,.courses-disconnect>button small{display:block}.courses-disconnect>button small{margin-top:3px;color:var(--text-muted);line-height:1.4}@media(max-width:640px){.courses-summary{grid-template-columns:1fr}.courses-connect{grid-template-columns:1fr}.courses-plans>header{align-items:flex-start;flex-direction:column}.courses-plans__list article{grid-template-columns:44px minmax(0,1fr)}.courses-plans__actions{grid-column:1/-1;justify-content:space-between}.courses-footer{gap:8px}}
+.courses-hero{position:relative;grid-template-columns:minmax(0,1fr) minmax(280px,420px);align-items:stretch;gap:20px;overflow:hidden;padding:22px 24px;background:radial-gradient(circle at 88% 18%,color-mix(in srgb,#34d399 17%,transparent),transparent 270px),var(--panel-bg)}
+.courses-hero__mesh{position:absolute;inset:-90px -60px auto auto;width:320px;height:320px;border-radius:90px;background:linear-gradient(135deg,color-mix(in srgb,#34d399 32%,transparent),color-mix(in srgb,#8b5cf6 24%,transparent));filter:blur(38px);transform:rotate(12deg);pointer-events:none}
+.courses-hero>.courses-hero__copy{position:relative;z-index:1;display:grid;align-content:start;gap:18px}
+.courses-hero__copy>a{display:flex;align-items:center;gap:5px;width:max-content;color:var(--text-muted);font-size:10px;text-decoration:none}
+.courses-hero__title{display:flex;align-items:center;gap:13px}
+.courses-hero__mark{overflow:hidden;border:1px solid color-mix(in srgb,#34d399 30%,var(--border-color));background:#062518}
+.courses-hero__mark img{width:100%;height:100%;object-fit:cover}
+.courses-hero h1{font-size:clamp(28px,4vw,42px);line-height:1}
+.courses-hero__copy>p{max-width:510px;line-height:1.55}
+.courses-hero__cover{position:relative;z-index:1;align-self:stretch;min-height:210px;margin:0;overflow:hidden;border:1px solid color-mix(in srgb,#34d399 24%,var(--border-color));border-radius:20px;background:var(--control-bg);box-shadow:var(--shadow-md)}
+.courses-hero__cover img{width:100%;height:100%;object-fit:cover;object-position:center}
+@media(max-width:900px){.courses-hero{grid-template-columns:1fr}.courses-hero__cover{max-width:560px}}
+@media(max-width:640px){.courses-hero{padding:18px}.courses-hero__title{align-items:flex-start}.courses-hero__cover{min-height:170px}}
 </style>
