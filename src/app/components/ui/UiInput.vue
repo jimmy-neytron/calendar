@@ -22,6 +22,10 @@
       :type="type"
       :placeholder="placeholder"
       :disabled="disabled"
+      :min="min"
+      :max="max"
+      :step="step"
+      :inputmode="inputmode"
       @input="$emit('update:modelValue', $event.target.value)"
       @focus="$emit('focus', $event)"
       @blur="$emit('blur', $event)"
@@ -43,6 +47,10 @@ defineProps({
   error: { type: String, default: '' },
   required: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  min: { type: [String, Number], default: undefined },
+  max: { type: [String, Number], default: undefined },
+  step: { type: [String, Number], default: undefined },
+  inputmode: { type: String, default: undefined },
 })
 
 defineEmits(['update:modelValue', 'focus', 'blur', 'keydown'])

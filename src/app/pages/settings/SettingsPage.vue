@@ -466,6 +466,8 @@ async function toggleBudget(enabled) {
     discardSyncOperations('budget_categories')
     discardSyncOperations('budget_recurring_rules')
     discardSyncOperations('budget_payments')
+    discardSyncOperations('budget_settings')
+    discardSyncOperations('budget_category_templates')
 
     if (router.currentRoute.value.name === 'budget') {
       await router.replace({ name: 'settings' })

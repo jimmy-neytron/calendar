@@ -29,6 +29,16 @@ const paymentRepository = new SyncedCollectionRepository(
   [],
   'budget_payments'
 )
+const settingsRepository = new SyncedCollectionRepository(
+  `${APP_CONFIG.storageKey}:budget-settings`,
+  [],
+  'budget_settings'
+)
+const categoryTemplateRepository = new SyncedCollectionRepository(
+  `${APP_CONFIG.storageKey}:budget-category-templates`,
+  [],
+  'budget_category_templates'
+)
 const { state: selectedMonth } = useLocalStorage(
   `${APP_CONFIG.storageKey}:budget-selected-month`,
   getCurrentMonth()
@@ -56,11 +66,18 @@ const payments = computed(() => {
   if (!monthId) return []
   return workspacePayments.value
     .filter((item) => item.budgetMonthId === monthId)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
 })
 const recurringRules = computed(() => ruleRepository.items.value
   .filter((item) => item.workspaceId === workspaceStore.activeWorkspaceId.value)
   .sort((a, b) => Number(a.dueDay) - Number(b.dueDay)))
+const budgetSettings = computed(() => settingsRepository.items.value.find((item) => (
+  item.workspaceId === workspaceStore.activeWorkspaceId.value
+)) || null)
+const categoryTemplates = computed(() => categoryTemplateRepository.items.value
+  .filter((item) => item.workspaceId === workspaceStore.activeWorkspaceId.value && item.active !== false)
+  .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)))
+const isSetupComplete = computed(() => Boolean(budgetSettings.value?.setupCompleted))
 
 const currentBudget = computed(() => ({
   id: currentMonthRecord.value?.id || '',
@@ -72,6 +89,10 @@ const currentBudget = computed(() => ({
     id: category.id,
     name: category.name,
     amount: toAmount(category.plannedAmount),
+    actualAmount: category.actualAmount === null || category.actualAmount === undefined
+      ? null
+      : toAmount(category.actualAmount),
+    templateId: category.templateId || null,
     color: category.color,
     payments: payments.value
       .filter((payment) => payment.categoryId === category.id)
@@ -89,6 +110,11 @@ const allocatedPercent = computed(() => currentBudget.value.income
 const requiredPaymentsTotal = computed(() => payments.value
   .filter((payment) => payment.recurringRuleId)
   .reduce((total, payment) => total + toAmount(payment.plannedAmount), 0))
+const actualTotal = computed(() => categories.value
+  .reduce((total, category) => total + toAmount(category.actualAmount), 0))
+const hasActuals = computed(() => categories.value.some((category) => (
+  category.actualAmount !== null && category.actualAmount !== undefined
+)))
 
 function setSelectedMonth(month) {
   if (/^\d{4}-\d{2}$/.test(String(month || ''))) selectedMonth.value = month
@@ -108,6 +134,109 @@ async function updateSettings(updates) {
   })
 }
 
+async function saveGlobalSetup(data) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
+  const workspaceId = workspaceStore.activeWorkspaceId.value
+  if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
+
+  const income = toAmount(data.defaultIncome)
+  const rules = Array.isArray(data.rules) ? data.rules : []
+  const templates = Array.isArray(data.categories) ? data.categories : []
+  const now = new Date().toISOString()
+  const wasSetupComplete = isSetupComplete.value
+
+  const duplicateRule = findDuplicateName(rules)
+  if (duplicateRule) return { ok: false, message: `Обязательный расход «${duplicateRule}» указан дважды` }
+  const duplicateCategory = findDuplicateName(templates)
+  if (duplicateCategory) return { ok: false, message: `Категория «${duplicateCategory}» указана дважды` }
+
+  const settings = budgetSettings.value
+  const settingsPayload = {
+    id: settings?.id || generateId(),
+    workspaceId,
+    defaultIncome: income,
+    currency: 'RUB',
+    setupCompleted: true,
+    createdAt: settings?.createdAt || now,
+    updatedAt: now,
+  }
+  const settingsResult = settings
+    ? await settingsRepository.updateAndWait(settings.id, settingsPayload)
+    : await settingsRepository.createAndWait(settingsPayload)
+  if (!settingsResult.ok) return settingsResult
+
+  const templateResult = await reconcileCategoryTemplates(templates, workspaceId, now)
+  if (!templateResult.ok) return templateResult
+  const rulesResult = await reconcileRecurringRules(rules, workspaceId, now)
+  if (!rulesResult.ok) return rulesResult
+
+  const monthResult = await ensureSelectedMonthFromTemplate({ overwriteDefaults: !wasSetupComplete })
+  if (!monthResult.ok) return monthResult
+  return { ok: true, month: monthResult.month }
+}
+
+async function saveMonthPlan(data) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
+  const monthResult = await ensureSelectedMonthFromTemplate()
+  if (!monthResult.ok) return monthResult
+
+  const incomeResult = await updateSettings({ income: data.income, status: 'active' })
+  if (!incomeResult.ok) return incomeResult
+
+  const requestedCategories = Array.isArray(data.categories) ? data.categories : []
+  const flexibleCategories = currentBudget.value.categories.filter((category) => (
+    !category.payments?.some((payment) => payment.recurringRuleId)
+  ))
+  const requestedIds = new Set(requestedCategories.map((category) => category.id).filter(Boolean))
+
+  for (const category of flexibleCategories) {
+    if (requestedIds.has(category.id)) continue
+    const result = await removeCategory(category.id)
+    if (!result.ok) return result
+  }
+
+  for (const [index, item] of requestedCategories.entries()) {
+    const name = String(item.name || '').trim()
+    if (!name) return { ok: false, message: 'Укажи название категории' }
+    if (item.id && categoryRepository.findById(item.id)) {
+      const existing = categoryRepository.findById(item.id)
+      const result = await categoryRepository.updateAndWait(item.id, {
+        ...existing,
+        name,
+        plannedAmount: toAmount(item.amount),
+        sortOrder: index,
+        updatedAt: new Date().toISOString(),
+      })
+      if (!result.ok) return result
+      continue
+    }
+    const result = await addCategory(name, item.amount, {
+      color: item.color,
+      templateId: item.templateId,
+    })
+    if (!result.ok) return result
+  }
+
+  return { ok: true }
+}
+
+async function saveActuals(entries) {
+  if (!readBudgetSetting()) return disabledBudgetResult()
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const category = categoryRepository.findById(entry.id)
+    if (!category || category.budgetMonthId !== currentMonthRecord.value?.id) continue
+    const result = await categoryRepository.updateAndWait(category.id, {
+      ...category,
+      actualAmount: entry.actualAmount === '' || entry.actualAmount === null
+        ? null
+        : toAmount(entry.actualAmount),
+      updatedAt: new Date().toISOString(),
+    })
+    if (!result.ok) return result
+  }
+  return { ok: true }
+}
+
 async function addCategory(name, amount = 0, options = {}) {
   if (!readBudgetSetting()) return disabledBudgetResult()
   const title = String(name || '').trim()
@@ -125,6 +254,8 @@ async function addCategory(name, amount = 0, options = {}) {
     budgetMonthId: month.item.id,
     name: title,
     plannedAmount: toAmount(amount),
+    actualAmount: null,
+    templateId: options.templateId || null,
     color: options.color || '#60a5fa',
     sortOrder: categories.value.length,
     createdAt: now,
@@ -142,6 +273,11 @@ function updateCategory(id, updates) {
     ...category,
     name: updates.name === undefined ? category.name : String(updates.name).trim(),
     plannedAmount: updates.amount === undefined ? category.plannedAmount : toAmount(updates.amount),
+    actualAmount: updates.actualAmount === undefined
+      ? category.actualAmount
+      : updates.actualAmount === null || updates.actualAmount === ''
+        ? null
+        : toAmount(updates.actualAmount),
     updatedAt: new Date().toISOString(),
   })
 }
@@ -552,15 +688,133 @@ async function loadWorkspace(workspaceId) {
     categoryRepository.loadWorkspace(workspaceId),
     ruleRepository.loadWorkspace(workspaceId),
     paymentRepository.loadWorkspace(workspaceId),
+    settingsRepository.loadWorkspace(workspaceId),
+    categoryTemplateRepository.loadWorkspace(workspaceId),
   ])
   if (results.some((result) => result === null)) return null
   await migrateLegacyBudget(workspaceId)
   await cleanupDraftAutoPayments()
+  if (isSetupComplete.value) {
+    const monthResult = await ensureSelectedMonthFromTemplate()
+    if (!monthResult.ok) return null
+  }
   await syncCalendarLinks()
   await Promise.all(calendarStore.events.value
     .filter((event) => event.linkedEntityType === LINKED_ENTITY_TYPES.BUDGET_PAYMENT || findPaymentByCalendarEvent(event))
     .map((event) => syncPaymentFromCalendar(event)))
   return results
+}
+
+async function reconcileCategoryTemplates(items, workspaceId, now) {
+  const existingTemplates = categoryTemplateRepository.items.value
+    .filter((item) => item.workspaceId === workspaceId)
+  const retainedIds = new Set(items.map((item) => item.id).filter(Boolean))
+
+  for (const existing of existingTemplates) {
+    if (retainedIds.has(existing.id)) continue
+    const result = await categoryTemplateRepository.updateAndWait(existing.id, {
+      ...existing,
+      active: false,
+      updatedAt: now,
+    })
+    if (!result.ok) return result
+  }
+
+  for (const [index, item] of items.entries()) {
+    const name = String(item.name || '').trim()
+    if (!name) return { ok: false, message: 'Укажи название категории' }
+    const existing = item.id
+      ? categoryTemplateRepository.findById(item.id)
+      : existingTemplates.find((template) => template.name.toLowerCase() === name.toLowerCase())
+    const payload = {
+      id: existing?.id || generateId(),
+      workspaceId,
+      name,
+      defaultAmount: toAmount(item.defaultAmount ?? item.amount),
+      color: item.color || existing?.color || categoryColor(index),
+      sortOrder: index,
+      active: true,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    }
+    const result = existing
+      ? await categoryTemplateRepository.updateAndWait(existing.id, payload)
+      : await categoryTemplateRepository.createAndWait(payload)
+    if (!result.ok) return result
+  }
+  return { ok: true }
+}
+
+async function reconcileRecurringRules(items, workspaceId, now) {
+  const existingRules = recurringRules.value
+  const retainedIds = new Set(items.map((item) => item.id).filter(Boolean))
+
+  for (const existing of existingRules) {
+    if (retainedIds.has(existing.id)) continue
+    const result = await ruleRepository.updateAndWait(existing.id, {
+      ...existing,
+      active: false,
+      updatedAt: now,
+    })
+    if (!result.ok) return result
+  }
+
+  for (const item of items) {
+    const title = String(item.title || '').trim()
+    if (!title) return { ok: false, message: 'Укажи название обязательного расхода' }
+    const existing = item.id
+      ? ruleRepository.findById(item.id)
+      : existingRules.find((rule) => rule.title.toLowerCase() === title.toLowerCase())
+    const payload = {
+      id: existing?.id || generateId(),
+      workspaceId,
+      title,
+      categoryName: String(item.categoryName || 'Обязательные расходы').trim(),
+      defaultAmount: toAmount(item.defaultAmount ?? item.amount),
+      dueDay: Math.max(1, Math.min(31, Number(item.dueDay || 1))),
+      reminder: normalizeReminder(item.reminder || '1d'),
+      calendarEnabled: item.calendarEnabled !== false,
+      active: true,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    }
+    const result = existing
+      ? await ruleRepository.updateAndWait(existing.id, payload)
+      : await ruleRepository.createAndWait(payload)
+    if (!result.ok) return result
+  }
+  return { ok: true }
+}
+
+async function ensureSelectedMonthFromTemplate({ overwriteDefaults = false } = {}) {
+  if (!isSetupComplete.value) return { ok: false, message: 'Сначала настрой бюджет' }
+  const monthResult = await ensureCurrentMonth()
+  if (!monthResult.ok) return monthResult
+
+  const month = monthResult.item
+  const shouldApplyDefaults = overwriteDefaults || month.status === 'draft'
+  const income = shouldApplyDefaults ? budgetSettings.value.defaultIncome : month.plannedIncome
+  const settingsResult = await updateSettings({ income, status: 'active' })
+  if (!settingsResult.ok) return settingsResult
+
+  if (shouldApplyDefaults) {
+    for (const template of categoryTemplates.value) {
+      const existing = categories.value.find((category) => (
+        category.templateId === template.id
+        || (!category.templateId && category.name.toLowerCase() === template.name.toLowerCase())
+      ))
+      if (existing) continue
+      const result = await addCategory(template.name, template.defaultAmount, {
+        color: template.color,
+        templateId: template.id,
+      })
+      if (!result.ok) return result
+    }
+  }
+
+  const prepared = await prepareMonth({ income, includeRules: true })
+  if (!prepared.ok) return prepared
+  return { ok: true, month: monthResult.item, payments: prepared.payments }
 }
 
 async function cleanupDraftAutoPayments() {
@@ -822,7 +1076,7 @@ function toPaymentView(payment) {
   return {
     ...payment,
     amount: toAmount(payment.plannedAmount),
-    date: payment.dueDate,
+    date: normalizeDateKey(payment.dueDate),
     paid: payment.status === 'paid',
   }
 }
@@ -835,6 +1089,17 @@ function getDueDate(month, dueDay) {
 
 function normalizeReminder(value) {
   return ['none', '1h', '1d'].includes(value) ? value : '1d'
+}
+
+function normalizeDateKey(value) {
+  const dateKey = String(value || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return ''
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  const isValid = date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+  return isValid ? dateKey : ''
 }
 
 function toMonthKey(value) {
@@ -856,6 +1121,21 @@ function toAmount(value) {
   return Number.isFinite(amount) ? Math.max(0, Math.round(amount * 100) / 100) : 0
 }
 
+function findDuplicateName(items) {
+  const names = new Set()
+  for (const item of items) {
+    const name = String(item.name || item.title || '').trim().toLowerCase()
+    if (!name) continue
+    if (names.has(name)) return String(item.name || item.title).trim()
+    names.add(name)
+  }
+  return ''
+}
+
+function categoryColor(index) {
+  return ['#60a5fa', '#34d399', '#f59e0b', '#a78bfa', '#fb7185', '#22d3ee'][index % 6]
+}
+
 function formatAmount(value) {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
@@ -871,14 +1151,23 @@ function disabledBudgetResult() {
 export const budgetStore = {
   selectedMonth,
   currentBudget,
+  budgetSettings,
+  categoryTemplates,
+  isSetupComplete,
   recurringRules,
   payments,
   plannedTotal,
   requiredPaymentsTotal,
   remainingAmount,
   allocatedPercent,
+  actualTotal,
+  hasActuals,
   setSelectedMonth,
   updateSettings,
+  saveGlobalSetup,
+  saveMonthPlan,
+  saveActuals,
+  ensureSelectedMonthFromTemplate,
   addCategory,
   updateCategory,
   removeCategory,

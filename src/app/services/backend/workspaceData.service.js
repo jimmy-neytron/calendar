@@ -8,6 +8,7 @@ import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
+import { budgetStore } from '../../stores/budget.store.js'
 import { loadWorkspaceFeatures } from '../../composables/preferences/useBudgetSettings.js'
 import { queryClient } from '../../query/queryClient.js'
 import { queryKeys } from '../../query/queryKeys.js'
@@ -60,9 +61,17 @@ async function fetchWorkspaceData(workspaceId) {
     timeTrackingStore.loadWorkspace(workspaceId),
   ])
 
-  return results.some((result) => result === null)
+  budgetStore.setSelectedMonth(getCurrentMonth())
+  const budgetResult = await budgetStore.loadWorkspace(workspaceId)
+
+  return results.some((result) => result === null) || budgetResult === null
     ? { ok: false, message: 'Часть данных не загрузилась из Supabase' }
     : { ok: true }
+}
+
+function getCurrentMonth() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
 /**

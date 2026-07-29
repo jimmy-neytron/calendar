@@ -31,6 +31,12 @@ const props = defineProps({
 
 defineEmits(['click'])
 const iconName = computed(() => ({
+  'plus': 'plus',
+  'left': 'left',
+  'right': 'right',
+  'settings': 'settings',
+  'chart': 'chart',
+  'wallet': 'wallet',
   '＋': 'plus',
   '+': 'plus',
   '→': 'right',
@@ -46,6 +52,7 @@ const iconName = computed(() => ({
   'sparkles': 'sparkles',
   'trash': 'trash',
   'edit': 'edit',
+  'check': 'check',
   'link': 'link',
   'copy': 'copy',
   'close': 'close',
