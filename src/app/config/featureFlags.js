@@ -11,5 +11,6 @@ export function isSyncTableEnabled(table) {
   if (table === 'movie_watchlist') return readExtraSectionsSetting() && readSubscriptionFeature('movies')
   if (table === 'purchase_wishlist') return readExtraSectionsSetting() && readSubscriptionFeature('purchases')
   if (table === 'personal_parameters') return readExtraSectionsSetting() && readSubscriptionFeature('extraSections')
+  if (table === 'wardrobe_items' || table === 'wardrobe_looks') return readExtraSectionsSetting() && readSubscriptionFeature('extraSections')
   return true
 }

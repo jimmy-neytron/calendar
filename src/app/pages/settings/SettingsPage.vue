@@ -236,7 +236,7 @@
           <label class="setting-switch">
             <span>
               <strong>Дополнительные разделы</strong>
-              <small>Покупки, мои параметры, фильмы, семейное дерево, спорт и учёт времени. Когда выключено, разделы и связанные с ними события скрыты.</small>
+              <small>Покупки, шкаф, мои параметры, фильмы, семейное дерево, спорт и учёт времени. Когда выключено, разделы и связанные с ними события скрыты.</small>
             </span>
             <UiToggle
               :model-value="extraSectionsEnabled"
@@ -347,6 +347,7 @@ import { sportStore } from '../../stores/sport.store.js'
 import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { personalParametersStore } from '../../stores/personalParameters.store'
+import { wardrobeStore } from '../../stores/wardrobe.store'
 import { discardSyncOperations } from '../../repositories/SyncedCollectionRepository.js'
 import { useReleaseNotesQuery } from '../../composables/releases/useReleaseNotesQuery.js'
 
@@ -463,6 +464,7 @@ async function toggleExtraSections(enabled) {
       movieWatchlistStore.loadWorkspace(workspaceId),
       timeTrackingStore.loadWorkspace(workspaceId),
       personalParametersStore.loadWorkspace(workspaceId),
+      wardrobeStore.loadWorkspace(workspaceId),
     ])
   }
 

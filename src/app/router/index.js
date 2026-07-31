@@ -24,13 +24,14 @@ const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
 const PurchasesPage = () => import('../modules/purchases/pages/PurchasesPage.vue')
 const PersonalParametersPage = () => import('../modules/personal-parameters/pages/PersonalParametersPage.vue')
+const WardrobePage = () => import('../modules/wardrobe/pages/WardrobePage.vue')
 const DayDisplayPage = () => import('../pages/display/DayDisplayPage.vue')
 const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.vue')
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, DayDisplayPage, TimeTrackingPage,
+  IdeasPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, WardrobePage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
 let pagesPreloaded = false
@@ -65,6 +66,7 @@ export const routes = [
   { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresExtraSections: true, requiresSubscriptionFeature: 'movies' } },
   { path: '/purchases', name: 'purchases', component: PurchasesPage, meta: { title: 'Покупки', requiresExtraSections: true, requiresSubscriptionFeature: 'purchases' } },
   { path: '/parameters', name: 'personal-parameters', component: PersonalParametersPage, meta: { title: 'Мои параметры', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
+  { path: '/wardrobe', name: 'wardrobe', component: WardrobePage, meta: { title: 'Шкаф', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/ideas' },

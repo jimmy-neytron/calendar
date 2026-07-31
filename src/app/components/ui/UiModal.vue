@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <transition name="fade">
-      <div v-if="modelValue" class="ui-modal" :class="overlayClass" @mousedown.self="handleOverlayClick">
+      <div v-if="modelValue" class="ui-modal" :class="[overlayClass, { 'ui-modal--fullscreen': fullscreen }]" @mousedown.self="handleOverlayClick">
         <transition name="modal" appear>
           <section
             class="ui-modal__dialog"
@@ -40,6 +40,7 @@ const props = defineProps({
   closeOnEscape: { type: Boolean, default: true },
   hideClose: { type: Boolean, default: false },
   width: { type: String, default: '560px' },
+  fullscreen: { type: Boolean, default: false },
   overlayClass: { type: [String, Array, Object], default: '' },
   dialogClass: { type: [String, Array, Object], default: '' },
 })
@@ -118,6 +119,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   overflow: auto;
 }
 
+.ui-modal--fullscreen { padding: 0; }
+.ui-modal--fullscreen .ui-modal__dialog {
+  width: 100%;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
+.ui-modal--fullscreen .ui-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (min-width: 600px) and (max-width: 1180px), (min-width: 600px) and (max-height: 900px) {
   .ui-modal { padding: 8px; }
   .ui-modal__dialog { max-height: calc(100dvh - 16px); border-radius: var(--radius-lg); }
@@ -125,5 +140,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   .ui-modal__header h2 { font-size: 16px; }
   .ui-modal__eyebrow { margin-bottom: 1px; font-size: 8px; }
   .ui-modal__body { padding: 11px 12px; }
+}
+
+@media (max-width: 720px) {
+  .ui-modal--fullscreen .ui-modal__body { overflow: auto; }
 }
 </style>

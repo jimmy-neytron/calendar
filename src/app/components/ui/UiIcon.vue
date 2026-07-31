@@ -44,6 +44,8 @@ const icons = {
   wallet: { paths: ['M4 6h14a2 2 0 012 2v11H4a2 2 0 01-2-2V6a2 2 0 012-2h12', 'M15 11h5v4h-5a2 2 0 010-4z'] },
   shopping: { paths: ['M5 8h14l-1 12H6L5 8z', 'M9 10V6a3 3 0 016 0v4'] },
   ruler: { paths: ['M5 3h14v18H5z', 'M9 6H5', 'M12 9H5', 'M9 12H5', 'M12 15H5', 'M9 18H5'] },
+  hanger: { paths: ['M12 7a2.5 2.5 0 10-2.5-2.5', 'M12 7v2', 'M12 9L3 17v2h18v-2l-9-8z'] },
+  camera: { paths: ['M4 7h4l2-3h4l2 3h4v12H4z'], circles: [{ cx: 12, cy: 13, r: 4 }] },
   home: { paths: ['M3 11l9-8 9 8', 'M5 10v10h14V10', 'M9 20v-6h6v6'] },
   users: { paths: ['M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2', 'M9 11a4 4 0 100-8 4 4 0 000 8z', 'M22 21v-2a4 4 0 00-3-3.87', 'M16 3.13a4 4 0 010 7.75'] },
   settings: { paths: ['M4 7h6', 'M14 7h6', 'M4 17h10', 'M18 17h2', 'M10 4v6', 'M14 14v6'] },

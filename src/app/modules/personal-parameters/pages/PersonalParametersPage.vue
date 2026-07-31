@@ -5,12 +5,8 @@
         <span>Личная памятка</span>
         <h1>Мои параметры</h1>
         <p>Размеры, модели и характеристики, которые удобно иметь под рукой.</p>
-        <UiButton icon="plus" @click="openCreateModal">Новая карточка</UiButton>
       </div>
-
-      <div class="parameters-hero__art" aria-hidden="true">
-        <img src="/images/parameters/parameters-hero-v1.webp" alt="" loading="eager">
-      </div>
+      <div class="parameters-hero__actions"><UiButton icon="plus" @click="openCreateModal">Новая карточка</UiButton></div>
     </header>
 
     <section class="parameters-summary" aria-label="Сводка">
@@ -398,4 +394,8 @@ function normalizeSearch(value: string) {
 .parameters-hero__art::after{position:absolute;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--panel-bg) 92%,transparent),transparent 32%),linear-gradient(0deg,color-mix(in srgb,var(--panel-bg) 28%,transparent),transparent 45%);content:"";pointer-events:none}
 .parameters-hero__art img{display:block;width:100%;height:100%;object-fit:cover;object-position:58% center;transform:scale(1.02)}
 @media(max-width:720px){.parameters-hero__art{display:block;height:132px;margin-top:2px}.parameters-hero__art::after{background:linear-gradient(90deg,color-mix(in srgb,var(--panel-bg) 55%,transparent),transparent 34%)}.parameters-hero__art img{object-position:62% center}}
+.parameters-hero{position:relative;display:grid;grid-template-columns:1fr;min-height:158px;overflow:hidden;padding:24px 22px;background:linear-gradient(115deg,color-mix(in srgb,var(--card-solid) 96%,#000),color-mix(in srgb,var(--success) 7%,var(--panel-bg)))}.parameters-hero::before{position:absolute;right:-70px;top:-150px;width:430px;height:430px;border:1px solid color-mix(in srgb,var(--success) 14%,transparent);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--success) 11%,transparent),transparent 68%);content:''}.parameters-hero::after{position:absolute;inset:0 0 0 48%;background-image:linear-gradient(120deg,transparent 48%,color-mix(in srgb,var(--success) 6%,transparent) 49%,transparent 50%),linear-gradient(60deg,transparent 48%,color-mix(in srgb,var(--success) 4%,transparent) 49%,transparent 50%);background-size:58px 58px;content:'';opacity:.45;mask-image:linear-gradient(90deg,transparent,#000)}.parameters-hero__copy{position:relative;z-index:2}.parameters-hero h1{font-size:clamp(25px,3vw,34px);letter-spacing:-.035em}.parameters-hero p{margin-bottom:14px}.parameters-hero__copy::after{display:block;width:42px;height:2px;margin-top:15px;border-radius:999px;background:linear-gradient(90deg,var(--success),transparent);content:''}
+@media(max-width:720px){.parameters-hero{min-height:0;padding:15px}}
+.parameters-hero{grid-template-columns:minmax(0,1fr) auto}.parameters-hero::before{right:-160px;top:-210px;width:390px;height:390px;opacity:.55}.parameters-hero::after{inset:0 0 0 58%;opacity:.28}.parameters-hero__actions{position:relative;z-index:2;display:flex;padding:6px;border:1px solid color-mix(in srgb,var(--success) 10%,var(--border-color));border-radius:999px;background:color-mix(in srgb,var(--panel-bg) 70%,transparent);box-shadow:0 18px 50px rgba(0,0,0,.18);backdrop-filter:blur(12px)}
+@media(max-width:720px){.parameters-hero{grid-template-columns:1fr}.parameters-hero__actions{display:grid;border-radius:16px}.parameters-hero__actions :deep(.ui-button){width:100%}}
 </style>

@@ -69,6 +69,7 @@ const groups = [
       { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie', feature: 'movies' },
       { name: 'purchases', label: 'Покупки', description: 'Вещи, техника и желания', icon: 'shopping', feature: 'purchases' },
       { name: 'personal-parameters', label: 'Мои параметры', description: 'Размеры, модели и характеристики', icon: 'ruler', feature: 'extraSections' },
+      { name: 'wardrobe', label: 'Шкаф', description: 'Вещи и готовые образы', icon: 'hanger', feature: 'extraSections' },
     ],
   },
   {

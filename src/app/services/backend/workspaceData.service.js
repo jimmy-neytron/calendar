@@ -7,6 +7,7 @@ import { notificationStore } from '../../stores/notification.store.js'
 import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { purchaseWishlistStore } from '../../stores/purchaseWishlist.store'
 import { personalParametersStore } from '../../stores/personalParameters.store'
+import { wardrobeStore } from '../../stores/wardrobe.store'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
@@ -69,6 +70,7 @@ async function fetchWorkspaceData(workspaceId) {
       movieWatchlistStore.loadWorkspace(workspaceId),
       purchaseWishlistStore.loadWorkspace(workspaceId),
       personalParametersStore.loadWorkspace(workspaceId),
+      wardrobeStore.loadWorkspace(workspaceId),
       timeTrackingStore.loadWorkspace(workspaceId),
     ]))
   }
