@@ -10,5 +10,6 @@ export function isSyncTableEnabled(table) {
   if (table === 'sport_exercises' || table === 'sport_completions') return readExtraSectionsSetting() && readSubscriptionFeature('sport')
   if (table === 'movie_watchlist') return readExtraSectionsSetting() && readSubscriptionFeature('movies')
   if (table === 'purchase_wishlist') return readExtraSectionsSetting() && readSubscriptionFeature('purchases')
+  if (table === 'personal_parameters') return readExtraSectionsSetting() && readSubscriptionFeature('extraSections')
   return true
 }
