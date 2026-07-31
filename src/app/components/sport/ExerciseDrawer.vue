@@ -33,6 +33,11 @@
                   <UiInput v-model="form.reps" label="Повторы / время" placeholder="12 повторений" />
                 </div>
                 <UiInput v-model="form.note" type="textarea" label="Комментарий" placeholder="Техника, вес, темп" />
+                <div class="exercise-drawer__grid">
+                  <UiInput v-model="form.muscleGroups" label="Группы мышц" placeholder="кор, пресс" />
+                  <UiInput v-model="form.durationMinutes" type="number" label="Длительность, мин" min="1" max="300" />
+                </div>
+                <UiInput v-model="form.instructions" type="textarea" label="Как выполнять" placeholder="Короткая инструкция — она также придёт в Telegram" />
                 <UiButton icon="＋" @click="submitSingle">Добавить упражнение</UiButton>
               </section>
 
@@ -98,6 +103,9 @@ const form = reactive({
   sets: '',
   reps: '',
   note: '',
+  muscleGroups: '',
+  durationMinutes: '',
+  instructions: '',
 })
 
 watch(() => props.initialWeekday, (weekday) => {
@@ -118,6 +126,9 @@ function submitSingle() {
   form.sets = ''
   form.reps = ''
   form.note = ''
+  form.muscleGroups = ''
+  form.durationMinutes = ''
+  form.instructions = ''
 }
 
 function submitJson() {

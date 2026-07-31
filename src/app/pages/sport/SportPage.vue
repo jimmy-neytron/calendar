@@ -1,593 +1,271 @@
 <template>
   <section class="sport-page panel">
-    <header class="sport-page__header">
+    <header class="sport-header">
       <div>
-        <p>Спорт</p>
-        <h1>Программа упражнений</h1>
-        <span>Твоя личная программа — другие участники пространства её не видят</span>
+        <p>Моя активность</p>
+        <h1>Тренировки</h1>
+        <span>Собери свою неделю один раз — план будет повторяться, пока ты его не изменишь.</span>
       </div>
-      <div class="sport-page__actions">
-        <div class="sport-page__summary">
-          <strong>{{ todayProgress.done }}/{{ todayProgress.total }}</strong>
-          <span>сегодня</span>
-        </div>
-        <UiButton icon="＋" @click="openDrawer">Добавить</UiButton>
+      <div class="sport-header__actions">
+        <UiButton variant="secondary" icon="sparkles" @click="applyBalancedWeek">Сбалансировать неделю</UiButton>
+        <UiButton icon="plus" @click="isLibraryOpen = true">Выбрать тренировку</UiButton>
       </div>
     </header>
 
-    <section class="sport-hero">
-      <RouterLink class="sport-focus-card" :to="{ name: 'sport-focus' }">
-        <span class="sport-focus-card__icon"><UiIcon name="music" /></span>
-        <div class="sport-focus-card__body">
-          <span>Full Focus</span>
-          <strong>Музыка для тренировки</strong>
-          <small>Выбери настроение и включи фокус-радио</small>
-          <div class="sport-focus-card__chips">
-            <b>Hip-Hop</b>
-            <b>Lo-Fi</b>
-            <b>Pop</b>
-          </div>
+    <section class="sport-overview">
+      <article class="sport-score">
+        <div class="sport-score__ring" :style="{ '--progress': `${weekProgress.percent * 3.6}deg` }">
+          <span>{{ weekProgress.percent }}%</span>
         </div>
-        <i><UiIcon name="right" /></i>
-      </RouterLink>
-
-      <article class="sport-hero__card">
-        <span>Прогресс недели</span>
-        <strong>{{ weekProgress.percent }}%</strong>
-        <div class="sport-progress">
-          <i :style="{ width: `${weekProgress.percent}%` }"></i>
-        </div>
-        <small>{{ weekProgress.done }} из {{ weekProgress.total }} упражнений отмечено</small>
-      </article>
-
-      <article class="sport-hero__card sport-hero__card--today">
-        <span>Выбранный день</span>
-        <strong>{{ selectedDayTitle }}</strong>
-        <small>{{ selectedProgress.done }} / {{ selectedProgress.total }} выполнено</small>
-      </article>
-    </section>
-
-    <section class="sport-week">
-      <button
-        v-for="day in weekDays"
-        :key="day.key"
-        class="sport-week__day"
-        :class="{ active: day.key === selectedDateKey, today: day.isToday }"
-        type="button"
-        @click="selectedDateKey = day.key"
-      >
-        <span>{{ day.short }}</span>
-        <b>{{ day.dayNumber }}</b>
-        <small>{{ day.progress.done }}/{{ day.progress.total }}</small>
-      </button>
-    </section>
-
-    <section class="sport-card sport-card--main">
-      <div class="sport-card__head">
         <div>
-          <span>План дня</span>
-          <h2>{{ selectedDayTitle }}</h2>
+          <small>Эта неделя</small>
+          <strong>{{ weekProgress.done }} из {{ weekProgress.total }}</strong>
+          <span>упражнений выполнено</span>
         </div>
-        <div class="sport-card__head-actions">
-          <small>{{ selectedExercises.length }} {{ exerciseWord }}</small>
-          <UiButton size="sm" variant="secondary" icon="＋" @click="openDrawer">Добавить</UiButton>
+      </article>
+
+      <article class="sport-stat">
+        <span><UiIcon name="calendar" /></span>
+        <div><small>Ритм недели</small><strong>{{ weeklyWorkoutCount }} тренировок</strong><p>{{ activeDayCount }} активных дней</p></div>
+      </article>
+
+    </section>
+
+    <WorkoutRadioWidget />
+
+    <section class="balance-card">
+      <header>
+        <div><small>Баланс нагрузки</small><strong>Все основные группы</strong></div>
+        <span :class="{ complete: coveredMuscleCount === MUSCLE_BALANCE_GROUPS.length }">{{ coveredMuscleCount }}/{{ MUSCLE_BALANCE_GROUPS.length }}</span>
+      </header>
+      <div class="balance-card__groups">
+        <div v-for="group in muscleBalance" :key="group.name" :class="{ active: group.count > 0 }">
+          <i :style="{ '--level': `${Math.min(100, group.count * 34)}%` }"></i>
+          <span>{{ group.name }}</span>
+          <b>{{ group.count || '—' }}</b>
         </div>
-      </div>
-
-      <transition-group name="list" tag="div" class="exercise-list">
-        <article
-          v-for="exercise in selectedExercises"
-          :key="exercise.id"
-          class="exercise-row"
-          :class="{ done: isDone(exercise.id) }"
-        >
-          <button class="exercise-row__check" type="button" @click="toggleDone(exercise.id)">
-            <span>{{ isDone(exercise.id) ? '✓' : '' }}</span>
-          </button>
-
-          <div class="exercise-row__body">
-            <strong>{{ exercise.title }}</strong>
-            <p>{{ exercise.sets }} · {{ exercise.reps }}</p>
-            <small v-if="exercise.note">{{ exercise.note }}</small>
-          </div>
-
-              <UiIconButton icon="trash" label="Удалить упражнение" size="sm" variant="danger" @click="removeExercise(exercise.id)" />
-        </article>
-      </transition-group>
-
-      <div v-if="!selectedExercises.length" class="sport-empty">
-        <strong>На этот день пока нет упражнений</strong>
-        <span>Открой боковую панель и добавь одно упражнение или импортируй программу через JSON.</span>
-        <UiButton size="sm" icon="＋" @click="openDrawer">Добавить упражнения</UiButton>
       </div>
     </section>
 
-    <ExerciseDrawer
-      v-model="isDrawerOpen"
-      :initial-weekday="selectedWeekday"
-      @add="addNewExercise"
-      @import-json="importJsonExercises"
-    />
+    <section class="week-plan">
+      <div class="section-title">
+        <div><small>Постоянный шаблон</small><h2>Твоя неделя</h2></div>
+        <UiButton size="sm" variant="secondary" icon="plus" @click="openExerciseDrawer">Своё упражнение</UiButton>
+      </div>
+
+      <div class="week-strip">
+        <button v-for="day in weekDays" :key="day.key" type="button" :class="{ active: day.key === selectedDateKey, today: day.isToday }" @click="selectedDateKey = day.key">
+          <header><span>{{ day.short }}</span><b>{{ day.dayNumber }}</b></header>
+          <div v-if="day.workouts.length" class="week-strip__session">
+            <i :style="{ background: day.workouts[0].color }"></i>
+            <strong>{{ day.workouts[0].name }}</strong>
+            <small>{{ day.progress.done }}/{{ day.progress.total }}</small>
+          </div>
+          <div v-else class="week-strip__rest"><UiIcon name="activity" /><span>Отдых</span></div>
+        </button>
+      </div>
+    </section>
+
+    <section class="day-section">
+      <div class="section-title">
+        <div><small>Выбранный день</small><h2>{{ selectedDayTitle }}</h2></div>
+        <UiButton size="sm" variant="secondary" icon="plus" @click="isLibraryOpen = true">Добавить тренировку</UiButton>
+      </div>
+
+      <div v-if="selectedWorkouts.length" class="workout-stack">
+        <article v-for="workout in selectedWorkouts" :key="workout.id" class="workout-card" :style="{ '--workout-color': workout.color }">
+          <header class="workout-card__head">
+            <span class="workout-card__icon"><UiIcon name="sport" /></span>
+            <div><small>{{ workout.focus.join(' · ') || 'Личная программа' }}</small><h3>{{ workout.name }}</h3></div>
+            <div class="workout-card__progress"><strong>{{ workout.done }}/{{ workout.exercises.length }}</strong><span>{{ workout.duration }} мин</span></div>
+          </header>
+          <div class="workout-card__bar"><i :style="{ width: `${workout.percent}%` }"></i></div>
+          <div class="workout-card__exercises">
+            <article v-for="exercise in workout.exercises" :key="exercise.id" :class="{ done: isDone(exercise.id) }">
+              <button class="exercise-check" type="button" @click="toggleDone(exercise.id)"><UiIcon v-if="isDone(exercise.id)" name="check" /></button>
+              <button class="exercise-info" type="button" @click="openExercise(exercise)">
+                <strong>{{ exercise.title }}</strong>
+                <span>{{ exercise.sets }} · {{ exercise.reps }}</span>
+              </button>
+              <div class="exercise-muscles"><span v-for="group in (exercise.muscleGroups || []).slice(0, 2)" :key="group">{{ group }}</span></div>
+              <UiIconButton icon="edit" label="Изменить" size="sm" @click="openExercise(exercise)" />
+              <UiIconButton icon="trash" label="Удалить" size="sm" variant="danger" @click="removeExercise(exercise.id)" />
+            </article>
+          </div>
+        </article>
+      </div>
+
+      <div v-else class="day-empty">
+        <span><UiIcon name="activity" /></span>
+        <strong>День восстановления</strong>
+        <p>Оставь его свободным или выбери тренировку из библиотеки.</p>
+        <UiButton size="sm" @click="isLibraryOpen = true">Открыть библиотеку</UiButton>
+      </div>
+    </section>
+
+    <WorkoutLibraryModal v-model="isLibraryOpen" :initial-weekday="selectedWeekday" @add="addWorkout" />
+    <ExerciseDrawer v-model="isDrawerOpen" :initial-weekday="selectedWeekday" @add="addNewExercise" @import-json="importJsonExercises" />
+    <ExerciseDetailsModal v-model="isExerciseOpen" :exercise="activeExercise" @save="saveExercise" />
   </section>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import ExerciseDrawer from '../../components/sport/ExerciseDrawer.vue'
+import ExerciseDetailsModal from '../../components/sport/ExerciseDetailsModal.vue'
+import WorkoutLibraryModal from '../../components/sport/WorkoutLibraryModal.vue'
+import WorkoutRadioWidget from '../../components/sport/WorkoutRadioWidget.vue'
 import { sportStore } from '../../stores/sport.store.js'
+import { buildBalancedWeek, MUSCLE_BALANCE_GROUPS } from '../../config/sportWorkoutLibrary.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'
 import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const { notify } = useNotification()
 const selectedDateKey = ref(DateHelper.toKey(new Date()))
+const isLibraryOpen = ref(false)
 const isDrawerOpen = ref(false)
-
-const todayProgress = sportStore.todayProgress
+const isExerciseOpen = ref(false)
+const activeExercise = ref(null)
 const weekProgress = sportStore.weekProgress
 const selectedExercises = computed(() => sportStore.getExercisesForDate(selectedDateKey.value))
-const selectedProgress = computed(() => sportStore.getDayProgress(selectedDateKey.value))
-const selectedWeekday = computed(() => {
-  const date = DateHelper.parseKey(selectedDateKey.value)
-  return Number.isNaN(date.getTime()) ? new Date().getDay() : date.getDay()
-})
-const selectedDayTitle = computed(() => {
-  const date = DateHelper.parseKey(selectedDateKey.value)
-  return new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'short' }).format(date)
-})
-const exerciseWord = computed(() => pluralize(selectedExercises.value.length, ['упражнение', 'упражнения', 'упражнений']))
+const selectedWeekday = computed(() => DateHelper.parseKey(selectedDateKey.value).getDay())
+const selectedDayTitle = computed(() => new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(DateHelper.parseKey(selectedDateKey.value)))
+const selectedWorkouts = computed(() => groupWorkouts(selectedExercises.value, selectedWeekday.value, selectedDateKey.value))
+const activeDayCount = computed(() => sportStore.weekProgram.value.filter((day) => day.exercises.length).length)
+const weeklyWorkoutCount = computed(() => sportStore.weekProgram.value.reduce((sum, day) => sum + groupWorkouts(day.exercises, day.weekday).length, 0))
+const muscleBalance = computed(() => MUSCLE_BALANCE_GROUPS.map((name) => ({
+  name,
+  count: sportStore.exercises.value.filter((item) => matchesBalanceGroup(item, name)).length,
+})))
+const coveredMuscleCount = computed(() => muscleBalance.value.filter((group) => group.count > 0).length)
 const weekDays = computed(() => {
-  const selectedDate = DateHelper.parseKey(selectedDateKey.value)
-  const start = getMonday(selectedDate)
+  const start = getMonday(DateHelper.parseKey(selectedDateKey.value))
   return WEEKDAY_OPTIONS.map((meta, index) => {
     const date = DateHelper.addDays(start, index)
     const key = DateHelper.toKey(date)
-    return {
-      ...meta,
-      key,
-      dayNumber: date.getDate(),
-      isToday: DateHelper.isToday(date),
-      progress: sportStore.getDayProgress(key),
-    }
+    const exercises = sportStore.getExercisesForDate(key)
+    return { ...meta, key, dayNumber: date.getDate(), isToday: DateHelper.isToday(date), progress: sportStore.getDayProgress(key), workouts: groupWorkouts(exercises, date.getDay(), key) }
   })
 })
 
-watch(selectedDateKey, () => {}, { immediate: true })
-
-function openDrawer() {
-  isDrawerOpen.value = true
+function groupWorkouts(items, weekday, dateKey = '') {
+  const groups = new Map()
+  items.forEach((item) => {
+    const id = item.workoutId || `personal-${weekday}`
+    if (!groups.has(id)) groups.set(id, { id, name: item.workoutName || 'Моя тренировка', focus: item.workoutFocus || [], color: item.workoutColor || '#6ee7b7', exercises: [] })
+    groups.get(id).exercises.push(item)
+  })
+  return [...groups.values()].map((workout) => {
+    const done = dateKey ? workout.exercises.filter((item) => sportStore.isExerciseDone(item.id, dateKey)).length : 0
+    return { ...workout, done, percent: workout.exercises.length ? Math.round(done / workout.exercises.length * 100) : 0, duration: workout.exercises.reduce((sum, item) => sum + Number(item.durationMinutes || 0), 0) }
+  })
 }
 
-function isDone(exerciseId) {
-  return sportStore.isExerciseDone(exerciseId, selectedDateKey.value)
+function matchesBalanceGroup(item, group) {
+  const values = [...(item.muscleGroups || []), ...(item.workoutFocus || [])].map((value) => value.toLowerCase())
+  const aliases = { руки: ['руки', 'бицепс', 'трицепс'], ноги: ['ноги', 'икры', 'бедра', 'задняя поверхность бедра'], спина: ['спина', 'верх спины', 'разгибатели спины', 'осанка'], кор: ['кор', 'пресс', 'косые мышцы'], мобильность: ['мобильность', 'восстановление'] }
+  return values.some((value) => (aliases[group] || [group]).some((alias) => value.includes(alias)))
 }
 
-function toggleDone(exerciseId) {
-  const result = sportStore.toggleExercise(exerciseId, selectedDateKey.value)
-  if (!result.ok) {
-    notify(result.message || 'Не удалось отметить упражнение', 'danger')
-    return
-  }
-  notify(result.completed ? 'Упражнение выполнено' : 'Отметка снята', result.completed ? 'success' : 'info')
-}
-
-function addNewExercise(data) {
-  const result = sportStore.addExercise(data)
-  if (!result.ok) {
-    notify(result.message, 'danger')
-    return
-  }
-  notify('Упражнение добавлено', 'success')
-}
-
-function importJsonExercises(jsonText) {
-  const result = sportStore.importExercisesFromJson(jsonText)
-  if (!result.ok) {
-    notify(result.message, 'danger')
-    return
-  }
-  notify(result.message, 'success')
-}
-
-function removeExercise(id) {
-  sportStore.deleteExercise(id)
-  notify('Упражнение удалено', 'danger')
-}
-
-function getMonday(date) {
-  const day = date.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  return DateHelper.addDays(date, diff)
-}
-
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
+function getMonday(date) { return DateHelper.addDays(date, date.getDay() === 0 ? -6 : 1 - date.getDay()) }
+function isDone(id) { return sportStore.isExerciseDone(id, selectedDateKey.value) }
+function openExerciseDrawer() { isDrawerOpen.value = true }
+function openExercise(item) { activeExercise.value = item; isExerciseOpen.value = true }
+function toggleDone(id) { const result = sportStore.toggleExercise(id, selectedDateKey.value); if (!result.ok) notify(result.message, 'danger') }
+function removeExercise(id) { sportStore.deleteExercise(id); notify('Упражнение удалено', 'info') }
+function addNewExercise(data) { const result = sportStore.addExercise(data); notify(result.ok ? 'Упражнение добавлено' : result.message, result.ok ? 'success' : 'danger') }
+function importJsonExercises(text) { const result = sportStore.importExercisesFromJson(text); notify(result.message, result.ok ? 'success' : 'danger') }
+function saveExercise({ id, updates }) { const result = sportStore.updateExercise(id, updates); if (result.ok) { isExerciseOpen.value = false; notify('Упражнение обновлено', 'success') } else notify(result.message, 'danger') }
+function addWorkout({ workout, weekday }) { const result = sportStore.addWorkout(workout, weekday); if (result.ok) { isLibraryOpen.value = false; notify(`Тренировка «${workout.title}» добавлена на каждую неделю`, 'success') } else notify(result.message, 'danger') }
+function applyBalancedWeek() {
+  if (!window.confirm('Заменить текущую программу сбалансированной неделей? Старые упражнения и их отметки будут удалены.')) return
+  const result = sportStore.replaceWeeklyProgram(buildBalancedWeek())
+  notify(result.ok ? 'Сбалансированная неделя готова' : result.message, result.ok ? 'success' : 'danger')
 }
 </script>
 
 <style scoped>
 .sport-page {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  animation: fadeSlideUp 0.42s var(--ease-out);
-}
-
-.sport-page__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.sport-page__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sport-page__header p,
-.sport-card__head span,
-.sport-hero__card span {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.sport-page__header h1,
-.sport-card__head h2 {
-  margin: 0;
-}
-
-.sport-page__header > div > span,
-.sport-hero__card small {
-  color: var(--text-secondary);
-}
-
-.sport-page__summary {
-  min-width: 94px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 9px 10px;
-  background: var(--card-solid);
-  text-align: right;
-}
-
-.sport-page__summary strong,
-.sport-page__summary span {
-  display: block;
-}
-
-.sport-page__summary strong {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.sport-page__summary span {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.sport-hero {
-  display: grid;
-  grid-template-columns: minmax(260px, 1.2fr) minmax(0, 1fr) minmax(220px, 0.65fr);
-  gap: 10px;
-}
-
-.sport-focus-card {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  min-height: 132px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 12px;
-  color: var(--text-primary);
-  background: var(--card-solid);
-  text-decoration: none;
-  transition: 0.18s var(--ease-out);
-}
-
-.sport-focus-card:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-hover);
-  transform: translateY(-1px);
-}
-
-.sport-focus-card__icon {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  color: var(--accent);
-  background: var(--accent-soft);
-  font-size: 20px;
-}
-
-.sport-focus-card__body {
-  display: grid;
-  gap: 4px;
+  width: 100%;
   min-width: 0;
-}
-
-.sport-focus-card__body > span {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.sport-focus-card strong {
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sport-focus-card small {
-  overflow: hidden;
-  color: var(--text-secondary);
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sport-focus-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 3px;
-}
-
-.sport-focus-card__chips b {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  padding: 3px 7px;
-  color: var(--text-muted);
-  background: var(--control-bg);
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.sport-focus-card > i {
-  color: var(--text-muted);
-  font-style: normal;
-}
-
-.sport-hero__card,
-.sport-card {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--card-solid);
-}
-
-.sport-hero__card {
-  display: grid;
-  gap: 7px;
-  padding: 12px;
-}
-
-.sport-hero__card strong {
-  font-size: 26px;
-  letter-spacing: -0.04em;
-}
-
-.sport-hero__card--today strong {
-  font-size: 18px;
-  text-transform: capitalize;
-}
-
-.sport-progress {
-  height: 5px;
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: var(--control-bg);
-}
-
-.sport-progress i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent-hover);
-  transition: width 0.3s var(--ease-out);
-}
-
-.sport-week {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.sport-week__day {
-  min-height: 64px;
-  display: grid;
-  gap: 2px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 8px;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  text-align: left;
-  transition: all 0.18s var(--ease-out);
-}
-
-.sport-week__day:hover,
-.sport-week__day.active {
-  border-color: var(--border-strong);
-  background: var(--bg-hover);
-  transform: translateY(-1px);
-}
-
-.sport-week__day.today {
-  box-shadow: inset 0 0 0 1px var(--accent-border);
-}
-
-.sport-week__day span {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.sport-week__day b {
-  font-size: 18px;
-}
-
-.sport-week__day small {
-  color: var(--text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.sport-card {
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 12px;
-}
-
-.sport-card__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 10px;
-}
-
-.sport-card__head-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sport-card__head small {
-  color: var(--text-muted);
-  font-weight: 700;
-}
-
-.exercise-list {
-  display: grid;
-  gap: 7px;
-}
-
-.exercise-row {
-  display: grid;
-  grid-template-columns: 34px 1fr 28px;
-  gap: 9px;
-  align-items: start;
+  gap: 14px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 8px;
-  background: var(--card-soft);
-  transition: all 0.2s var(--ease-out);
+  border-radius: var(--radius-xl);
+  padding: 16px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
 }
-
-.exercise-row.done {
-  border-color: color-mix(in srgb, var(--success) 38%, transparent);
-  background: color-mix(in srgb, var(--success) 8%, var(--card-soft));
-}
-
-.exercise-row__check,
-.exercise-row__delete {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  background: var(--control-bg-solid);
-}
-
-.exercise-row__check {
-  width: 32px;
-  height: 32px;
-}
-
-.exercise-row__check span {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  color: var(--success);
-  font-weight: 900;
-  animation: checkPop 0.24s var(--ease-out);
-}
-
-.exercise-row__body {
-  display: grid;
-  gap: 3px;
-}
-
-.exercise-row__body strong {
-  font-size: 13px;
-}
-
-.exercise-row__body p,
-.exercise-row__body small {
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.exercise-row__body small {
-  color: var(--text-muted);
-}
-
-.exercise-row__delete {
-  width: 28px;
-  height: 28px;
-  color: var(--text-muted);
-}
-
-.sport-empty {
-  display: grid;
-  justify-items: center;
-  gap: 7px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
-  padding: 18px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-@media (max-width: 1020px) {
-  .sport-hero {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .sport-page {
-    padding: 12px;
-    border-radius: 16px;
-  }
-
-  .sport-page__header,
-  .sport-page__actions,
-  .sport-card__head,
-  .sport-card__head-actions {
-    display: grid;
-  }
-
-  .sport-page__summary {
-    text-align: left;
-  }
-
-  .sport-week {
-    grid-template-columns: repeat(7, minmax(52px, 1fr));
-    overflow-x: auto;
-  }
-
-  .sport-week__day {
-    min-width: 52px;
-  }
-}
+.sport-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.sport-header p, .section-title small, .balance-card header small { margin: 0 0 3px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.sport-header h1, .section-title h2 { margin: 0; }
+.sport-header > div > span { color: var(--text-secondary); font-size: 12px; }
+.sport-header__actions { display: flex; gap: 8px; }
+.sport-overview { display: grid; grid-template-columns: 1.1fr 1fr; gap: 9px; }
+.sport-score, .sport-stat, .balance-card, .week-plan, .day-section { border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--card-solid); }
+.sport-score, .sport-stat { min-height: 104px; display: flex; align-items: center; gap: 12px; padding: 13px; }
+.sport-score__ring { width: 70px; height: 70px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 50%; background: conic-gradient(var(--accent) var(--progress), var(--control-bg) 0); position: relative; }
+.sport-score__ring::after { position: absolute; inset: 6px; border-radius: inherit; background: var(--card-solid); content: ''; }
+.sport-score__ring span { z-index: 1; font-size: 14px; font-weight: 900; }
+.sport-score > div:last-child, .sport-stat div { display: grid; gap: 2px; }
+.sport-score small, .sport-stat small { color: var(--text-muted); font-size: 10px; text-transform: uppercase; }
+.sport-score strong, .sport-stat strong { font-size: 15px; }
+.sport-score > div > span, .sport-stat p { margin: 0; color: var(--text-secondary); font-size: 11px; }
+.sport-stat { color: var(--text-primary); text-decoration: none; }
+.sport-stat > span { width: 38px; height: 38px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 12px; color: var(--accent); background: var(--accent-soft); font-size: 18px; }
+.balance-card { display: grid; gap: 12px; padding: 13px; }
+.balance-card header { display: flex; justify-content: space-between; align-items: center; }
+.balance-card header div { display: grid; }
+.balance-card header > span { border-radius: var(--radius-pill); padding: 4px 8px; color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); font-size: 10px; font-weight: 800; }
+.balance-card header > span.complete { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.balance-card__groups { display: grid; grid-template-columns: repeat(8, 1fr); gap: 7px; }
+.balance-card__groups > div { display: grid; grid-template-columns: 1fr auto; gap: 5px; align-items: center; color: var(--text-muted); }
+.balance-card__groups i { grid-column: 1 / -1; height: 4px; overflow: hidden; border-radius: 9px; background: var(--control-bg); }
+.balance-card__groups i::after { display: block; width: var(--level); height: 100%; border-radius: inherit; background: var(--accent); content: ''; }
+.balance-card__groups span, .balance-card__groups b { font-size: 9px; }
+.balance-card__groups > div.active span { color: var(--text-secondary); font-weight: 700; }
+.week-plan, .day-section { display: grid; gap: 11px; padding: 13px; }
+.section-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.section-title h2 { font-size: 17px; text-transform: capitalize; }
+.week-strip { display: grid; grid-template-columns: repeat(7, minmax(105px, 1fr)); gap: 7px; overflow-x: auto; }
+.week-strip > button { min-height: 105px; display: grid; align-content: space-between; gap: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 9px; color: var(--text-primary); background: var(--card-soft); text-align: left; }
+.week-strip > button.active { border-color: var(--accent-border); background: var(--accent-soft); }
+.week-strip > button.today header b { color: var(--accent); }
+.week-strip header { display: flex; justify-content: space-between; align-items: center; }
+.week-strip header span { color: var(--text-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.week-strip header b { font-size: 16px; }
+.week-strip__session { display: grid; grid-template-columns: 5px 1fr; gap: 3px 6px; min-width: 0; }
+.week-strip__session i { grid-row: 1 / 3; width: 4px; border-radius: 5px; }
+.week-strip__session strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.week-strip__session small { color: var(--text-muted); font-size: 9px; }
+.week-strip__rest { display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 10px; }
+.workout-stack { display: grid; gap: 10px; }
+.workout-card { overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--card-soft); }
+.workout-card__head { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; padding: 12px; }
+.workout-card__icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: var(--workout-color); background: color-mix(in srgb, var(--workout-color) 12%, transparent); }
+.workout-card__head div { display: grid; gap: 2px; }
+.workout-card__head small { color: var(--workout-color); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.workout-card__head h3 { margin: 0; font-size: 15px; }
+.workout-card__progress { justify-items: end; }
+.workout-card__progress span { color: var(--text-muted); font-size: 10px; }
+.workout-card__bar { height: 3px; background: var(--control-bg); }
+.workout-card__bar i { display: block; height: 100%; background: var(--workout-color); }
+.workout-card__exercises { display: grid; }
+.workout-card__exercises > article { display: grid; grid-template-columns: 30px minmax(180px, 1fr) minmax(100px, auto) 28px 28px; align-items: center; gap: 8px; border-top: 1px solid var(--border-color); padding: 8px 11px; }
+.workout-card__exercises > article.done { opacity: .55; }
+.exercise-check { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--border-color); border-radius: 9px; color: var(--success); background: var(--control-bg); }
+.exercise-info { display: grid; gap: 2px; border: 0; padding: 0; color: inherit; background: transparent; text-align: left; }
+.exercise-info strong { font-size: 12px; }.exercise-info span { color: var(--text-muted); font-size: 10px; }
+.exercise-muscles { display: flex; justify-content: flex-end; gap: 4px; }
+.exercise-muscles span { border-radius: var(--radius-pill); padding: 3px 6px; color: var(--text-secondary); background: var(--control-bg); font-size: 9px; }
+.day-empty { display: grid; justify-items: center; gap: 6px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); padding: 28px; text-align: center; }
+.day-empty > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: var(--accent); background: var(--accent-soft); }
+.day-empty p { margin: 0 0 5px; color: var(--text-secondary); font-size: 11px; }
+@media (max-width: 900px) { .sport-overview { grid-template-columns: 1fr; }.balance-card__groups { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 650px) { .sport-page { padding: 11px; }.sport-header, .sport-header__actions { display: grid; }.balance-card__groups { grid-template-columns: repeat(2, 1fr); }.workout-card__exercises > article { grid-template-columns: 30px 1fr 28px 28px; }.exercise-muscles { display: none; } }
 </style>

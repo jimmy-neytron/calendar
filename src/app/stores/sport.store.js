@@ -120,6 +120,21 @@ function addExercise(data) {
     sets: String(data.sets || '').trim() || '1 подход',
     reps: String(data.reps || '').trim() || '10 повторений',
     note: String(data.note || '').trim(),
+    muscleGroups: normalizeStringList(data.muscleGroups),
+    exerciseType: normalizeText(data.exerciseType),
+    difficulty: normalizeText(data.difficulty),
+    equipment: normalizeText(data.equipment),
+    durationMinutes: normalizeOptionalInteger(data.durationMinutes, 1, 300),
+    restSeconds: normalizeOptionalInteger(data.restSeconds, 0, 3600),
+    tempo: normalizeText(data.tempo),
+    instructions: normalizeText(data.instructions),
+    commonMistakes: normalizeText(data.commonMistakes),
+    easierVariant: normalizeText(data.easierVariant),
+    harderVariant: normalizeText(data.harderVariant),
+    workoutId: normalizeText(data.workoutId),
+    workoutName: normalizeText(data.workoutName),
+    workoutFocus: normalizeStringList(data.workoutFocus),
+    workoutColor: normalizeText(data.workoutColor),
     order: Number(data.order || Date.now()),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -143,6 +158,24 @@ function updateExercise(id, updates) {
     ...updates,
     title: updates.title?.trim?.() || target.title,
     weekday: Number(updates.weekday ?? target.weekday),
+    sets: updates.sets === undefined ? target.sets : normalizeText(updates.sets),
+    reps: updates.reps === undefined ? target.reps : normalizeText(updates.reps),
+    note: updates.note === undefined ? target.note : normalizeText(updates.note),
+    muscleGroups: updates.muscleGroups === undefined ? (target.muscleGroups || []) : normalizeStringList(updates.muscleGroups),
+    exerciseType: updates.exerciseType === undefined ? (target.exerciseType || '') : normalizeText(updates.exerciseType),
+    difficulty: updates.difficulty === undefined ? (target.difficulty || '') : normalizeText(updates.difficulty),
+    equipment: updates.equipment === undefined ? (target.equipment || '') : normalizeText(updates.equipment),
+    durationMinutes: updates.durationMinutes === undefined ? (target.durationMinutes ?? null) : normalizeOptionalInteger(updates.durationMinutes, 1, 300),
+    restSeconds: updates.restSeconds === undefined ? (target.restSeconds ?? null) : normalizeOptionalInteger(updates.restSeconds, 0, 3600),
+    tempo: updates.tempo === undefined ? (target.tempo || '') : normalizeText(updates.tempo),
+    instructions: updates.instructions === undefined ? (target.instructions || '') : normalizeText(updates.instructions),
+    commonMistakes: updates.commonMistakes === undefined ? (target.commonMistakes || '') : normalizeText(updates.commonMistakes),
+    easierVariant: updates.easierVariant === undefined ? (target.easierVariant || '') : normalizeText(updates.easierVariant),
+    harderVariant: updates.harderVariant === undefined ? (target.harderVariant || '') : normalizeText(updates.harderVariant),
+    workoutId: updates.workoutId === undefined ? (target.workoutId || '') : normalizeText(updates.workoutId),
+    workoutName: updates.workoutName === undefined ? (target.workoutName || '') : normalizeText(updates.workoutName),
+    workoutFocus: updates.workoutFocus === undefined ? (target.workoutFocus || []) : normalizeStringList(updates.workoutFocus),
+    workoutColor: updates.workoutColor === undefined ? (target.workoutColor || '') : normalizeText(updates.workoutColor),
     updatedAt: new Date().toISOString(),
   }
   exerciseRepository.update(id, next)
@@ -153,7 +186,7 @@ function updateExercise(id, updates) {
   return { ok: true, exercise: next }
 }
 
-function deleteExercise(id) {
+function deleteExercise(id, options = {}) {
   const target = exerciseRepository.findById(id)
   if (!target || target.userId !== authStore.currentUserId.value) return false
   exerciseRepository.delete(id)
@@ -163,7 +196,9 @@ function deleteExercise(id) {
       && completion.userId === authStore.currentUserId.value
     ))
     .forEach((completion) => completionRepository.delete(completion.id))
-  addActivity('sport:delete', `удалил(а) упражнение «${target.title}»`, { exerciseId: id })
+  if (!options.skipActivity) {
+    addActivity('sport:delete', `удалил(а) упражнение «${target.title}»`, { exerciseId: id })
+  }
   return true
 }
 
@@ -230,6 +265,36 @@ function addExercisesBulk(rawItems) {
     errors,
     message: created.length ? `Добавлено упражнений: ${created.length}` : (errors[0] || 'Не удалось добавить упражнения'),
   }
+}
+
+function addWorkout(workout, weekday) {
+  const workoutId = `${normalizeText(workout.id) || generateId()}-${generateId()}`
+  return addExercisesBulk((workout.exercises || []).map((exercise, index) => ({
+    ...exercise,
+    weekday,
+    workoutId,
+    workoutName: workout.title,
+    workoutFocus: workout.focus,
+    workoutColor: workout.color,
+    order: Date.now() + index,
+  })))
+}
+
+function replaceWeeklyProgram(rawItems) {
+  const parsed = normalizeExercisePayload(rawItems)
+  if (!parsed.ok) return parsed
+
+  const currentIds = exercises.value.map((exercise) => exercise.id)
+  currentIds.forEach((id) => deleteExercise(id, { skipActivity: true }))
+  const result = addExercisesBulk(parsed.items)
+
+  if (result.ok) {
+    addActivity('sport:replace-program', `обновил(а) недельную программу: ${result.created.length} упражнений`, {
+      exerciseIds: result.created.map((exercise) => exercise.id),
+    })
+  }
+
+  return result
 }
 
 function importExercisesFromJson(jsonText) {
@@ -300,6 +365,22 @@ function normalizeWeekday(value) {
   return map[normalized] ?? new Date().getDay()
 }
 
+function normalizeText(value) {
+  return String(value ?? '').trim()
+}
+
+function normalizeStringList(value) {
+  const items = Array.isArray(value) ? value : String(value ?? '').split(',')
+  return [...new Set(items.map((item) => normalizeText(item)).filter(Boolean))]
+}
+
+function normalizeOptionalInteger(value, min, max) {
+  if (value === undefined || value === null || value === '') return null
+  const number = Math.round(Number(value))
+  if (!Number.isFinite(number)) return null
+  return Math.min(max, Math.max(min, number))
+}
+
 function createDefaultExercise(id, weekday, title, sets, reps, note, order) {
   return {
     id,
@@ -333,6 +414,8 @@ export const sportStore = {
   updateExercise,
   deleteExercise,
   addExercisesBulk,
+  addWorkout,
+  replaceWeeklyProgram,
   importExercisesFromJson,
   loadWorkspace: (workspaceId) => Promise.all([
     exerciseRepository.loadWorkspace(workspaceId),

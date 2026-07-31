@@ -33,6 +33,17 @@ type SportExercise = {
   reps: string
   note: string
   order: number
+  muscle_groups?: string[]
+  exercise_type?: string
+  difficulty?: string
+  equipment?: string
+  duration_minutes?: number | null
+  rest_seconds?: number | null
+  tempo?: string
+  instructions?: string
+  common_mistakes?: string
+  workout_name?: string
+  workout_focus?: string[]
 }
 
 const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN') || ''
@@ -143,14 +154,25 @@ async function loadEvents(userId: string, workspaceIds: string[], today: string)
 }
 
 async function loadSportExercises(userId: string, weekday: number) {
-  const { data } = await supabase
+  const richFields = 'title,sets,reps,note,order,muscle_groups,exercise_type,difficulty,equipment,duration_minutes,rest_seconds,tempo,instructions,common_mistakes,workout_name,workout_focus'
+  const { data, error } = await supabase
+    .from('sport_exercises')
+    .select(richFields)
+    .eq('user_id', userId)
+    .eq('weekday', weekday)
+    .order('order', { ascending: true })
+
+  if (!error) return ((data || []) as SportExercise[]).slice(0, 12)
+
+  // Keeps the digest working while the optional details migration is being applied.
+  const { data: legacyData } = await supabase
     .from('sport_exercises')
     .select('title,sets,reps,note,order')
     .eq('user_id', userId)
     .eq('weekday', weekday)
     .order('order', { ascending: true })
 
-  return ((data || []) as SportExercise[]).slice(0, 12)
+  return ((legacyData || []) as SportExercise[]).slice(0, 12)
 }
 
 function buildDigestMessage(today: string, events: CalendarEvent[], exercises: SportExercise[]) {
@@ -168,15 +190,38 @@ function buildDigestMessage(today: string, events: CalendarEvent[], exercises: S
 
   lines.push('', 'Спорт:')
   if (exercises.length) {
-    for (const exercise of exercises) {
-      const details = [exercise.sets, exercise.reps].filter(Boolean).join(' x ')
-      lines.push(`- ${exercise.title}${details ? ` (${details})` : ''}`)
-    }
+    let currentWorkout = ''
+    exercises.forEach((exercise, index) => {
+      if (exercise.workout_name && exercise.workout_name !== currentWorkout) {
+        currentWorkout = exercise.workout_name
+        const focus = (exercise.workout_focus || []).join(' · ')
+        lines.push('', `${currentWorkout}${focus ? ` — ${focus}` : ''}`)
+      }
+      const details = [exercise.sets, exercise.reps, exercise.duration_minutes ? `${exercise.duration_minutes} мин` : ''].filter(Boolean).join(' · ')
+      const context = [
+        ...(exercise.muscle_groups || []),
+        exercise.exercise_type,
+        exercise.equipment,
+      ].filter(Boolean).join(' · ')
+      lines.push(`${index + 1}. ${exercise.title}${details ? ` — ${details}` : ''}`)
+      if (context) lines.push(`   ${context}`)
+      if (exercise.instructions) lines.push(`   Как делать: ${exercise.instructions}`)
+      if (exercise.tempo || exercise.rest_seconds != null) {
+        lines.push(`   ${[exercise.tempo ? `Темп: ${exercise.tempo}` : '', exercise.rest_seconds != null ? `Отдых: ${exercise.rest_seconds} сек` : ''].filter(Boolean).join(' · ')}`)
+      }
+      if (exercise.note) lines.push(`   Заметка: ${exercise.note}`)
+    })
   } else {
     lines.push('- тренировок нет')
   }
 
-  return lines.join('\n')
+  return truncateTelegramText(lines.join('\n'))
+}
+
+function truncateTelegramText(text: string) {
+  const limit = 3900
+  if (text.length <= limit) return text
+  return `${text.slice(0, limit - 35).trimEnd()}\n\n…остальное смотри в приложении`
 }
 
 function getMoscowDate() {
