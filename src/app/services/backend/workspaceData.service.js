@@ -5,6 +5,7 @@ import { ideaStore } from '../../stores/idea.store.js'
 import { sportStore } from '../../stores/sport.store.js'
 import { notificationStore } from '../../stores/notification.store.js'
 import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
+import { purchaseWishlistStore } from '../../stores/purchaseWishlist.store'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
@@ -65,6 +66,7 @@ async function fetchWorkspaceData(workspaceId) {
     results.push(...await Promise.all([
       sportStore.loadWorkspace(workspaceId),
       movieWatchlistStore.loadWorkspace(workspaceId),
+      purchaseWishlistStore.loadWorkspace(workspaceId),
       timeTrackingStore.loadWorkspace(workspaceId),
     ]))
   }

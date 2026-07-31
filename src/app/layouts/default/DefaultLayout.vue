@@ -146,6 +146,7 @@ const commands = computed(() => [
   ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) }] : []),
+  ...(extraSectionsEnabled.value && readSubscriptionFeature('purchases') ? [{ id: 'purchases', label: 'Открыть покупки', description: 'Вещи, техника и список желаний', icon: 'shopping', action: () => router.push({ name: 'purchases' }) }] : []),
   ...(extraSectionsEnabled.value ? [{ id: 'family-tree', label: 'Открыть семейное дерево', description: 'Люди, поколения и связи', icon: 'users', action: () => router.push({ name: 'family-tree' }) }] : []),
   { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
   ...(extraSectionsEnabled.value && readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),

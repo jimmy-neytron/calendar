@@ -23,13 +23,14 @@ const FamilyTreePage = () => import('../pages/family-tree/FamilyTreePage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
 const ActivityPage = () => import('../pages/activity/ActivityPage.vue')
 const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
+const PurchasesPage = () => import('../modules/purchases/pages/PurchasesPage.vue')
 const DayDisplayPage = () => import('../pages/display/DayDisplayPage.vue')
 const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.vue')
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, FullFocusPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, DayDisplayPage, TimeTrackingPage,
+  IdeasPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
 let pagesPreloaded = false
@@ -62,6 +63,7 @@ export const routes = [
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
   { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
   { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresExtraSections: true, requiresSubscriptionFeature: 'movies' } },
+  { path: '/purchases', name: 'purchases', component: PurchasesPage, meta: { title: 'Покупки', requiresExtraSections: true, requiresSubscriptionFeature: 'purchases' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
   { path: '/meals', redirect: '/ideas' },

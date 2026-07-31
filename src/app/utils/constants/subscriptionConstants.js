@@ -31,6 +31,7 @@ export const SUBSCRIPTION_FEATURES = {
         timeTracking: false,
         sport: false,
         movies: false,
+        purchases: false,
     },
     pro: {
         calendar: true,
@@ -45,6 +46,7 @@ export const SUBSCRIPTION_FEATURES = {
         timeTracking: true,
         sport: true,
         movies: true,
+        purchases: true,
     },
 }
 

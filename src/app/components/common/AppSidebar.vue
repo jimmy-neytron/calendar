@@ -67,6 +67,7 @@ const groups = [
       { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport', feature: 'sport' },
       { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock', feature: 'timeTracking' },
       { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie', feature: 'movies' },
+      { name: 'purchases', label: 'Покупки', description: 'Вещи, техника и желания', icon: 'shopping', feature: 'purchases' },
     ],
   },
   {

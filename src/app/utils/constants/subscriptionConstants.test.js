@@ -23,6 +23,8 @@ describe('subscription tiers', () => {
     expect(isSubscriptionFeatureEnabled('free', 'workspace')).toBe(false)
     expect(isSubscriptionFeatureEnabled('free', 'integrations')).toBe(false)
     expect(isSubscriptionFeatureEnabled('free', 'extraSections')).toBe(false)
+    expect(isSubscriptionFeatureEnabled('free', 'purchases')).toBe(false)
+    expect(isSubscriptionFeatureEnabled('pro', 'purchases')).toBe(true)
   })
 
   it('maps legacy Plus users to Pro', () => {
