@@ -5,7 +5,7 @@
         <span>Погода</span>
         <strong>{{ title }}</strong>
       </div>
-      <WeatherGlyph :icon="displayIcon" :tone="displayTone" />
+      <WeatherGlyph :icon="displayIcon" :tone="displayTone" :label="displayWeatherLabel" />
     </header>
 
     <div v-if="selectedDay" class="weather-rail-card__body">
@@ -31,8 +31,7 @@
 
     <div v-else class="weather-rail-card__empty" :class="{ 'weather-rail-card__empty--error': hasError }">
       <div class="weather-rail-card__empty-visual">
-        <span />
-        <i />
+        <WeatherGlyph :icon="hasError ? 'storm' : 'cloud'" :tone="hasError ? 'storm' : 'cloudy'" />
       </div>
       <div>
         <strong>{{ emptyTitle }}</strong>
@@ -43,7 +42,12 @@
     <div v-if="hourlyPreview.length" class="weather-rail-card__hours" aria-label="Погода по часам">
       <article v-for="point in hourlyPreview" :key="point.time">
         <time>{{ formatHour(point.time) }}</time>
-        <WeatherGlyph :icon="point.icon" :tone="point.tone" />
+        <WeatherGlyph
+          :icon="point.icon"
+          :tone="point.tone"
+          size="compact"
+          :label="formatWeatherTooltip(point)"
+        />
         <strong>{{ point.temperature }}°</strong>
       </article>
     </div>
@@ -53,6 +57,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { WeatherDay, WeatherPoint } from '../../services/weatherService'
+import { formatWeatherTooltip } from '../../utils/formatters/weatherFormatter'
 import WeatherGlyph from './WeatherGlyph.vue'
 
 const props = withDefaults(defineProps<{
@@ -80,6 +85,12 @@ const emptyTitle = computed(() => (props.hasError ? 'Не удалось заг�
 const emptyText = computed(() => (props.hasError ? 'Покажем погоду после следующей попытки.' : 'Open-Meteo дает прогноз на ближайшие дни.'))
 const displayIcon = computed(() => props.selectedDay?.icon || props.current?.icon || 'cloud')
 const displayTone = computed(() => props.selectedDay?.tone || props.current?.tone || 'cloudy')
+const displayWeatherLabel = computed(() => {
+  if (props.selectedDay) {
+    return `${props.selectedDay.condition} · от ${props.selectedDay.minTemperature}° до ${props.selectedDay.maxTemperature}° · осадки ${props.selectedDay.precipitationProbability}%`
+  }
+  return props.current ? formatWeatherTooltip(props.current, 'Сейчас') : ''
+})
 const dayReferencePoint = computed(() => props.hourly.find((point) => point.time.slice(11, 13) === '12') || props.hourly[0] || null)
 const apparentTemperatureLabel = computed(() => (
   dayReferencePoint.value ? `${dayReferencePoint.value.apparentTemperature}° днем` : `${props.selectedDay?.condition || ''}`
@@ -96,7 +107,7 @@ function formatHour(time: string): string {
 .weather-rail-card {
   display: grid;
   gap: 10px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid color-mix(in srgb, var(--cyan) 24%, var(--border-color));
   border-radius: 14px;
   padding: 11px;
@@ -194,6 +205,7 @@ function formatHour(time: string): string {
 }
 
 .weather-rail-card__hours article {
+  position: relative;
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -207,8 +219,10 @@ function formatHour(time: string): string {
 .weather-rail-card__hours :deep(.weather-glyph) {
   width: 24px;
   height: 24px;
-  border-radius: 9px;
-  transform: scale(.82);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .weather-rail-card__hours time,
@@ -258,45 +272,21 @@ function formatHour(time: string): string {
 }
 
 .weather-rail-card__empty-visual {
-  position: relative;
   display: grid;
   place-items: center;
   width: 42px;
   height: 42px;
-  border: 1px solid color-mix(in srgb, var(--cyan) 30%, var(--border-color));
+}
+
+.weather-rail-card__hours article:hover {
+  z-index: 2;
+}
+
+.weather-rail-card__empty-visual :deep(.weather-glyph) {
+  width: 42px;
+  height: 42px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--cyan) 10%, var(--control-bg));
-}
-
-.weather-rail-card__empty-visual span {
-  width: 20px;
-  height: 11px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cyan) 55%, var(--text-muted));
   animation: weatherEmptyFloat 2.4s ease-in-out infinite;
-}
-
-.weather-rail-card__empty-visual span::before {
-  position: absolute;
-  left: 12px;
-  top: 13px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: inherit;
-  content: "";
-}
-
-.weather-rail-card__empty-visual i {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--warning);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning) 18%, transparent);
-  animation: weatherEmptyDot 1.6s ease-in-out infinite;
 }
 
 .weather-rail-card__empty--error {
@@ -314,10 +304,6 @@ function formatHour(time: string): string {
 
 @keyframes weatherEmptyFloat {
   50% { transform: translateY(-3px); }
-}
-
-@keyframes weatherEmptyDot {
-  50% { transform: scale(.72); opacity: .62; }
 }
 
 @keyframes weatherEmptyShimmer {

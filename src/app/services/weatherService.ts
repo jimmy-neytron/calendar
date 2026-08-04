@@ -5,6 +5,7 @@ const WEATHER_FORECAST_CACHE_TTL = 1000 * 60 * 60 * 3
 const weatherCache = new Map<string, WeatherForecast>()
 
 export type WeatherConditionTone = 'clear' | 'cloudy' | 'rain' | 'snow' | 'storm' | 'fog'
+export type WeatherIconName = 'sun' | 'partly' | 'cloud' | 'fog' | 'rain' | 'snow' | 'storm'
 
 export type WeatherPoint = {
   time: string
@@ -16,7 +17,7 @@ export type WeatherPoint = {
   humidity: number
   condition: string
   tone: WeatherConditionTone
-  icon: string
+  icon: WeatherIconName
 }
 
 export type WeatherDay = {
@@ -29,7 +30,7 @@ export type WeatherDay = {
   sunset: string
   condition: string
   tone: WeatherConditionTone
-  icon: string
+  icon: WeatherIconName
 }
 
 export type WeatherForecast = {

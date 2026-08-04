@@ -45,7 +45,7 @@
 
       <div class="day-mode__hours">
         <article
-          v-for="hour in DAY_TIMELINE_HOURS"
+          v-for="{ hour, weather } in timelineHours"
           :key="hour"
           class="day-mode__hour"
           :data-calendar-drop-date="selectedDateKey"
@@ -55,7 +55,16 @@
         >
           <div class="day-mode__hour-meta">
             <time>{{ formatHour(hour) }}</time>
-            <span v-if="getWeatherForHour(hour)" class="day-mode__weather">{{ getWeatherForHour(hour).temperature }}°</span>
+            <div v-if="weather" class="day-mode__weather">
+              <WeatherGlyph
+                :icon="weather.icon"
+                :tone="weather.tone"
+                size="compact"
+                tooltip-placement="right"
+                :label="formatWeatherTooltip(weather, formatHour(hour))"
+              />
+              <strong>{{ weather.temperature }}°</strong>
+            </div>
             <span v-else-if="weatherLoading" class="day-mode__weather day-mode__weather--loading" />
           </div>
           <div class="day-mode__hour-line">
@@ -97,9 +106,11 @@
 import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import EventCard from './EventCard.vue'
+import WeatherGlyph from '../weather/WeatherGlyph.vue'
 import { DAY_TIMELINE_HOURS } from '../../utils/constants/calendarConstants.js'
 import { formatDateShort, formatTimeRange, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventMembers, formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
+import { formatWeatherTooltip } from '../../utils/formatters/weatherFormatter'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
@@ -123,6 +134,10 @@ const nextEvent = computed(() => {
   const now = new Date()
   return timedEvents.value.find((event) => new Date(`${event.date}T${event.startTime || '00:00'}`) > now) || firstEvent.value
 })
+const timelineHours = computed(() => DAY_TIMELINE_HOURS.map((hour) => ({
+  hour,
+  weather: props.weatherHourly.find((point) => Number(point.time?.slice(11, 13)) === hour) || null,
+})))
 
 const dayTitle = computed(() => `${formatWeekday(props.selectedDateKey)}, ${formatDateShort(props.selectedDateKey)}`)
 const holidayNames = computed(() => props.holidays.map((holiday) => holiday.name).join(' · '))
@@ -139,10 +154,6 @@ function getEventsForHour(hour) {
 
 function formatHour(hour) {
   return `${String(hour).padStart(2, '0')}:00`
-}
-
-function getWeatherForHour(hour) {
-  return props.weatherHourly.find((point) => Number(point.time?.slice(11, 13)) === hour) || null
 }
 
 function handleDragStart(event, dragEvent) {
@@ -297,7 +308,7 @@ function pluralize(value, words) {
 
 .day-mode__hour {
   display: grid;
-  grid-template-columns: 62px 1fr;
+  grid-template-columns: 70px 1fr;
   min-height: 56px;
   border-bottom: 1px solid var(--border-color);
 }
@@ -307,6 +318,8 @@ function pluralize(value, words) {
 }
 
 .day-mode__hour-meta {
+  position: relative;
+  z-index: 1;
   display: grid;
   align-content: start;
   justify-items: center;
@@ -321,21 +334,35 @@ function pluralize(value, words) {
 }
 
 .day-mode__weather {
-  display: inline-grid;
-  place-items: center;
-  min-width: 32px;
-  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 46px;
+  min-height: 24px;
   border: 1px solid color-mix(in srgb, var(--cyan) 24%, var(--border-color));
   border-radius: 8px;
   color: var(--text-primary);
   background: color-mix(in srgb, var(--cyan) 8%, var(--control-bg));
   font-size: 10px;
-  font-weight: 850;
   line-height: 1;
 }
 
+.day-mode__weather strong {
+  padding-right: 4px;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.day-mode__weather :deep(.weather-glyph) {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .day-mode__weather--loading {
-  width: 32px;
+  width: 46px;
   background: var(--control-bg-hover);
   animation: weatherInlinePulse 1.4s ease-in-out infinite;
 }

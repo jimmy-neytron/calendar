@@ -1,133 +1,114 @@
 <template>
-  <span class="weather-glyph" :class="[`weather-glyph--${icon}`, `weather-glyph--${tone}`]" aria-hidden="true">
-    <i />
+  <span
+    class="weather-glyph"
+    :class="[`weather-glyph--${tone}`, `weather-glyph--tooltip-${tooltipPlacement}`]"
+    :data-has-tooltip="Boolean(label)"
+    :aria-hidden="label ? undefined : true"
+    :aria-label="label || undefined"
+    :role="label ? 'img' : undefined"
+  >
+    <component :is="glyph" :size="iconSize" :stroke-width="1.8" />
+    <span v-if="label" class="weather-glyph__tooltip" aria-hidden="true">{{ label }}</span>
   </span>
 </template>
 
 <script setup lang="ts">
-import type { WeatherConditionTone } from '../../services/weatherService'
+import { computed } from 'vue'
+import type { WeatherConditionTone, WeatherIconName } from '../../services/weatherService'
+import { weatherFallbackIcon, weatherIconMap } from './weatherIconMap'
 
-withDefaults(defineProps<{
-  icon?: string
+const props = withDefaults(defineProps<{
+  icon?: WeatherIconName
   tone?: WeatherConditionTone
+  size?: 'default' | 'compact'
+  label?: string
+  tooltipPlacement?: 'top' | 'right'
 }>(), {
   icon: 'cloud',
   tone: 'cloudy',
+  size: 'default',
+  label: '',
+  tooltipPlacement: 'top',
 })
+
+const glyph = computed(() => weatherIconMap[props.icon] || weatherFallbackIcon)
+const iconSize = computed(() => (props.size === 'compact' ? 16 : 20))
 </script>
 
 <style scoped>
 .weather-glyph {
-  --weather-color: var(--cyan);
+  --weather-color: var(--info);
   position: relative;
   display: inline-grid;
   place-items: center;
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
-  border: 1px solid color-mix(in srgb, var(--weather-color) 28%, var(--border-color));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--weather-color) 10%, var(--control-bg));
+  color: var(--weather-color);
+  border: 1px solid color-mix(in srgb, var(--weather-color) 24%, var(--border-color));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--weather-color) 9%, var(--control-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
 }
 
 .weather-glyph--clear { --weather-color: var(--warning); }
-.weather-glyph--rain { --weather-color: var(--cyan); }
-.weather-glyph--snow { --weather-color: #b7d7ff; }
+.weather-glyph--cloudy { --weather-color: var(--text-secondary); }
+.weather-glyph--rain { --weather-color: var(--info); }
+.weather-glyph--snow { --weather-color: color-mix(in srgb, var(--info) 72%, var(--text-primary)); }
 .weather-glyph--storm { --weather-color: var(--orange); }
 .weather-glyph--fog { --weather-color: var(--text-muted); }
 
-.weather-glyph i,
-.weather-glyph::before,
-.weather-glyph::after {
+.weather-glyph :deep(svg) {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--weather-color) 18%, transparent));
+}
+
+.weather-glyph__tooltip {
   position: absolute;
-  content: "";
+  z-index: 50;
+  display: block;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 24px));
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 7px 9px;
+  color: var(--text-primary);
+  background: var(--sidebar-floating-bg);
+  box-shadow: var(--shadow-md);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .16s var(--ease-out), transform .16s var(--ease-out), visibility .16s;
 }
 
-.weather-glyph--sun i {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--weather-color);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--weather-color) 20%, transparent);
+.weather-glyph--tooltip-top .weather-glyph__tooltip {
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 4px);
 }
 
-.weather-glyph--cloud i,
-.weather-glyph--rain i,
-.weather-glyph--snow i,
-.weather-glyph--storm i,
-.weather-glyph--partly i {
-  left: 8px;
-  top: 15px;
-  width: 19px;
-  height: 9px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--weather-color) 75%, var(--text-primary));
+.weather-glyph--tooltip-right .weather-glyph__tooltip {
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translate(-4px, -50%);
 }
 
-.weather-glyph--cloud i::before,
-.weather-glyph--rain i::before,
-.weather-glyph--snow i::before,
-.weather-glyph--storm i::before,
-.weather-glyph--partly i::before {
-  position: absolute;
-  left: 4px;
-  bottom: 4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: inherit;
-  content: "";
-}
+@media (hover: hover) and (pointer: fine) {
+  .weather-glyph[data-has-tooltip='true']:hover .weather-glyph__tooltip {
+    opacity: 1;
+    visibility: visible;
+  }
 
-.weather-glyph--partly::before {
-  right: 9px;
-  top: 9px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--warning);
-}
+  .weather-glyph--tooltip-top:hover .weather-glyph__tooltip {
+    transform: translate(-50%, 0);
+  }
 
-.weather-glyph--rain::after {
-  left: 11px;
-  top: 26px;
-  width: 3px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--cyan);
-  box-shadow: 6px 0 0 var(--cyan), 12px 0 0 var(--cyan);
+  .weather-glyph--tooltip-right:hover .weather-glyph__tooltip {
+    transform: translate(0, -50%);
+  }
 }
-
-.weather-glyph--snow::after {
-  left: 11px;
-  top: 27px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #dbeafe;
-  box-shadow: 7px 0 0 #dbeafe, 14px 0 0 #dbeafe;
-}
-
-.weather-glyph--storm::after {
-  left: 15px;
-  top: 24px;
-  width: 8px;
-  height: 11px;
-  background: var(--warning);
-  clip-path: polygon(45% 0, 100% 0, 62% 43%, 100% 43%, 31% 100%, 48% 54%, 0 54%);
-}
-
-.weather-glyph--fog i,
-.weather-glyph--fog::before,
-.weather-glyph--fog::after {
-  left: 8px;
-  width: 18px;
-  height: 2px;
-  border-radius: 4px;
-  background: var(--text-muted);
-}
-
-.weather-glyph--fog i { top: 12px; }
-.weather-glyph--fog::before { top: 18px; }
-.weather-glyph--fog::after { top: 24px; }
 </style>
