@@ -1,7 +1,31 @@
-const CACHE_NAME = 'wardrobe-cutouts-v1'
+import { segmentWardrobeImage } from './wardrobeImageSegmentation.service'
+
+const CACHE_VERSION = 2
+const CACHE_NAME = `wardrobe-cutouts-v${CACHE_VERSION}`
 const MAX_SIDE = 1400
 
 export async function removeWardrobeImageBackground(source: Blob, fileName = 'wardrobe-image'): Promise<File> {
+  const prepared = await prepareImage(source)
+  let blob: Blob
+
+  if (hasUsefulTransparency(prepared.image.data)) {
+    blob = await canvasBlob(prepared.canvas)
+  } else {
+    try {
+      const normalizedSource = await canvasBlob(prepared.canvas, 'image/png')
+      blob = await segmentWardrobeImage(normalizedSource)
+    } catch {
+      makeBorderTransparent(prepared.image.data, prepared.width, prepared.height)
+      prepared.context.clearRect(0, 0, prepared.width, prepared.height)
+      prepared.context.putImageData(prepared.image, 0, 0)
+      blob = await canvasBlob(prepared.canvas)
+    }
+  }
+
+  return new File([blob], `${baseName(fileName)}.webp`, { type: 'image/webp', lastModified: Date.now() })
+}
+
+async function prepareImage(source: Blob) {
   const bitmap = await createImageBitmap(source)
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
   const width = Math.max(1, Math.round(bitmap.width * scale))
@@ -15,16 +39,12 @@ export async function removeWardrobeImageBackground(source: Blob, fileName = 'wa
   bitmap.close()
 
   const image = context.getImageData(0, 0, width, height)
-  if (!hasUsefulTransparency(image.data)) makeBorderTransparent(image.data, width, height)
-  context.clearRect(0, 0, width, height)
-  context.putImageData(image, 0, 0)
-  const blob = await canvasBlob(canvas)
-  return new File([blob], `${baseName(fileName)}.webp`, { type: 'image/webp', lastModified: Date.now() })
+  return { canvas, context, image, width, height }
 }
 
 export async function createWardrobeCutoutUrl(sourceUrl: string, imagePath: string): Promise<string> {
   if (!sourceUrl) return ''
-  const cacheKey = new Request(`${location.origin}/__wardrobe_cutouts__/${encodeURIComponent(imagePath)}?v=1`)
+  const cacheKey = new Request(`${location.origin}/__wardrobe_cutouts__/${encodeURIComponent(imagePath)}?v=${CACHE_VERSION}`)
   const cache = 'caches' in window ? await caches.open(CACHE_NAME) : null
   const cached = await cache?.match(cacheKey)
   if (cached) return URL.createObjectURL(await cached.blob())
@@ -90,6 +110,6 @@ function isBackground(data: Uint8ClampedArray,index:number,background:{r:number;
 }
 function colorDistance(r:number,g:number,b:number,background:{r:number;g:number;b:number}){return Math.sqrt((r-background.r)**2+(g-background.g)**2+(b-background.b)**2)}
 function hasUsefulTransparency(data:Uint8ClampedArray){let transparent=0;for(let index=3;index<data.length;index+=4)if(data[index]<245)transparent+=1;return transparent>data.length/4*.005}
-function canvasBlob(canvas:HTMLCanvasElement){return new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось обработать изображение')),'image/webp',.92))}
+function canvasBlob(canvas:HTMLCanvasElement,type='image/webp'){return new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось обработать изображение')),type,.92))}
 function baseName(value:string){return(value.split('/').pop()||'wardrobe-image').replace(/\.[^.]+$/,'')}
 function clamp(value:number,min:number,max:number){return Math.min(max,Math.max(min,value))}

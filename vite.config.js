@@ -8,7 +8,9 @@ function pwaServiceWorker() {
     name: 'workspace-pwa-service-worker',
     apply: 'build',
     generateBundle(_, bundle) {
-      const generatedAssets = Object.keys(bundle).map((file) => `/${file}`)
+      const generatedAssets = Object.keys(bundle)
+        .filter((file) => !file.endsWith('.wasm'))
+        .map((file) => `/${file}`)
       const publicAssets = [
         '/',
         '/index.html',
