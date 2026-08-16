@@ -53,15 +53,13 @@ import { adminApi } from '../../modules/admin/api/admin.api.js'
 import { authStore } from '../../stores/auth.store.js'
 import UiIcon from '../ui/UiIcon.vue'
 import UiModal from '../ui/UiModal.vue'
+import {
+  getAdminModalRow,
+  mapAdminModal,
+  matchesAdminModalAudience,
+} from '../../modules/admin/services/adminModalMapper.js'
 
 const DISMISSED_KEY = 'workspace-admin-modal-dismissed'
-const modalStyleMap = {
-  notice: { label: 'Уведомление', icon: 'mail' },
-  warning: { label: 'Предупреждение', icon: 'warning' },
-  danger: { label: 'Критично', icon: 'warning' },
-  success: { label: 'Успех', icon: 'check' },
-  maintenance: { label: 'Техработы', icon: 'settings' },
-}
 const activeModal = ref(null)
 const isOpen = ref(false)
 const renderKey = ref(0)
@@ -70,63 +68,7 @@ const linkButtons = computed(() => activeModal.value?.buttons.filter((button) =>
 const closeButtons = computed(() => activeModal.value?.buttons.filter((button) => button.action === 'close') || [])
 
 function mapModal(row) {
-  if (!isValidModalRow(row)) return null
-  const modalType = normalizeModalType(row.modal_type)
-  return {
-    id: row.id,
-    title: row.title || 'Сообщение',
-    contentHtml: sanitizeHtml(row.content_html || ''),
-    buttons: normalizeButtons(row.buttons),
-    displayMode: row.display_mode === 'once' ? 'once' : 'always',
-    modalType,
-    style: modalStyleMap[modalType],
-    isBlocking: row.is_blocking === true,
-    audience: normalizeAudience(row.audience),
-  }
-}
-
-function getModalRow(data) {
-  const row = Array.isArray(data) ? data[0] : data
-  return isValidModalRow(row) ? row : null
-}
-
-function isValidModalRow(row) {
-  return Boolean(row && typeof row === 'object' && !Array.isArray(row) && row.id)
-}
-
-function normalizeModalType(value) {
-  return Object.prototype.hasOwnProperty.call(modalStyleMap, value) ? value : 'notice'
-}
-
-function normalizeButtons(buttons) {
-  return (Array.isArray(buttons) ? buttons : []).map((button, index) => ({
-    key: button.key || `${index}`,
-    label: String(button.label || '').slice(0, 80),
-    action: button.action === 'close' ? 'close' : 'link',
-    url: button.action === 'close' ? '' : normalizeUrl(button.url || ''),
-    variant: button.variant === 'secondary' ? 'secondary' : 'primary',
-  })).filter((button) => button.label && (button.action === 'close' || button.url))
-}
-
-function normalizeAudience(value) {
-  const source = value && typeof value === 'object' ? value : {}
-  const userIds = normalizeList(source.userIds || source.user_ids)
-  const emails = normalizeList(source.emails).map((email) => email.toLowerCase())
-  const roles = normalizeList(source.roles).map((role) => role.toLowerCase())
-  const tiers = normalizeList(source.tiers).map((tier) => tier.toLowerCase())
-  const hasCriteria = Boolean(userIds.length || emails.length || roles.length || tiers.length)
-  return {
-    mode: source.mode === 'targeted' || hasCriteria ? 'targeted' : 'all',
-    userIds,
-    emails,
-    roles,
-    tiers,
-  }
-}
-
-function normalizeList(value) {
-  const items = Array.isArray(value) ? value : String(value || '').split(/[\n,; ]+/)
-  return [...new Set(items.map((item) => String(item || '').trim()).filter(Boolean))]
+  return mapAdminModal(row, { sanitizeContent: true, filterButtons: true })
 }
 
 function rememberDismiss() {
@@ -159,7 +101,7 @@ async function loadActiveModal() {
   try {
     const { data, error } = await adminApi.getActiveModal()
     if (error) return
-    const row = getModalRow(data)
+    const row = getAdminModalRow(data)
     if (!row) {
       activeModal.value = null
       isOpen.value = false
@@ -175,7 +117,7 @@ async function loadActiveModal() {
       return
     }
 
-    if (!matchesCurrentUserAudience(modal.audience)) {
+    if (!matchesAdminModalAudience(modal.audience, authStore.currentUser.value)) {
       activeModal.value = null
       isOpen.value = false
       syncBlockingGuard()
@@ -198,28 +140,6 @@ function shouldOpenModal(modal) {
   return window.localStorage.getItem(DISMISSED_KEY) !== modal.id
 }
 
-function matchesCurrentUserAudience(audience) {
-  if (!audience || audience.mode === 'all') return true
-  const user = authStore.currentUser.value
-  if (!user) return false
-
-  const userId = String(user.id || '').trim()
-  const email = String(user.email || '').trim().toLowerCase()
-  const role = String(user.role || 'user').trim().toLowerCase()
-  const tier = String(user.subscriptionTier || 'pro').trim().toLowerCase()
-
-  if (audience.userIds.includes(userId)) return true
-  if (audience.emails.includes(email)) return true
-
-  const hasRoleFilter = audience.roles.length > 0
-  const hasTierFilter = audience.tiers.length > 0
-  if (!hasRoleFilter && !hasTierFilter) return false
-  if (hasRoleFilter && !audience.roles.includes(role)) return false
-  if (hasTierFilter && !audience.tiers.includes(tier)) return false
-
-  return true
-}
-
 function restoreBlockingModal() {
   if (!activeModal.value?.isBlocking) return
   isOpen.value = true
@@ -237,29 +157,6 @@ function syncBlockingGuard() {
     if (!document.querySelector('.global-admin-modal-lock')) restoreBlockingModal()
   })
   lockObserver.observe(document.body, { childList: true, subtree: true })
-}
-
-function sanitizeHtml(value) {
-  const template = document.createElement('template')
-  template.innerHTML = value || ''
-  template.content.querySelectorAll('script,style,iframe,object,embed').forEach((node) => node.remove())
-  template.content.querySelectorAll('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attribute) => {
-      const name = attribute.name.toLowerCase()
-      const attrValue = attribute.value || ''
-      if (name.startsWith('on') || (['href', 'src'].includes(name) && /^javascript:/i.test(attrValue))) {
-        node.removeAttribute(attribute.name)
-      }
-    })
-  })
-  return template.innerHTML
-}
-
-function normalizeUrl(value) {
-  const trimmed = String(value || '').trim()
-  if (!trimmed) return ''
-  if (/^https?:\/\//i.test(trimmed)) return trimmed
-  return `https://${trimmed}`
 }
 
 onMounted(() => {

@@ -46,7 +46,7 @@
         <article class="simple-card simple-card--required panel">
           <header class="required-card__header">
             <div class="required-card__heading">
-              <span class="simple-card__icon"><UiIcon name="calendar" /></span>
+              <span class="simple-card__icon"><UiIcon name="clock" /></span>
               <div>
                 <small>Регулярные платежи</small>
                 <strong>Обязательные</strong>
@@ -173,6 +173,8 @@ import { useNotification } from '../../composables/ui/useNotification.js'
 import { budgetStore } from '../../stores/budget.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { workspaceStore } from '../../stores/workspace.store.js'
+import { formatRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const route = useRoute()
 const { notify } = useNotification()
@@ -295,23 +297,6 @@ function shortDate(value) {
   if (!match) return '—'
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(date)
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0))
-}
-
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
 }
 
 function parseMonth(month) {

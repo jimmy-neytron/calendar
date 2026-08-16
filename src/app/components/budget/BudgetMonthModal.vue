@@ -91,6 +91,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { toAmount } from '../../composables/budget/useBudgetForm'
+import { formatRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
 import UiButton from '../ui/UiButton.vue'
 import UiIcon from '../ui/UiIcon.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
@@ -184,14 +185,6 @@ function submit() {
     income: toAmount(income.value),
     categories: categories.value.map(({ key, ...item }) => item),
   })
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0))
 }
 
 function createKey() {

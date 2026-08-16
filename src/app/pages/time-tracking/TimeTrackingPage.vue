@@ -84,6 +84,7 @@ import TimeEntryComposer from '../../components/time-tracking/TimeEntryComposer.
 import TimeEntryList from '../../components/time-tracking/TimeEntryList.vue'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { useNotification } from '../../composables/ui/useNotification.js'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const { notify } = useNotification()
 const router = useRouter()
@@ -196,15 +197,6 @@ function formatDuration(minutes: number) {
   if (!hours) return `${rest} мин`
   if (!rest) return `${hours} ч`
   return `${hours} ч ${rest} мин`
-}
-
-function pluralize(value: number, words: [string, string, string]) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
 }
 
 function toDateKey(value: Date) {

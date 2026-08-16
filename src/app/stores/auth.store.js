@@ -4,6 +4,10 @@ import {
   getSubscriptionPlan,
   normalizeSubscriptionTier,
 } from '../utils/constants/subscriptionConstants.js'
+import {
+  AUTH_CONNECTION_ERROR_MESSAGE,
+  getAuthErrorMessage,
+} from '../utils/errors/authErrorMessage.js'
 
 const users = ref([])
 const currentUserId = ref(null)
@@ -18,7 +22,7 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin' && currentUse
 
 function mapUser(profile, authUser) {
   const email = profile?.email || authUser?.email || ''
-  const name = profile?.name || authUser?.user_metadata?.name || email.split('@')[0] || 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ'
+  const name = profile?.name || authUser?.user_metadata?.name || email.split('@')[0] || 'Пользователь'
   const subscriptionTier = normalizeSubscriptionTier(profile?.subscription_tier)
   return {
     id: profile?.id || authUser.id,
@@ -83,7 +87,7 @@ async function login(email, password) {
     if (!currentUser.value) return { ok: false, blocked: true, message: 'Аккаунт деактивирован администратором' }
     return { ok: true, user: currentUser.value }
   } catch {
-    return { ok: false, message: 'РќРµС‚ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ Supabase. РџСЂРѕРІРµСЂСЊ РёРЅС‚РµСЂРЅРµС‚ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕРµРєС‚Р°.' }
+    return { ok: false, message: AUTH_CONNECTION_ERROR_MESSAGE }
   } finally {
     loading.value = false
   }
@@ -92,9 +96,9 @@ async function login(email, password) {
 async function register(data) {
   const name = String(data.name || '').trim()
   const email = String(data.email || '').trim().toLowerCase()
-  if (!name) return { ok: false, message: 'РЈРєР°Р¶Рё РёРјСЏ Р°РєРєР°СѓРЅС‚Р°' }
-  if (!email.includes('@')) return { ok: false, message: 'РЈРєР°Р¶Рё РєРѕСЂСЂРµРєС‚РЅС‹Р№ email' }
-  if (String(data.password || '').length < 6) return { ok: false, message: 'РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РЅРµ РєРѕСЂРѕС‡Рµ 6 СЃРёРјРІРѕР»РѕРІ' }
+  if (!name) return { ok: false, message: 'Укажи имя аккаунта' }
+  if (!email.includes('@')) return { ok: false, message: 'Укажи корректный email' }
+  if (String(data.password || '').length < 6) return { ok: false, message: 'Пароль должен быть не короче 6 символов' }
   loading.value = true
   try {
     const { data: result, error } = await authApi.signUp({ ...data, name, email })
@@ -102,7 +106,7 @@ async function register(data) {
     if (result.session) await applySession(result.session)
     return { ok: true, needsEmailConfirmation: !result.session }
   } catch {
-    return { ok: false, message: 'РќРµС‚ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ Supabase. РџСЂРѕРІРµСЂСЊ РёРЅС‚РµСЂРЅРµС‚ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕРµРєС‚Р°.' }
+    return { ok: false, message: AUTH_CONNECTION_ERROR_MESSAGE }
   } finally {
     loading.value = false
   }
@@ -159,17 +163,6 @@ function mergeUsers(items) {
   const map = new Map(users.value.map((user) => [user.id, user]))
   items.filter(Boolean).forEach((user) => map.set(user.id, { ...map.get(user.id), ...user }))
   users.value = [...map.values()]
-}
-
-function getAuthErrorMessage(error) {
-  const messages = {
-    invalid_credentials: 'РќРµРІРµСЂРЅС‹Р№ email РёР»Рё РїР°СЂРѕР»СЊ',
-    email_not_confirmed: 'РЎРЅР°С‡Р°Р»Р° РїРѕРґС‚РІРµСЂРґРё email РїРѕ СЃСЃС‹Р»РєРµ РёР· РїРёСЃСЊРјР°',
-    user_already_exists: 'РђРєРєР°СѓРЅС‚ СЃ С‚Р°РєРёРј email СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚',
-    signup_disabled: 'Р РµРіРёСЃС‚СЂР°С†РёСЏ РѕС‚РєР»СЋС‡РµРЅР° РІ РЅР°СЃС‚СЂРѕР№РєР°С… Supabase',
-    over_email_send_rate_limit: 'РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ РїРёСЃРµРј. РџРѕРїСЂРѕР±СѓР№ РЅРµРјРЅРѕРіРѕ РїРѕР·Р¶Рµ',
-  }
-  return messages[error.code] || error.message || 'РћС€РёР±РєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё'
 }
 
 export const authStore = {

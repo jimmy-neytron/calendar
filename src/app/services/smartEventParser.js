@@ -43,7 +43,8 @@ export function parseSmartEvent(input, context = {}) {
   const mention = source.match(/@([а-яёa-z0-9._-]+)/i)?.[1]?.toLowerCase()
   const member = mention
     ? context.members?.find((item) => (
-      item.name.toLowerCase().startsWith(mention) || item.email.toLowerCase().startsWith(mention)
+      String(item.name || '').toLowerCase().startsWith(mention)
+      || String(item.email || '').toLowerCase().startsWith(mention)
     ))
     : null
   const calendar = findCalendar(categoryToken, category, context.calendars || [])
@@ -101,8 +102,10 @@ function parseDate(source, now) {
   const explicit = source.match(/\b(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?\b/)
   if (explicit) {
     const year = explicit[3] ? normalizeYear(Number(explicit[3])) : now.getFullYear()
-    const candidate = new Date(year, Number(explicit[2]) - 1, Number(explicit[1]))
-    if (!Number.isNaN(candidate.getTime())) return candidate
+    const month = Number(explicit[2]) - 1
+    const day = Number(explicit[1])
+    const candidate = new Date(year, month, day)
+    if (candidate.getFullYear() === year && candidate.getMonth() === month && candidate.getDate() === day) return candidate
   }
 
   const weekdayEntry = WEEKDAYS.find((weekday) => weekday.pattern.test(source))
@@ -125,9 +128,9 @@ function parseTime(source) {
 function parseDuration(source) {
   if (/на\s+(?:один\s+)?час/i.test(source)) return 60
   if (/на\s+полчаса/i.test(source)) return 30
-  const hours = source.match(/на\s+(\d+(?:[.,]\d+)?)\s*(?:ч|час|часа|часов)\b/i)
+  const hours = source.match(/на\s+(\d+(?:[.,]\d+)?)\s*(?:часов|часа|час|ч)(?=\s|$)/i)
   if (hours) return Math.max(15, Math.round(Number(hours[1].replace(',', '.')) * 60))
-  const minutes = source.match(/на\s+(\d+)\s*(?:м|мин|минут|минуты)\b/i)
+  const minutes = source.match(/на\s+(\d+)\s*(?:минуты|минут|мин|м)(?=\s|$)/i)
   return minutes ? Math.max(15, Number(minutes[1])) : 60
 }
 
@@ -146,18 +149,18 @@ function inferCategory(source) {
 
 function findCalendar(token, category, calendars) {
   const words = [token, category].filter(Boolean)
-  return calendars.find((calendar) => words.some((word) => calendar.name.toLowerCase().includes(word)))
+  return calendars.find((calendar) => words.some((word) => String(calendar.name || '').toLowerCase().includes(word)))
 }
 
 function cleanTitle(source) {
   return source
     .replace(/^\s*(?:добавь|добавить|создай|создать|запланируй|запланировать|поставь|поставить)\s+/i, '')
     .replace(/(?:сегодня|завтра|послезавтра)/gi, '')
-    .replace(/\b(?:в\s*)?(?:[01]?\d|2[0-3])[:.]\d{2}\b/gi, '')
+    .replace(/(^|\s)(?:в\s*)?(?:[01]?\d|2[0-3])[:.]\d{2}(?=\s|$)/gi, ' ')
     .replace(/(^|\s)в\s+(?:[01]?\d|2[0-3])(?=\s|$)/gi, ' ')
     .replace(/\b\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?\b/g, '')
     .replace(/(?:в\s+)?(?:воскресен(?:ье|ия|ью)?|понедельник(?:а|у)?|вторник(?:а|у)?|сред(?:а|у|ы)|четверг(?:а|у)?|пятниц(?:а|у|ы)|суббот(?:а|у|ы))/gi, '')
-    .replace(/на\s+(?:полчаса|(?:один\s+)?час|\d+(?:[.,]\d+)?\s*(?:ч|час|часа|часов|м|мин|минут|минуты))/gi, '')
+    .replace(/на\s+(?:полчаса|(?:один\s+)?час|\d+(?:[.,]\d+)?\s*(?:часов|часа|час|ч|минуты|минут|мин|м))(?=\s|$)/gi, '')
     .replace(/напомни\s+за\s+(?:\d+\s*)?(?:день|дня|час|часа|мин|минут)/gi, '')
     .replace(/#[а-яёa-z-]+/gi, '')
     .replace(/@[а-яёa-z0-9._-]+/gi, '')

@@ -95,6 +95,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const props = defineProps({
   income: { type: Number, default: 0 },
@@ -150,22 +152,6 @@ function percentOf(value, total) {
   return total ? Math.max(0, Math.round((Number(value || 0) / total) * 100)) : 0
 }
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0))
-}
-
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
 </script>
 
 <style scoped>

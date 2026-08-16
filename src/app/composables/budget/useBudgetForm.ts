@@ -1,4 +1,5 @@
 import { computed, reactive } from 'vue'
+import { toNonNegativeAmount } from '../../utils/formatters/currencyFormatter.js'
 
 export interface BudgetRuleFormItem {
   key: string
@@ -118,8 +119,7 @@ export function useBudgetForm() {
 }
 
 export function toAmount(value: string | number | null | undefined) {
-  const amount = Number(String(value ?? 0).replace(',', '.'))
-  return Number.isFinite(amount) ? Math.max(0, Math.round(amount * 100) / 100) : 0
+  return toNonNegativeAmount(value)
 }
 
 function sumAmounts(values: Array<string | number>) {

@@ -162,6 +162,7 @@ import { birthdayStore } from '../../stores/birthday.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'
 import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const { notify } = useNotification()
 const birthdays = birthdayStore.birthdays
@@ -230,14 +231,6 @@ function purchasedCount(birthday) {
   return birthday.giftIdeas.filter((gift) => gift.purchased).length
 }
 
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
 </script>
 
 <style scoped>

@@ -191,6 +191,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 import { useRoute } from 'vue-router'
 import { adminApi } from '../api/admin.api.js'
+import { mapAdminModalSummary as mapModal } from '../services/adminModalMapper.js'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
@@ -385,14 +386,6 @@ function mapDetail(payload) {
       lastActivityAt: source?.stats?.lastActivityAt || '',
     },
     modalId: source?.modalOverride?.id || '',
-  }
-}
-
-function mapModal(row) {
-  return {
-    id: row.id,
-    title: row.title || '',
-    isActive: row.is_active !== false,
   }
 }
 

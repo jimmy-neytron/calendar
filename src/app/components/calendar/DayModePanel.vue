@@ -111,6 +111,7 @@ import { DAY_TIMELINE_HOURS } from '../../utils/constants/calendarConstants.js'
 import { formatDateShort, formatTimeRange, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventMembers, formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { formatWeatherTooltip } from '../../utils/formatters/weatherFormatter'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
@@ -189,14 +190,6 @@ function getEventColor(event) {
   return calendarCollectionStore.getCollection(event.calendarId)?.color || getEventAccent(event.memberIds, props.members)
 }
 
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
 </script>
 
 <style scoped>

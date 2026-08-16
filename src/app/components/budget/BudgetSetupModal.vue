@@ -200,6 +200,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useBudgetForm, toAmount } from '../../composables/budget/useBudgetForm'
+import { formatNonNegativeRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
 import UiButton from '../ui/UiButton.vue'
 import UiIcon from '../ui/UiIcon.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
@@ -293,13 +294,6 @@ function hasCategory(name: string) {
   return form.categories.some((item) => item.name.toLowerCase() === name.toLowerCase())
 }
 
-function formatMoney(value: string | number) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(toAmount(value))
-}
 </script>
 
 <style scoped>

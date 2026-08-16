@@ -32,13 +32,23 @@ export class DateHelper {
 
   static addMonths(date, amount) {
     const nextDate = new Date(date)
+    const targetDay = nextDate.getDate()
+    nextDate.setDate(1)
     nextDate.setMonth(nextDate.getMonth() + amount)
+    const lastDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate()
+    nextDate.setDate(Math.min(targetDay, lastDay))
     return nextDate
   }
 
   static addYears(date, amount) {
     const nextDate = new Date(date)
+    const targetDay = nextDate.getDate()
+    const targetMonth = nextDate.getMonth()
+    nextDate.setDate(1)
     nextDate.setFullYear(nextDate.getFullYear() + amount)
+    nextDate.setMonth(targetMonth)
+    const lastDay = new Date(nextDate.getFullYear(), targetMonth + 1, 0).getDate()
+    nextDate.setDate(Math.min(targetDay, lastDay))
     return nextDate
   }
 

@@ -28,7 +28,7 @@
       <UiButton
         v-if="isCalendarRoute"
         variant="secondary"
-        :icon="viewMode === 'day' ? '▦' : '◫'"
+        :icon="viewMode === 'day' ? 'grid' : 'activity'"
         @click="$emit('toggle-calendar-view')"
       >
         {{ viewMode === 'day' ? 'Месяц' : 'День' }}

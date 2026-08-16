@@ -102,6 +102,7 @@ import { ref } from 'vue'
 import type { TimeEntry, TimeProject } from '../../stores/timeTracking.store'
 import UiIcon from '../ui/UiIcon.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const props = defineProps<{
   entries: TimeEntry[]
@@ -177,15 +178,6 @@ function formatDate(date: string) {
     day: 'numeric',
     month: 'long',
   }).format(new Date(`${date}T12:00:00`))
-}
-
-function pluralize(value: number, words: [string, string, string]) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
 }
 
 function renderMarkdown(value: string) {

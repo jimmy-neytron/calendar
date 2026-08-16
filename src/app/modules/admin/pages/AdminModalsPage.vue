@@ -310,6 +310,16 @@ import UiInput from '../../../components/ui/UiInput.vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
 import UiToggle from '../../../components/ui/UiToggle.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
+import {
+  ADMIN_MODAL_STYLES as modalStyleMap,
+  buildAdminModalAudience,
+  hasAdminModalAudienceCriteria as hasAudienceCriteria,
+  mapAdminModal as mapModal,
+  normalizeAdminModalButtons as normalizeButtons,
+  normalizeAdminModalList as normalizeList,
+  sanitizeAdminModalHtml as sanitizeHtml,
+  stripAdminModalHtml as stripHtml,
+} from '../services/adminModalMapper.js'
 
 const { notify } = useNotification()
 const modals = ref([])
@@ -335,13 +345,6 @@ const form = reactive({
   targetRoleDraft: '',
   targetTierDraft: '',
 })
-const modalStyleMap = {
-  notice: { label: 'Уведомление', icon: 'mail' },
-  warning: { label: 'Предупреждение', icon: 'warning' },
-  danger: { label: 'Критично', icon: 'warning' },
-  success: { label: 'Успех', icon: 'check' },
-  maintenance: { label: 'Техработы', icon: 'settings' },
-}
 const roleOptions = [
   { value: 'admin', label: 'Админы' },
   { value: 'user', label: 'Пользователи' },
@@ -437,52 +440,6 @@ function selectModal(modal) {
   })
 }
 
-function mapModal(row) {
-  return {
-    id: row.id,
-    title: row.title || '',
-    contentHtml: row.content_html || '',
-    buttons: normalizeButtons(row.buttons),
-    isActive: row.is_active === true,
-    displayMode: row.display_mode === 'once' ? 'once' : 'always',
-    modalType: normalizeModalType(row.modal_type),
-    isBlocking: row.is_blocking === true,
-    audience: normalizeAudience(row.audience),
-    createdAt: row.created_at || '',
-    updatedAt: row.updated_at || '',
-  }
-}
-
-function normalizeModalType(value) {
-  return Object.prototype.hasOwnProperty.call(modalStyleMap, value) ? value : 'notice'
-}
-
-function normalizeAudience(value) {
-  const source = value && typeof value === 'object' ? value : {}
-  const userIds = normalizeList(source.userIds || source.user_ids)
-  const emails = normalizeList(source.emails).map((email) => email.toLowerCase())
-  const roles = normalizeList(source.roles).map((role) => role.toLowerCase()).filter((role) => roleOptions.some((option) => option.value === role))
-  const tiers = normalizeList(source.tiers).map((tier) => tier.toLowerCase()).filter((tier) => tierOptions.some((option) => option.value === tier))
-  const hasCriteria = Boolean(userIds.length || emails.length || roles.length || tiers.length)
-  return {
-    mode: source.mode === 'targeted' || hasCriteria ? 'targeted' : 'all',
-    userIds,
-    emails,
-    roles,
-    tiers,
-  }
-}
-
-function normalizeButtons(buttons) {
-  return (Array.isArray(buttons) ? buttons : []).map((button, index) => ({
-    key: button.key || `${Date.now()}-${index}`,
-    label: String(button.label || '').slice(0, 80),
-    action: button.action === 'close' ? 'close' : 'link',
-    url: button.action === 'close' ? '' : normalizeUrl(button.url || ''),
-    variant: button.variant === 'secondary' ? 'secondary' : 'primary',
-  }))
-}
-
 function addButton(action = 'link') {
   const isCloseAction = action === 'close'
   form.buttons.push({
@@ -530,18 +487,13 @@ function removeAudienceTier(value) {
 }
 
 function buildAudience() {
-  return {
-    mode: form.audienceMode === 'targeted' ? 'targeted' : 'all',
+  return buildAdminModalAudience({
+    mode: form.audienceMode,
     userIds: normalizeList(form.targetUserIdsText),
-    emails: normalizeList(form.targetEmailsText).map((email) => email.toLowerCase()),
-    roles: normalizeList(form.targetRoles).map((role) => role.toLowerCase()).filter((role) => roleOptions.some((option) => option.value === role)),
-    tiers: normalizeList(form.targetTiers).map((tier) => tier.toLowerCase()).filter((tier) => tierOptions.some((option) => option.value === tier)),
-  }
-}
-
-function normalizeList(value) {
-  const items = Array.isArray(value) ? value : String(value || '').split(/[\n,; ]+/)
-  return [...new Set(items.map((item) => String(item || '').trim()).filter(Boolean))]
+    emails: normalizeList(form.targetEmailsText),
+    roles: form.targetRoles,
+    tiers: form.targetTiers,
+  })
 }
 
 async function loadModals() {
@@ -610,10 +562,6 @@ async function saveCurrentModal() {
   }
 }
 
-function hasAudienceCriteria(value) {
-  return Boolean(value.userIds.length || value.emails.length || value.roles.length || value.tiers.length)
-}
-
 async function deleteCurrentModal() {
   if (!form.id || isSaving.value) return
   isSaving.value = true
@@ -637,35 +585,6 @@ async function deleteCurrentModal() {
   } finally {
     isSaving.value = false
   }
-}
-
-function sanitizeHtml(value) {
-  const template = document.createElement('template')
-  template.innerHTML = value || ''
-  template.content.querySelectorAll('script,style,iframe,object,embed').forEach((node) => node.remove())
-  template.content.querySelectorAll('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attribute) => {
-      const name = attribute.name.toLowerCase()
-      const attrValue = attribute.value || ''
-      if (name.startsWith('on') || (['href', 'src'].includes(name) && /^javascript:/i.test(attrValue))) {
-        node.removeAttribute(attribute.name)
-      }
-    })
-  })
-  return template.innerHTML
-}
-
-function stripHtml(value) {
-  const template = document.createElement('template')
-  template.innerHTML = value || ''
-  return template.content.textContent || ''
-}
-
-function normalizeUrl(value) {
-  const trimmed = String(value || '').trim()
-  if (!trimmed) return ''
-  if (/^https?:\/\//i.test(trimmed)) return trimmed
-  return `https://${trimmed}`
 }
 
 onMounted(loadModals)

@@ -28,14 +28,16 @@ export function generateOccurrences(event, fromKey, toKey) {
     const currentKey = DateHelper.toKey(currentDate)
     if (currentKey > toKey || isAfterRepeatEnd(event, currentKey, generatedCount)) break
 
-    if (currentKey >= fromKey && shouldIncludeDate(event, currentDate)) {
-      occurrences.push({
-        ...event,
-        id: `${event.id}::${currentKey}`,
-        parentId: event.id,
-        date: currentKey,
-        isRecurringOccurrence: currentKey !== event.date,
-      })
+    if (shouldIncludeDate(event, currentDate)) {
+      if (currentKey >= fromKey) {
+        occurrences.push({
+          ...event,
+          id: `${event.id}::${currentKey}`,
+          parentId: event.id,
+          date: currentKey,
+          isRecurringOccurrence: currentKey !== event.date,
+        })
+      }
       generatedCount += 1
       if (maxCount && generatedCount >= maxCount) break
     }
@@ -77,19 +79,35 @@ function getNextOccurrenceDate(date, event) {
   if (event.repeat === 'daily') return DateHelper.addDays(date, 1)
   if (event.repeat === 'weekly') return DateHelper.addDays(date, 7)
   if (event.repeat === 'biweekly') return DateHelper.addDays(date, 14)
-  if (event.repeat === 'monthly') return DateHelper.addMonths(date, 1)
+  if (event.repeat === 'monthly') return getNextMonthDate(date, event.date)
   if (event.repeat === 'monthly-nth-weekday') return getNthWeekdayNextMonth(date, event.date)
   if (event.repeat === 'monthly-last-weekday') return getLastWeekdayNextMonth(date, event.date)
-  if (event.repeat === 'yearly') return DateHelper.addYears(date, 1)
+  if (event.repeat === 'yearly') return getNextYearDate(date, event.date)
 
   if (event.repeat === 'custom') {
     const interval = Math.max(1, Number(event.repeatInterval || 1))
     if (event.repeatUnit === 'week') return DateHelper.addDays(date, 1)
-    if (event.repeatUnit === 'month') return DateHelper.addMonths(date, interval)
+    if (event.repeatUnit === 'month') return getNextMonthDate(date, event.date, interval)
     return DateHelper.addDays(date, interval)
   }
 
   return DateHelper.addDays(date, 1)
+}
+
+function getNextMonthDate(currentDate, sourceKey, interval = 1) {
+  const source = DateHelper.parseKey(sourceKey)
+  const target = new Date(currentDate.getFullYear(), currentDate.getMonth() + interval, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(source.getDate(), lastDay))
+  return target
+}
+
+function getNextYearDate(currentDate, sourceKey) {
+  const source = DateHelper.parseKey(sourceKey)
+  const target = new Date(currentDate.getFullYear() + 1, source.getMonth(), 1)
+  const lastDay = new Date(target.getFullYear(), source.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(source.getDate(), lastDay))
+  return target
 }
 
 function getNthWeekdayNextMonth(currentDate, sourceKey) {

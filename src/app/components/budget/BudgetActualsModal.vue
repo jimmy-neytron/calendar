@@ -53,6 +53,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { toAmount } from '../../composables/budget/useBudgetForm'
+import { formatNonNegativeRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
 import UiButton from '../ui/UiButton.vue'
 import UiIcon from '../ui/UiIcon.vue'
 import UiInput from '../ui/UiInput.vue'
@@ -106,13 +107,6 @@ function differenceLabel(item: ActualCategory) {
     : `−${formatMoney(Math.abs(difference))}`
 }
 
-function formatMoney(value: string | number | null) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(toAmount(value))
-}
 </script>
 
 <style scoped>

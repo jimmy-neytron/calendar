@@ -316,12 +316,13 @@ import {
   REPEAT_UNITS,
   WEEKDAY_OPTIONS,
 } from '../../utils/constants/calendarConstants.js'
-import { formatDate, formatTimeRange, toDateKey } from '../../utils/formatters/dateFormatter.js'
+import { formatDate, formatTimeRange } from '../../utils/formatters/dateFormatter.js'
 import { getCategoryMeta } from '../../utils/formatters/calendarFormatter.js'
 import { validateEvent } from '../../utils/validators/calendarValidator.js'
 import { authStore } from '../../stores/auth.store.js'
 import { generateId } from '../../utils/helpers/idGenerator.js'
 import { exportEventToIcs } from '../../services/calendarExport.service.js'
+import { addMinutesToEventTime, createEmptyEventForm, normalizeEventForm } from './eventFormMapper.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -336,7 +337,7 @@ const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'du
 
 const titleInputRef = ref(null)
 const errors = reactive({})
-const form = reactive(getEmptyForm())
+const form = reactive(createEmptyEventForm({ calendarId: props.calendars[0]?.id || '' }))
 const duplicateMode = ref('tomorrow')
 const duplicateDatesInput = ref('')
 const commentText = ref('')
@@ -443,16 +444,20 @@ function applyTemplate(template) {
   form.repeat = template.repeat || 'none'
 
   if (!form.allDay && template.duration) {
-    form.endTime = addMinutesToTime(form.startTime, template.duration)
+    form.endTime = addMinutesToEventTime(form.startTime, template.duration)
   }
 }
 
 function resetForm() {
   Object.keys(errors).forEach((key) => delete errors[key])
-  Object.assign(form, getEmptyForm(props.selectedDateKey), props.editingEvent ? normalizeIncomingEvent(props.editingEvent) : {})
+  Object.assign(
+    form,
+    createEmptyEventForm({ date: props.selectedDateKey, calendarId: props.calendars[0]?.id || '' }),
+    props.editingEvent ? normalizeEventForm(props.editingEvent) : {}
+  )
   if (!props.editingEvent && props.initialStartTime) {
     form.startTime = props.initialStartTime
-    form.endTime = addMinutesToTime(props.initialStartTime, 60)
+    form.endTime = addMinutesToEventTime(props.initialStartTime, 60)
   }
   duplicateMode.value = 'tomorrow'
   duplicateDatesInput.value = ''
@@ -481,51 +486,6 @@ function addComment() {
   if (props.editingEvent) emit('comment', props.editingEvent.id, comment)
 }
 
-function normalizeIncomingEvent(event) {
-  return {
-    ...event,
-    repeatEndType: event.repeatEndType || (event.repeatUntil ? 'until' : 'never'),
-    repeatCount: Number(event.repeatCount || 0),
-    repeatInterval: Number(event.repeatInterval || 1),
-    repeatUnit: event.repeatUnit || 'week',
-    repeatWeekdays: Array.isArray(event.repeatWeekdays) ? event.repeatWeekdays.map(Number) : [],
-    importance: event.importance || 'normal',
-    reminder: event.reminder || 'none',
-  }
-}
-
-function getEmptyForm(date = '') {
-  return {
-    title: '',
-    date: date || toDateKey(new Date()),
-    startTime: '09:00',
-    endTime: '10:00',
-    memberIds: [],
-    calendarId: props.calendars[0]?.id || '',
-    responsibleId: '',
-    attendeeResponses: {},
-    comments: [],
-    category: 'home',
-    location: '',
-    notes: '',
-    allDay: false,
-    repeat: 'none',
-    repeatUntil: '',
-    repeatEndType: 'never',
-    repeatCount: 10,
-    repeatInterval: 1,
-    repeatUnit: 'week',
-    repeatWeekdays: [],
-    importance: 'normal',
-    reminder: 'none',
-  }
-}
-
-function addMinutesToTime(time, minutes) {
-  const [hour, minute] = time.split(':').map(Number)
-  const total = Math.min(23 * 60 + 59, hour * 60 + minute + minutes)
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
 </script>
 
 <style scoped>

@@ -53,6 +53,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 import UiButton from '../ui/UiButton.vue'
 import UiIcon from '../ui/UiIcon.vue'
 import UiModal from '../ui/UiModal.vue'
@@ -105,22 +107,6 @@ function reminderLabel(value?: string) {
   return 'Без напоминания'
 }
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0))
-}
-
-function pluralize(value: number, words: [string, string, string]) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
 </script>
 
 <style scoped>

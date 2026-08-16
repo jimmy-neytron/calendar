@@ -179,6 +179,7 @@ import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 type Period = 'week' | 'month' | 'all'
 
@@ -332,14 +333,6 @@ function toDateKey(date: Date) {
   return `${year}-${month}-${day}`
 }
 
-function pluralize(value: number, words: [string, string, string]) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
 </script>
 
 <style scoped>

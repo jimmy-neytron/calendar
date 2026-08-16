@@ -8,8 +8,7 @@
   >
     <span v-if="loading" class="ui-button__spinner" />
     <span v-else-if="icon" class="ui-button__icon">
-      <UiIcon v-if="iconName" :name="iconName" />
-      <template v-else>{{ icon }}</template>
+      <UiIcon :name="iconName || 'warning'" />
     </span>
     <span v-if="$slots.default" class="ui-button__content"><slot /></span>
   </button>
@@ -18,6 +17,7 @@
 <script setup>
 import { computed } from 'vue'
 import UiIcon from './UiIcon.vue'
+import { resolveUiButtonIcon } from './uiIcons.js'
 
 const props = defineProps({
   variant: { type: String, default: 'primary' },
@@ -30,33 +30,7 @@ const props = defineProps({
 })
 
 defineEmits(['click'])
-const iconName = computed(() => ({
-  'plus': 'plus',
-  'left': 'left',
-  'right': 'right',
-  'settings': 'settings',
-  'chart': 'chart',
-  'wallet': 'wallet',
-  '＋': 'plus',
-  '+': 'plus',
-  '→': 'right',
-  '↓': 'download',
-  '⇣': 'download',
-  '⌕': 'search',
-  'calendar': 'calendar',
-  'refresh': 'refresh',
-  'filter': 'filter',
-  'heart': 'heart',
-  'play': 'play',
-  'pause': 'minus',
-  'sparkles': 'sparkles',
-  'trash': 'trash',
-  'edit': 'edit',
-  'check': 'check',
-  'link': 'link',
-  'copy': 'copy',
-  'close': 'close',
-}[props.icon] || ''))
+const iconName = computed(() => resolveUiButtonIcon(props.icon))
 </script>
 
 <style scoped>

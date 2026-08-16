@@ -101,8 +101,8 @@ import UiButton from '../ui/UiButton.vue'
 import UiChip from '../ui/UiChip.vue'
 import UiToggle from '../ui/UiToggle.vue'
 import { EVENT_CATEGORIES, REPEAT_OPTIONS } from '../../utils/constants/calendarConstants.js'
-import { toDateKey } from '../../utils/formatters/dateFormatter.js'
 import { validateEvent } from '../../utils/validators/calendarValidator.js'
+import { createEmptyEventForm, normalizeEventForm } from './eventFormMapper.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -159,23 +159,8 @@ const remove = () => {
 
 function resetForm() {
   Object.keys(errors).forEach((key) => delete errors[key])
-  Object.assign(form, getEmptyForm(props.selectedDateKey), props.editingEvent ? { ...props.editingEvent } : {})
-}
-
-function getEmptyForm(date = '') {
-  return {
-    title: '',
-    date: date || toDateKey(new Date()),
-    startTime: '09:00',
-    endTime: '10:00',
-    memberIds: [],
-    category: 'home',
-    location: '',
-    notes: '',
-    allDay: false,
-    repeat: 'none',
-    repeatUntil: '',
-  }
+  const emptyForm = createEmptyEventForm({ date: props.selectedDateKey })
+  Object.assign(form, props.editingEvent ? normalizeEventForm(props.editingEvent, emptyForm) : emptyForm)
 }
 </script>
 

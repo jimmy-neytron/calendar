@@ -1,4 +1,5 @@
 import { requireAuthenticatedSupabase } from './client.js'
+import { mergeReleaseHistory } from '../../config/releaseHistory.js'
 
 function normalizeRelease(release) {
   return {
@@ -15,19 +16,21 @@ function normalizeRelease(release) {
 
 export const releaseNotesApi = {
   async list() {
-    const client = await requireAuthenticatedSupabase()
-    const { data, error } = await client
-      .from('app_releases')
-      .select('id, version, release_date_label, title, icon, summary, cards, details, sort_order')
-      .eq('is_published', true)
-      .order('sort_order', { ascending: false })
-      .order('created_at', { ascending: false })
+    try {
+      const client = await requireAuthenticatedSupabase()
+      const { data, error } = await client
+        .from('app_releases')
+        .select('id, version, release_date_label, title, icon, summary, cards, details, sort_order')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: false })
+        .order('created_at', { ascending: false })
 
-    if (error) return { data: [], error }
-
-    return {
-      data: data.map(normalizeRelease),
-      error: null,
+      return {
+        data: mergeReleaseHistory(error ? [] : data.map(normalizeRelease)),
+        error: null,
+      }
+    } catch {
+      return { data: mergeReleaseHistory(), error: null }
     }
   },
 }

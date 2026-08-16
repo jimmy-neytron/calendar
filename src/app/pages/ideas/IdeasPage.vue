@@ -112,6 +112,7 @@ import { ideaStore } from '../../stores/idea.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'
 import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
+import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const IDEA_TYPES = [
   { value: 'place', label: 'Место', icon: '⌖' },
@@ -178,14 +179,6 @@ function typeMeta(type) {
   return IDEA_TYPES.find((item) => item.value === type) || IDEA_TYPES.at(-1)
 }
 
-function pluralize(value, words) {
-  const lastTwo = value % 100
-  const last = value % 10
-  if (lastTwo >= 11 && lastTwo <= 14) return words[2]
-  if (last === 1) return words[0]
-  if (last >= 2 && last <= 4) return words[1]
-  return words[2]
-}
 </script>
 
 <style scoped>

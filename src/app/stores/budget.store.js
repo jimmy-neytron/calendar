@@ -8,6 +8,19 @@ import { generateId } from '../utils/helpers/idGenerator.js'
 import { calendarStore } from './calendar.store.js'
 import { workspaceStore } from './workspace.store.js'
 import { CALENDAR_LINK_CHANGE_EVENT, LINKED_ENTITY_TYPES } from '../utils/constants/linkedEntityTypes.js'
+import {
+  disabledBudgetResult,
+  findDuplicateBudgetName as findDuplicateName,
+  formatBudgetAmount as formatAmount,
+  getBudgetCategoryColor as categoryColor,
+  getBudgetDueDate as getDueDate,
+  getCurrentBudgetMonth as getCurrentMonth,
+  normalizeBudgetDateKey as normalizeDateKey,
+  normalizeBudgetReminder as normalizeReminder,
+  toBudgetAmount as toAmount,
+  toBudgetMonthKey as toMonthKey,
+  toBudgetPaymentView as toPaymentView,
+} from './budget/budget.helpers.js'
 
 const monthRepository = new SyncedCollectionRepository(
   `${APP_CONFIG.storageKey}:budget-months`,
@@ -1070,82 +1083,6 @@ async function createPaymentEvent(payment, category) {
     }
   }
   return result
-}
-
-function toPaymentView(payment) {
-  return {
-    ...payment,
-    amount: toAmount(payment.plannedAmount),
-    date: normalizeDateKey(payment.dueDate),
-    paid: payment.status === 'paid',
-  }
-}
-
-function getDueDate(month, dueDay) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const lastDay = new Date(year, monthNumber, 0).getDate()
-  return `${month}-${String(Math.min(Number(dueDay), lastDay)).padStart(2, '0')}`
-}
-
-function normalizeReminder(value) {
-  return ['none', '1h', '1d'].includes(value) ? value : '1d'
-}
-
-function normalizeDateKey(value) {
-  const dateKey = String(value || '').slice(0, 10)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return ''
-  const [year, month, day] = dateKey.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  const isValid = date.getFullYear() === year
-    && date.getMonth() === month - 1
-    && date.getDate() === day
-  return isValid ? dateKey : ''
-}
-
-function toMonthKey(value) {
-  return String(value || '').slice(0, 7)
-}
-
-function parseMonth(month) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  return new Date(year, monthNumber - 1, 1)
-}
-
-function getCurrentMonth() {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
-function toAmount(value) {
-  const amount = Number(String(value ?? 0).replace(',', '.'))
-  return Number.isFinite(amount) ? Math.max(0, Math.round(amount * 100) / 100) : 0
-}
-
-function findDuplicateName(items) {
-  const names = new Set()
-  for (const item of items) {
-    const name = String(item.name || item.title || '').trim().toLowerCase()
-    if (!name) continue
-    if (names.has(name)) return String(item.name || item.title).trim()
-    names.add(name)
-  }
-  return ''
-}
-
-function categoryColor(index) {
-  return ['#60a5fa', '#34d399', '#f59e0b', '#a78bfa', '#fb7185', '#22d3ee'][index % 6]
-}
-
-function formatAmount(value) {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0,
-  }).format(toAmount(value))
-}
-
-function disabledBudgetResult() {
-  return { ok: false, message: 'Бюджет выключен в настройках' }
 }
 
 export const budgetStore = {
