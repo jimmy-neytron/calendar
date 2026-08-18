@@ -36,10 +36,7 @@
             <UiInput v-model="workspaceName" label="Название" />
             <UiButton @click="saveWorkspace">Сохранить</UiButton>
           </div>
-          <div class="workspace-inline">
-            <UiInput v-model="newWorkspaceName" label="Создать новое" placeholder="Например: Работа" @keydown.enter="createWorkspace" />
-            <UiButton variant="secondary" @click="createWorkspace">Создать</UiButton>
-          </div>
+          <UiButton variant="secondary" icon="plus" @click="openWorkspaceCreate">Новое пространство</UiButton>
         </div>
       </SettingsSectionCard>
 
@@ -107,11 +104,7 @@
             <UiIconButton icon="trash" label="Удалить календарь" variant="danger" @click="removeCalendar(calendar.id)" />
           </article>
         </div>
-        <div class="calendar-create">
-          <UiInput v-model="newCalendarName" label="Новый календарь" placeholder="Например: Учёба" />
-          <UiColorPicker v-model="newCalendarColor" label="Цвет календаря" />
-          <UiButton variant="secondary" @click="createCalendar">Добавить</UiButton>
-        </div>
+        <UiButton variant="secondary" icon="plus" @click="openCalendarCreate">Новый календарь</UiButton>
       </SettingsSectionCard>
 
       <SettingsSectionCard
@@ -120,24 +113,13 @@
         title="Доступ по коду"
         description="Пригласи участника или присоединись к другому пространству."
       >
-        <div class="invite-grid">
-          <div class="invite-card">
-            <UiInput v-model="inviteEmail" label="Email приглашённого" placeholder="Можно оставить пустым" />
-            <UiButton @click="createInvite">Создать код</UiButton>
-            <div v-if="lastInviteCode" class="invite-code">
-              <span>Код приглашения</span>
-              <strong>{{ lastInviteCode }}</strong>
-              <button type="button" @click="copyInvite">Копировать</button>
-            </div>
-          </div>
-          <div class="invite-card">
-            <UiInput v-model="joinCode" label="Код приглашения" placeholder="Например: A1B2C3" />
-            <UiButton variant="secondary" @click="acceptInvite">Присоединиться</UiButton>
-            <div v-if="activeWorkspaceInvites.length" class="active-invites">
-              <span>Активные коды</span>
-              <code v-for="invite in activeWorkspaceInvites" :key="invite.id">{{ invite.code }}</code>
-            </div>
-          </div>
+        <div class="workspace-access-actions">
+          <UiButton icon="plus" @click="openInviteCreate">Пригласить участника</UiButton>
+          <UiButton variant="secondary" @click="openJoinWorkspace">Ввести код приглашения</UiButton>
+        </div>
+        <div v-if="activeWorkspaceInvites.length" class="active-invites">
+          <span>Активные коды</span>
+          <code v-for="invite in activeWorkspaceInvites" :key="invite.id">{{ invite.code }}</code>
         </div>
       </SettingsSectionCard>
 
@@ -155,6 +137,38 @@
         </div>
       </SettingsSectionCard>
     </div>
+
+    <UiModal v-model="isWorkspaceCreateOpen" title="Новое пространство" eyebrow="Семейные пространства" width="460px">
+      <form class="workspace-create-modal" @submit.prevent="createWorkspace">
+        <UiInput v-model="newWorkspaceName" label="Название" placeholder="Например: Наша семья" required />
+        <footer><UiButton type="button" variant="secondary" @click="isWorkspaceCreateOpen = false">Отмена</UiButton><UiButton type="submit">Создать</UiButton></footer>
+      </form>
+    </UiModal>
+
+    <UiModal v-model="isCalendarCreateOpen" title="Новый календарь" eyebrow="Слои событий" width="460px">
+      <form class="workspace-create-modal" @submit.prevent="createCalendar">
+        <UiInput v-model="newCalendarName" label="Название" placeholder="Например: Учёба" required />
+        <UiColorPicker v-model="newCalendarColor" label="Цвет календаря" />
+        <footer><UiButton type="button" variant="secondary" @click="isCalendarCreateOpen = false">Отмена</UiButton><UiButton type="submit">Добавить</UiButton></footer>
+      </form>
+    </UiModal>
+
+    <UiModal v-model="isInviteCreateOpen" title="Пригласить участника" eyebrow="Доступ к пространству" width="460px">
+      <form class="workspace-create-modal" @submit.prevent="createInvite">
+        <UiInput v-model="inviteEmail" label="Email приглашённого" placeholder="Можно оставить пустым" />
+        <div v-if="lastInviteCode" class="invite-code">
+          <span>Код приглашения</span><strong>{{ lastInviteCode }}</strong><button type="button" @click="copyInvite">Копировать</button>
+        </div>
+        <footer><UiButton type="button" variant="secondary" @click="isInviteCreateOpen = false">Закрыть</UiButton><UiButton type="submit">Создать код</UiButton></footer>
+      </form>
+    </UiModal>
+
+    <UiModal v-model="isJoinWorkspaceOpen" title="Присоединиться" eyebrow="Другое пространство" width="460px">
+      <form class="workspace-create-modal" @submit.prevent="acceptInvite">
+        <UiInput v-model="joinCode" label="Код приглашения" placeholder="Например: A1B2C3" required />
+        <footer><UiButton type="button" variant="secondary" @click="isJoinWorkspaceOpen = false">Отмена</UiButton><UiButton type="submit">Присоединиться</UiButton></footer>
+      </form>
+    </UiModal>
 
     <UiModal v-model="isDeleteWorkspaceOpen" title="Удалить пространство?" eyebrow="Необратимое действие" width="460px" :close-on-overlay="!deletingWorkspace">
       <div class="workspace-delete">
@@ -203,6 +217,10 @@ const joinCode = ref('')
 const lastInviteCode = ref('')
 const newCalendarName = ref('')
 const newCalendarColor = ref('#60a5fa')
+const isWorkspaceCreateOpen = ref(false)
+const isCalendarCreateOpen = ref(false)
+const isInviteCreateOpen = ref(false)
+const isJoinWorkspaceOpen = ref(false)
 const isDeleteWorkspaceOpen = ref(false)
 const deleteConfirmation = ref('')
 const deletingWorkspace = ref(false)
@@ -227,6 +245,7 @@ async function createWorkspace() {
   const result = await workspaceStore.createWorkspace(newWorkspaceName.value)
   if (!result.ok) return notify(result.message, 'danger')
   newWorkspaceName.value = ''
+  isWorkspaceCreateOpen.value = false
   addActivity('workspace:create', `создал(а) пространство «${result.workspace?.name || 'Новое пространство'}»`)
   notify('Пространство создано', 'success')
 }
@@ -265,6 +284,7 @@ async function acceptInvite() {
   const result = await workspaceStore.acceptInvite(joinCode.value)
   if (!result.ok) return notify(result.message, 'danger')
   joinCode.value = ''
+  isJoinWorkspaceOpen.value = false
   notify('Вы присоединились к пространству', 'success')
 }
 
@@ -272,6 +292,7 @@ function createCalendar() {
   const calendar = calendarCollectionStore.addCollection(newCalendarName.value, newCalendarColor.value)
   if (!calendar) return notify('Укажи название календаря', 'warning')
   newCalendarName.value = ''
+  isCalendarCreateOpen.value = false
   addActivity('workspace:calendar', `добавил(а) календарь «${calendar.name}»`, { calendarId: calendar.id })
   notify('Календарь добавлен', 'success')
 }
@@ -286,6 +307,28 @@ function removeCalendar(id) {
 function openDeleteWorkspace() {
   deleteConfirmation.value = ''
   isDeleteWorkspaceOpen.value = true
+}
+
+function openWorkspaceCreate() {
+  newWorkspaceName.value = ''
+  isWorkspaceCreateOpen.value = true
+}
+
+function openCalendarCreate() {
+  newCalendarName.value = ''
+  newCalendarColor.value = '#60a5fa'
+  isCalendarCreateOpen.value = true
+}
+
+function openInviteCreate() {
+  inviteEmail.value = ''
+  lastInviteCode.value = ''
+  isInviteCreateOpen.value = true
+}
+
+function openJoinWorkspace() {
+  joinCode.value = ''
+  isJoinWorkspaceOpen.value = true
 }
 
 async function confirmDeleteWorkspace() {
@@ -583,4 +626,5 @@ function roleLabel(role) {
     flex-direction: column;
   }
 }
+.workspace-access-actions{display:flex;flex-wrap:wrap;gap:8px}.workspace-create-modal{display:grid;gap:12px}.workspace-create-modal>footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border-color);padding-top:12px}
 </style>

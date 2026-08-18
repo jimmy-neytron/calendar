@@ -132,7 +132,7 @@ router.beforeEach(async (to) => {
 })
 
 router.afterEach((to) => {
-  document.title = `${to.meta.title || 'Календарь'} · Пространство`
+  document.title = `${to.meta.title || 'Календарь'} · Семейное пространство`
   if (!to.meta.public) preloadProtectedPages()
 })
 

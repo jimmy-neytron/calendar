@@ -2,9 +2,9 @@
   <section class="settings-page">
     <header class="settings-hero panel">
       <div class="settings-hero__copy">
-        <span class="settings-eyebrow">Настройки календаря</span>
-        <h1>Отображение и поведение</h1>
-        <p>Настрой календарь так, чтобы он открывался в нужном виде и показывал только важное.</p>
+        <span class="settings-eyebrow">Настройки пространства</span>
+        <h1>Под себя и свою семью</h1>
+        <p>Настрой профиль, семейные разделы и календарь так, чтобы всё важное оставалось под рукой.</p>
       </div>
 
       <div class="settings-hero__actions">

@@ -50,7 +50,7 @@
     <section class="week-plan">
       <div class="section-title">
         <div><small>Постоянный шаблон</small><h2>Твоя неделя</h2></div>
-        <UiButton size="sm" variant="secondary" icon="plus" @click="openExerciseDrawer">Своё упражнение</UiButton>
+        <UiButton size="sm" variant="secondary" icon="plus" @click="openWorkoutCreator">Своя тренировка</UiButton>
       </div>
 
       <div class="week-strip">
@@ -69,7 +69,10 @@
     <section class="day-section">
       <div class="section-title">
         <div><small>Выбранный день</small><h2>{{ selectedDayTitle }}</h2></div>
-        <UiButton size="sm" variant="secondary" icon="plus" @click="isLibraryOpen = true">Добавить тренировку</UiButton>
+        <div class="section-title__actions">
+          <UiButton size="sm" variant="secondary" @click="isLibraryOpen = true">Из библиотеки</UiButton>
+          <UiButton size="sm" icon="plus" @click="openWorkoutCreator">Своя тренировка</UiButton>
+        </div>
       </div>
 
       <div v-if="selectedWorkouts.length" class="workout-stack">
@@ -78,6 +81,10 @@
             <span class="workout-card__icon"><UiIcon name="sport" /></span>
             <div><small>{{ workout.focus.join(' · ') || 'Личная программа' }}</small><h3>{{ workout.name }}</h3></div>
             <div class="workout-card__progress"><strong>{{ workout.done }}/{{ workout.exercises.length }}</strong><span>{{ workout.duration }} мин</span></div>
+            <div class="workout-card__actions">
+              <UiIconButton icon="edit" label="Редактировать тренировку" size="sm" @click="openWorkoutEditor(workout)" />
+              <UiIconButton icon="trash" label="Удалить всю тренировку" size="sm" variant="danger" @click="removeWorkout(workout)" />
+            </div>
           </header>
           <div class="workout-card__bar"><i :style="{ width: `${workout.percent}%` }"></i></div>
           <div class="workout-card__exercises">
@@ -88,8 +95,7 @@
                 <span>{{ exercise.sets }} · {{ exercise.reps }}</span>
               </button>
               <div class="exercise-muscles"><span v-for="group in (exercise.muscleGroups || []).slice(0, 2)" :key="group">{{ group }}</span></div>
-              <UiIconButton icon="edit" label="Изменить" size="sm" @click="openExercise(exercise)" />
-              <UiIconButton icon="trash" label="Удалить" size="sm" variant="danger" @click="removeExercise(exercise.id)" />
+              <UiIconButton icon="edit" label="Изменить упражнение" size="sm" @click="openExercise(exercise)" />
             </article>
           </div>
         </article>
@@ -103,20 +109,36 @@
       </div>
     </section>
 
-    <WorkoutLibraryModal v-model="isLibraryOpen" :initial-weekday="selectedWeekday" @add="addWorkout" />
-    <ExerciseDrawer v-model="isDrawerOpen" :initial-weekday="selectedWeekday" @add="addNewExercise" @import-json="importJsonExercises" />
+    <WorkoutLibraryModal
+      v-model="isLibraryOpen"
+      :initial-weekday="selectedWeekday"
+      :custom-workouts="sportStore.customWorkouts.value"
+      @add="addWorkout"
+      @create-custom="createWorkoutFromLibrary"
+      @delete-custom="removeWorkoutTemplate"
+    />
     <ExerciseDetailsModal v-model="isExerciseOpen" :exercise="activeExercise" @save="saveExercise" />
+    <WorkoutEditorModal v-model="isWorkoutEditorOpen" :workout="activeWorkout" :initial-weekday="selectedWeekday" @save="saveWorkout" />
+    <UiConfirmModal
+      v-model="confirmation.isOpen"
+      :title="confirmation.title"
+      :message="confirmation.message"
+      :confirm-label="confirmation.confirmLabel"
+      :variant="confirmation.variant"
+      @confirm="confirmPendingAction"
+    />
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import UiButton from '../../components/ui/UiButton.vue'
+import UiConfirmModal from '../../components/ui/UiConfirmModal.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
-import ExerciseDrawer from '../../components/sport/ExerciseDrawer.vue'
 import ExerciseDetailsModal from '../../components/sport/ExerciseDetailsModal.vue'
 import WorkoutLibraryModal from '../../components/sport/WorkoutLibraryModal.vue'
+import WorkoutEditorModal from '../../components/sport/WorkoutEditorModal.vue'
 import WorkoutRadioWidget from '../../components/sport/WorkoutRadioWidget.vue'
 import { sportStore } from '../../stores/sport.store.js'
 import { buildBalancedWeek, MUSCLE_BALANCE_GROUPS } from '../../config/sportWorkoutLibrary.js'
@@ -127,9 +149,18 @@ import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 const { notify } = useNotification()
 const selectedDateKey = ref(DateHelper.toKey(new Date()))
 const isLibraryOpen = ref(false)
-const isDrawerOpen = ref(false)
 const isExerciseOpen = ref(false)
+const isWorkoutEditorOpen = ref(false)
 const activeExercise = ref(null)
+const activeWorkout = ref(null)
+const confirmation = reactive({
+  isOpen: false,
+  title: '',
+  message: '',
+  confirmLabel: 'Подтвердить',
+  variant: 'danger',
+  action: null,
+})
 const weekProgress = sportStore.weekProgress
 const selectedExercises = computed(() => sportStore.getExercisesForDate(selectedDateKey.value))
 const selectedWeekday = computed(() => DateHelper.parseKey(selectedDateKey.value).getDay())
@@ -156,7 +187,7 @@ function groupWorkouts(items, weekday, dateKey = '') {
   const groups = new Map()
   items.forEach((item) => {
     const id = item.workoutId || `personal-${weekday}`
-    if (!groups.has(id)) groups.set(id, { id, name: item.workoutName || 'Моя тренировка', focus: item.workoutFocus || [], color: item.workoutColor || '#6ee7b7', exercises: [] })
+    if (!groups.has(id)) groups.set(id, { id, weekday, name: item.workoutName || 'Моя тренировка', focus: item.workoutFocus || [], color: item.workoutColor || '#6ee7b7', exercises: [] })
     groups.get(id).exercises.push(item)
   })
   return [...groups.values()].map((workout) => {
@@ -173,18 +204,70 @@ function matchesBalanceGroup(item, group) {
 
 function getMonday(date) { return DateHelper.addDays(date, date.getDay() === 0 ? -6 : 1 - date.getDay()) }
 function isDone(id) { return sportStore.isExerciseDone(id, selectedDateKey.value) }
-function openExerciseDrawer() { isDrawerOpen.value = true }
+function openWorkoutCreator() { activeWorkout.value = null; isWorkoutEditorOpen.value = true }
+function createWorkoutFromLibrary() { isLibraryOpen.value = false; openWorkoutCreator() }
+function openWorkoutEditor(workout) {
+  const weekdays = [...new Set(sportStore.exercises.value
+    .filter((exercise) => exercise.workoutId === workout.id || (!exercise.workoutId && workout.id === `personal-${workout.weekday}` && exercise.weekday === workout.weekday))
+    .map((exercise) => exercise.weekday))]
+  activeWorkout.value = { ...workout, weekdays }
+  isWorkoutEditorOpen.value = true
+}
 function openExercise(item) { activeExercise.value = item; isExerciseOpen.value = true }
 function toggleDone(id) { const result = sportStore.toggleExercise(id, selectedDateKey.value); if (!result.ok) notify(result.message, 'danger') }
-function removeExercise(id) { sportStore.deleteExercise(id); notify('Упражнение удалено', 'info') }
-function addNewExercise(data) { const result = sportStore.addExercise(data); notify(result.ok ? 'Упражнение добавлено' : result.message, result.ok ? 'success' : 'danger') }
-function importJsonExercises(text) { const result = sportStore.importExercisesFromJson(text); notify(result.message, result.ok ? 'success' : 'danger') }
+function removeWorkout(workout) {
+  requestConfirmation({
+    title: 'Удалить тренировку?',
+    message: `Тренировка «${workout.name}» будет удалена из всех выбранных дней вместе с упражнениями и отметками выполнения.`,
+    confirmLabel: 'Удалить тренировку',
+    variant: 'danger',
+  }, () => {
+    const result = sportStore.deleteWorkout(workout.id, workout.weekday)
+    notify(result.ok ? `Тренировка «${workout.name}» удалена` : result.message, result.ok ? 'info' : 'danger')
+  })
+}
+function removeWorkoutTemplate(workout) {
+  requestConfirmation({
+    title: 'Удалить из библиотеки?',
+    message: `Шаблон «${workout.title}» будет удалён из библиотеки. Уже добавленные в расписание тренировки останутся.`,
+    confirmLabel: 'Удалить шаблон',
+    variant: 'danger',
+  }, () => {
+    const result = sportStore.deleteWorkoutTemplate(workout.id)
+    notify(result.ok ? `Шаблон «${workout.title}» удалён` : result.message, result.ok ? 'info' : 'danger')
+  })
+}
 function saveExercise({ id, updates }) { const result = sportStore.updateExercise(id, updates); if (result.ok) { isExerciseOpen.value = false; notify('Упражнение обновлено', 'success') } else notify(result.message, 'danger') }
-function addWorkout({ workout, weekday }) { const result = sportStore.addWorkout(workout, weekday); if (result.ok) { isLibraryOpen.value = false; notify(`Тренировка «${workout.title}» добавлена на каждую неделю`, 'success') } else notify(result.message, 'danger') }
+function addWorkout({ workout, weekdays }) { const result = sportStore.addWorkout(workout, weekdays); if (result.ok) { isLibraryOpen.value = false; notify(`Тренировка «${workout.title}» добавлена в расписание`, 'success') } else notify(result.message, 'danger') }
+function saveWorkout(data) {
+  const result = data.id ? sportStore.updateWorkout(data.id, data) : sportStore.createWorkout(data)
+  if (result.ok) {
+    isWorkoutEditorOpen.value = false
+    activeWorkout.value = null
+    notify(data.id ? 'Тренировка обновлена' : 'Тренировка создана', 'success')
+  } else notify(result.message, 'danger')
+}
 function applyBalancedWeek() {
-  if (!window.confirm('Заменить текущую программу сбалансированной неделей? Старые упражнения и их отметки будут удалены.')) return
-  const result = sportStore.replaceWeeklyProgram(buildBalancedWeek())
-  notify(result.ok ? 'Сбалансированная неделя готова' : result.message, result.ok ? 'success' : 'danger')
+  requestConfirmation({
+    title: 'Заменить недельную программу?',
+    message: 'Текущие тренировки, упражнения и отметки выполнения будут удалены и заменены сбалансированной неделей.',
+    confirmLabel: 'Заменить программу',
+    variant: 'primary',
+  }, () => {
+    const result = sportStore.replaceWeeklyProgram(buildBalancedWeek())
+    notify(result.ok ? 'Сбалансированная неделя готова' : result.message, result.ok ? 'success' : 'danger')
+  })
+}
+
+function requestConfirmation(options, action) {
+  Object.assign(confirmation, options, { isOpen: true, action })
+}
+
+function confirmPendingAction() {
+  const action = confirmation.action
+  confirmation.isOpen = false
+  confirmation.action = null
+  action?.()
 }
 </script>
 
@@ -206,6 +289,7 @@ function applyBalancedWeek() {
 .sport-header h1, .section-title h2 { margin: 0; }
 .sport-header > div > span { color: var(--text-secondary); font-size: 12px; }
 .sport-header__actions { display: flex; gap: 8px; }
+.section-title__actions { display: flex; gap: 7px; }
 .sport-overview { display: grid; grid-template-columns: 1.1fr 1fr; gap: 9px; }
 .sport-score, .sport-stat, .balance-card, .week-plan, .day-section { border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--card-solid); }
 .sport-score, .sport-stat { min-height: 104px; display: flex; align-items: center; gap: 12px; padding: 13px; }
@@ -246,7 +330,8 @@ function applyBalancedWeek() {
 .week-strip__rest { display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 10px; }
 .workout-stack { display: grid; gap: 10px; }
 .workout-card { overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--card-soft); }
-.workout-card__head { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; padding: 12px; }
+.workout-card__head { display: grid; grid-template-columns: 40px 1fr auto auto; align-items: center; gap: 10px; padding: 12px; }
+.workout-card__actions { display: flex !important; gap: 5px !important; }
 .workout-card__icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: var(--workout-color); background: color-mix(in srgb, var(--workout-color) 12%, transparent); }
 .workout-card__head div { display: grid; gap: 2px; }
 .workout-card__head small { color: var(--workout-color); font-size: 9px; font-weight: 800; text-transform: uppercase; }
@@ -256,7 +341,7 @@ function applyBalancedWeek() {
 .workout-card__bar { height: 3px; background: var(--control-bg); }
 .workout-card__bar i { display: block; height: 100%; background: var(--workout-color); }
 .workout-card__exercises { display: grid; }
-.workout-card__exercises > article { display: grid; grid-template-columns: 30px minmax(180px, 1fr) minmax(100px, auto) 28px 28px; align-items: center; gap: 8px; border-top: 1px solid var(--border-color); padding: 8px 11px; }
+.workout-card__exercises > article { display: grid; grid-template-columns: 30px minmax(180px, 1fr) minmax(100px, auto) 28px; align-items: center; gap: 8px; border-top: 1px solid var(--border-color); padding: 8px 11px; }
 .workout-card__exercises > article.done { opacity: .55; }
 .exercise-check { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--border-color); border-radius: 9px; color: var(--success); background: var(--control-bg); }
 .exercise-info { display: grid; gap: 2px; border: 0; padding: 0; color: inherit; background: transparent; text-align: left; }
@@ -267,5 +352,5 @@ function applyBalancedWeek() {
 .day-empty > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: var(--accent); background: var(--accent-soft); }
 .day-empty p { margin: 0 0 5px; color: var(--text-secondary); font-size: 11px; }
 @media (max-width: 900px) { .sport-overview { grid-template-columns: 1fr; }.balance-card__groups { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 650px) { .sport-page { padding: 11px; }.sport-header, .sport-header__actions { display: grid; }.balance-card__groups { grid-template-columns: repeat(2, 1fr); }.workout-card__exercises > article { grid-template-columns: 30px 1fr 28px 28px; }.exercise-muscles { display: none; } }
+@media (max-width: 650px) { .sport-page { padding: 11px; }.sport-header, .sport-header__actions { display: grid; }.section-title { align-items: end; }.section-title__actions { display: grid; }.balance-card__groups { grid-template-columns: repeat(2, 1fr); }.workout-card__head { grid-template-columns: 40px 1fr auto; }.workout-card__progress { display: none !important; }.workout-card__actions { grid-column: 2 / -1; justify-content: flex-end; }.workout-card__exercises > article { grid-template-columns: 30px 1fr 28px; }.exercise-muscles { display: none; } }
 </style>

@@ -3,13 +3,13 @@
     <RouterLink class="app-header__brand" :to="{ name: 'calendar' }">
       <span class="app-header__logo">✦</span>
       <span>
-        <strong>Календарь</strong>
-        <small>{{ activeWorkspace?.name || 'Пространство' }}</small>
+        <strong>Пространство</strong>
+        <small>{{ activeWorkspace?.name || 'Моя семья' }}</small>
       </span>
     </RouterLink>
 
-    <button class="app-header__date" type="button" @click="$emit('today')">
-      <span>{{ weekday }}</span>
+    <button class="app-header__date" type="button" title="Открыть календарь на сегодня" @click="$emit('today')">
+      <span>{{ isCalendarRoute ? weekday : currentSection }}</span>
       <b>{{ currentDate }}</b>
     </button>
 
@@ -52,6 +52,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import UiButton from '../ui/UiButton.vue'
 import UiIcon from '../ui/UiIcon.vue'
 import NotificationBell from '../notifications/NotificationBell.vue'
@@ -66,9 +67,11 @@ defineProps({
 
 defineEmits(['today', 'toggle-calendar-view'])
 
+const route = useRoute()
 const now = new Date()
 const weekday = computed(() => new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(now))
 const currentDate = computed(() => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(now))
+const currentSection = computed(() => route.meta.title || 'Пространство')
 const requestLabel = computed(() => networkActivityStore.activeRequests.value > 1
   ? `${networkActivityStore.activeRequests.value} запроса`
   : 'Синхронизация')

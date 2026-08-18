@@ -3,8 +3,8 @@
     <div class="app-sidebar__context">
       <span class="app-sidebar__mark">{{ workspaceInitial }}</span>
       <div>
-        <small>Пространство</small>
-        <strong>{{ activeWorkspace?.name || 'Календарь' }}</strong>
+        <small>Семейное пространство</small>
+        <strong>{{ activeWorkspace?.name || 'Моя семья' }}</strong>
       </div>
     </div>
 
@@ -51,32 +51,36 @@ const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1)
 
 const groups = [
   {
-    label: 'Планирование',
+    label: 'Главное',
     items: [
-      { name: 'calendar', label: 'Календарь', description: 'События и расписание', icon: 'calendar' },
-      { name: 'budget', label: 'Бюджет', description: 'Доходы и план расходов', icon: 'wallet' },
+      { name: 'calendar', label: 'Календарь', description: 'Общие планы и расписание', icon: 'calendar' },
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
-      { name: 'ideas', label: 'Идеи', description: 'Планы на потом', icon: 'sparkles' },
+      { name: 'ideas', label: 'Идеи', description: 'Копилка семейных планов', icon: 'sparkles' },
     ],
   },
   {
-    label: 'Дополнительно',
-    extra: true,
+    label: 'Семья и быт',
     items: [
-      { name: 'family-tree', label: 'Семейное дерево', description: 'Люди, поколения и связи', icon: 'users', feature: 'extraSections' },
-      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport', feature: 'sport' },
-      { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock', feature: 'timeTracking' },
-      { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть позже', icon: 'movie', feature: 'movies' },
-      { name: 'purchases', label: 'Покупки', description: 'Вещи, техника и желания', icon: 'shopping', feature: 'purchases' },
-      { name: 'personal-parameters', label: 'Мои параметры', description: 'Размеры, модели и характеристики', icon: 'ruler', feature: 'extraSections' },
-      { name: 'wardrobe', label: 'Шкаф', description: 'Вещи и готовые образы', icon: 'hanger', feature: 'extraSections' },
+      { name: 'budget', label: 'Бюджет', description: 'Доходы и семейные расходы', icon: 'wallet' },
+      { name: 'purchases', label: 'Покупки', description: 'Нужное, желания и техника', icon: 'shopping', feature: 'purchases', extra: true },
+      { name: 'wardrobe', label: 'Шкаф', description: 'Вещи и готовые образы', icon: 'hanger', feature: 'extraSections', extra: true },
+      { name: 'family-tree', label: 'Семейное дерево', description: 'Люди, поколения и связи', icon: 'users', feature: 'extraSections', extra: true },
     ],
   },
   {
-    label: 'Пространство',
+    label: 'Личное',
     items: [
-      { name: 'workspace', label: 'Команда', description: 'Люди и доступ', icon: 'users', feature: 'workspace' },
-      { name: 'analytics', label: 'Аналитика', description: 'Ритм и нагрузка', icon: 'chart', feature: 'analytics' },
+      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport', feature: 'sport', extra: true },
+      { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock', feature: 'timeTracking', extra: true },
+      { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть вместе', icon: 'movie', feature: 'movies', extra: true },
+      { name: 'personal-parameters', label: 'Мои параметры', description: 'Размеры и характеристики', icon: 'ruler', feature: 'extraSections', extra: true },
+    ],
+  },
+  {
+    label: 'Управление',
+    items: [
+      { name: 'workspace', label: 'Семья', description: 'Участники и доступ', icon: 'users', feature: 'workspace' },
+      { name: 'analytics', label: 'Аналитика', description: 'Ритм семейной жизни', icon: 'chart', feature: 'analytics' },
       { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity', feature: 'activity' },
       { name: 'integrations', label: 'Интеграции', description: 'Telegram и внешние сервисы', icon: 'link', feature: 'integrations' },
       { name: 'admin-overview', label: 'Админка', description: 'Пользователи и заявки', icon: 'key' },
@@ -86,13 +90,13 @@ const groups = [
 ]
 
 const visibleGroups = computed(() => groups
-  .filter((group) => !group.extra || extraSectionsEnabled.value)
   .map((group) => ({
     ...group,
     items: group.items
       .filter((item) => (
         (item.name !== 'activity' || activityLogEnabled.value)
         && (item.name !== 'budget' || budgetEnabled.value)
+        && (!item.extra || extraSectionsEnabled.value)
         && (!item.feature || readSubscriptionFeature(item.feature))
         && (item.name !== 'admin-overview' || authStore.isAdmin.value)
       ))

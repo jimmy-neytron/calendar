@@ -5,6 +5,7 @@
         <span>Список желаний</span>
         <h1>Что хочу купить</h1>
         <p>Собирайте технику, инструменты и любые вещи в одном красивом списке.</p>
+        <UiButton class="purchases-hero__create" icon="plus" @click="openCreateModal()">Добавить покупку</UiButton>
       </div>
       <div class="purchases-hero__stats">
         <article><small>В списке</small><strong>{{ activeItems.length }}</strong></article>
@@ -15,27 +16,6 @@
         <UiIcon name="shopping" />
       </span>
     </header>
-
-    <section class="link-import">
-      <span class="link-import__icon"><UiIcon name="link" /></span>
-      <div class="link-import__copy">
-        <strong>Добавить товар по ссылке</strong>
-        <small>Вставьте ссылку на товар — попробуем определить название, цену, валюту и изображение.</small>
-      </div>
-      <UiInput
-        v-model="quickUrl"
-        type="url"
-        placeholder="https://example.com/product/..."
-        :disabled="isImporting"
-        @keydown.enter="importQuickLink"
-      />
-      <UiButton icon="sparkles" :loading="isImporting" :disabled="!isValidHttpUrl(quickUrl)" @click="importQuickLink">
-        Создать карточку
-      </UiButton>
-      <button type="button" class="link-import__manual" @click="openCreateModal">
-        Добавить вручную
-      </button>
-    </section>
 
     <section class="purchases-toolbar">
       <UiInput v-model="search" type="search" placeholder="Поиск по покупкам" />
@@ -316,13 +296,11 @@ const commonCurrencies = [
 
 const { notify } = useNotification()
 const items = purchaseWishlistStore.items
-const quickUrl = ref('')
 const search = ref('')
 const categoryFilter = ref('all')
 const statusFilter = ref('active')
 const sortBy = ref('priority')
-const viewMode = ref<'cards' | 'table'>('cards')
-const isImporting = ref(false)
+const viewMode = ref<'cards' | 'table'>('table')
 const isEditorImporting = ref(false)
 const isEditorOpen = ref(false)
 const isSaving = ref(false)
@@ -367,21 +345,6 @@ const filteredItems = computed(() => {
     return second.priority - first.priority || second.createdAt.localeCompare(first.createdAt)
   })
 })
-
-async function importQuickLink() {
-  if (!isValidHttpUrl(quickUrl.value) || isImporting.value) return
-  isImporting.value = true
-  try {
-    const preview = await loadProductPreview(quickUrl.value)
-    openCreateModal(preview)
-    quickUrl.value = ''
-  } catch (error) {
-    openCreateModal({ productUrl: quickUrl.value })
-    notify(error instanceof Error ? error.message : 'Не удалось заполнить карточку автоматически', 'warning')
-  } finally {
-    isImporting.value = false
-  }
-}
 
 function openCreateModal(preview?: Partial<ProductLinkPreview>) {
   editingItem.value = null
@@ -563,6 +526,7 @@ function hideImage(id: string) {
 .purchases-hero__copy>span{font-size:10px;font-weight:800;letter-spacing:.11em}
 .purchases-hero h1{margin:3px 0 6px;font-size:clamp(22px,3vw,34px);line-height:1.08}
 .purchases-hero p{max-width:650px;line-height:inherit}
+.purchases-hero__create{margin-top:14px}
 .purchases-toolbar{grid-template-columns:minmax(220px,1fr) repeat(3,minmax(135px,.42fr)) auto}
 .purchase-view-switch{display:flex;align-items:center;gap:3px;align-self:end;border:1px solid var(--border-color);border-radius:11px;padding:3px;background:var(--control-bg)}
 .purchase-view-switch button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:34px;border:0;border-radius:8px;padding:0 10px;color:var(--text-muted);background:transparent;font:inherit;font-size:10px;font-weight:750;cursor:pointer;transition:.18s var(--ease-out)}

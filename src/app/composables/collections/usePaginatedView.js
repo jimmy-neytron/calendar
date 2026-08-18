@@ -4,7 +4,7 @@ import { APP_CONFIG } from '../../config/app.config.js'
 export function usePaginatedView(items, key) {
   const storageKey = `${APP_CONFIG.storageKey}:collection-view:${key}`
   const saved = readSettings(storageKey)
-  const viewMode = ref(saved.viewMode || 'cards')
+  const viewMode = ref(saved.viewMode || 'table')
   const pageSize = ref(saved.pageSize || 20)
   const page = ref(1)
   const pageCount = computed(() => Math.max(1, Math.ceil(items.value.length / pageSize.value)))

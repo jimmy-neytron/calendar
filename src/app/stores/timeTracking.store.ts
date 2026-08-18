@@ -9,6 +9,7 @@ import { workspaceStore } from './workspace.store.js'
 export interface TimeProject {
   id: string
   workspaceId: string
+  ownerId: string
   name: string
   color: string
   archived: boolean
@@ -74,7 +75,9 @@ const projects = computed<TimeProject[]>(() => {
   if (!readExtraSectionsSetting()) return []
   return projectRepository.items.value
     .filter((project: TimeProject) => (
-      project.workspaceId === workspaceStore.activeWorkspaceId.value && !project.archived
+      project.workspaceId === workspaceStore.activeWorkspaceId.value
+      && project.ownerId === authStore.currentUserId.value
+      && !project.archived
     ))
     .sort((a: TimeProject, b: TimeProject) => a.name.localeCompare(b.name, 'ru'))
 })
@@ -82,7 +85,10 @@ const projects = computed<TimeProject[]>(() => {
 const entries = computed<TimeEntry[]>(() => {
   if (!readExtraSectionsSetting()) return []
   return entryRepository.items.value
-    .filter((entry: TimeEntry) => entry.workspaceId === workspaceStore.activeWorkspaceId.value)
+    .filter((entry: TimeEntry) => (
+      entry.workspaceId === workspaceStore.activeWorkspaceId.value
+      && entry.userId === authStore.currentUserId.value
+    ))
     .sort((a: TimeEntry, b: TimeEntry) => (
       b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
     ))
@@ -197,6 +203,7 @@ async function addProject(name: string, color = '#60a5fa') {
   const project: TimeProject = {
     id: generateId(),
     workspaceId: workspaceStore.activeWorkspaceId.value || '',
+    ownerId: authStore.currentUserId.value || '',
     name: title,
     color,
     archived: false,
@@ -231,7 +238,7 @@ async function addEntry(data: NewTimeEntry) {
 async function updateEntry(id: string, data: UpdateTimeEntry) {
   if (!readExtraSectionsSetting()) return disabledResult()
   const entry = entryRepository.findById(id) as TimeEntry | undefined
-  if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value) {
+  if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value || entry.userId !== authStore.currentUserId.value) {
     return { ok: false, message: 'Запись не найдена' }
   }
 
@@ -251,7 +258,7 @@ async function updateEntry(id: string, data: UpdateTimeEntry) {
 async function removeEntry(id: string) {
   if (!readExtraSectionsSetting()) return disabledResult()
   const entry = entryRepository.findById(id) as TimeEntry | undefined
-  if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value) {
+  if (!entry || entry.workspaceId !== workspaceStore.activeWorkspaceId.value || entry.userId !== authStore.currentUserId.value) {
     return { ok: false, message: 'Запись не найдена' }
   }
   return entryRepository.deleteAndWait(id)
@@ -260,7 +267,7 @@ async function removeEntry(id: string) {
 async function removeProject(id: string) {
   if (!readExtraSectionsSetting()) return disabledResult()
   const project = projectRepository.findById(id) as TimeProject | undefined
-  if (!project) return { ok: false, message: 'Проект не найден' }
+  if (!project || project.ownerId !== authStore.currentUserId.value) return { ok: false, message: 'Проект не найден' }
 
   const linkedEntries = entries.value.filter((entry) => entry.projectId === id)
   for (const entry of linkedEntries) {
@@ -289,7 +296,7 @@ function disabledResult() {
 
 function normalizeEntryData(data: NewTimeEntry | UpdateTimeEntry) {
   const project = projectRepository.findById(data.projectId) as TimeProject | undefined
-  if (!project || project.workspaceId !== workspaceStore.activeWorkspaceId.value) {
+  if (!project || project.workspaceId !== workspaceStore.activeWorkspaceId.value || project.ownerId !== authStore.currentUserId.value) {
     return { ok: false as const, message: 'Выбери проект' }
   }
 

@@ -28,7 +28,7 @@ import UiIcon from '../ui/UiIcon.vue'
 import UiSelect from '../ui/UiSelect.vue'
 
 defineProps({
-  viewMode: { type: String, default: 'cards' },
+  viewMode: { type: String, default: 'table' },
   pageSize: { type: Number, default: 20 },
   total: { type: Number, default: 0 },
   rangeStart: { type: Number, default: 0 },

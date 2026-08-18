@@ -9,6 +9,7 @@ import { useActivityLog } from '../composables/history/useActivityLog.js'
 
 const EXERCISES_KEY = `${APP_CONFIG.storageKey}:sport-exercises`
 const COMPLETIONS_KEY = `${APP_CONFIG.storageKey}:sport-completions`
+const WORKOUTS_KEY = `${APP_CONFIG.storageKey}:sport-workouts`
 
 const defaultExercises = [
   createDefaultExercise('sp-mon-warmup', 1, 'Мобилизация + суставная разминка', '1 круг', '8 мин', 'Плавно, без рывков', 1),
@@ -27,6 +28,7 @@ const defaultExercises = [
 
 const exerciseRepository = new SyncedCollectionRepository(EXERCISES_KEY, defaultExercises, 'sport_exercises')
 const completionRepository = new SyncedCollectionRepository(COMPLETIONS_KEY, [], 'sport_completions')
+const workoutRepository = new SyncedCollectionRepository(WORKOUTS_KEY, [], 'sport_workouts')
 const { addActivity } = useActivityLog()
 
 const exercises = computed(() => exerciseRepository.items.value.filter((exercise) => (
@@ -36,6 +38,10 @@ const exercises = computed(() => exerciseRepository.items.value.filter((exercise
 const completions = computed(() => completionRepository.items.value.filter((completion) => (
   completion.workspaceId === workspaceStore.activeWorkspaceId.value
   && completion.userId === authStore.currentUserId.value
+)))
+const customWorkouts = computed(() => workoutRepository.items.value.filter((workout) => (
+  workout.workspaceId === workspaceStore.activeWorkspaceId.value
+  && workout.userId === authStore.currentUserId.value
 )))
 
 const weekProgram = computed(() => {
@@ -150,7 +156,7 @@ function addExercise(data) {
   return { ok: true, exercise }
 }
 
-function updateExercise(id, updates) {
+function updateExercise(id, updates, options = {}) {
   const target = exerciseRepository.findById(id)
   if (!target || target.userId !== authStore.currentUserId.value) return { ok: false, message: 'Упражнение не найдено' }
   const next = {
@@ -179,10 +185,12 @@ function updateExercise(id, updates) {
     updatedAt: new Date().toISOString(),
   }
   exerciseRepository.update(id, next)
-  addActivity('sport:update', `обновил(а) упражнение «${next.title}»`, {
-    exerciseId: id,
-    weekday: next.weekday,
-  })
+  if (!options.skipActivity) {
+    addActivity('sport:update', `обновил(а) упражнение «${next.title}»`, {
+      exerciseId: id,
+      weekday: next.weekday,
+    })
+  }
   return { ok: true, exercise: next }
 }
 
@@ -267,17 +275,188 @@ function addExercisesBulk(rawItems) {
   }
 }
 
-function addWorkout(workout, weekday) {
+function addWorkout(workout, weekdays) {
   const workoutId = `${normalizeText(workout.id) || generateId()}-${generateId()}`
-  return addExercisesBulk((workout.exercises || []).map((exercise, index) => ({
-    ...exercise,
-    weekday,
+  const scheduledDays = normalizeWorkoutWeekdays({ weekdays })
+  return addExercisesBulk(scheduledDays.flatMap((weekday) => (
+    (workout.exercises || []).map((exercise, index) => ({
+      ...exercise,
+      weekday,
+      workoutId,
+      workoutName: workout.title,
+      workoutFocus: workout.focus,
+      workoutColor: workout.color,
+      order: Date.now() + index,
+    }))
+  )))
+}
+
+function createWorkout(data) {
+  const normalized = normalizeWorkout(data)
+  if (!normalized.ok) return normalized
+  const userId = authStore.currentUserId.value
+  if (!userId) return { ok: false, message: 'Сначала войди в аккаунт' }
+
+  const templateId = generateId()
+  const workoutId = `${templateId}-${generateId()}`
+  const now = new Date().toISOString()
+  const template = {
+    id: templateId,
+    workspaceId: workspaceStore.activeWorkspace.value?.id,
+    userId,
+    title: normalized.workout.name,
+    subtitle: 'Моя тренировка',
+    focus: normalized.workout.focus,
+    color: normalized.workout.color,
+    exercises: normalized.workout.exercises.map(({ id, ...exercise }) => exercise),
+    createdAt: now,
+    updatedAt: now,
+  }
+  workoutRepository.create(template)
+  const created = normalized.workout.weekdays.flatMap((weekday) => (
+    normalized.workout.exercises.map((exercise, index) => addExercise({
+      ...exercise,
+      weekday,
+      workoutId,
+      workoutName: normalized.workout.name,
+      workoutFocus: normalized.workout.focus,
+      workoutColor: normalized.workout.color,
+      order: Date.now() + index,
+      __skipActivity: true,
+    })).filter((result) => result.ok).map((result) => result.exercise)
+  ))
+
+  const expectedCount = normalized.workout.exercises.length * normalized.workout.weekdays.length
+  if (created.length !== expectedCount) {
+    created.forEach((exercise) => deleteExercise(exercise.id, { skipActivity: true }))
+    workoutRepository.delete(templateId)
+    return { ok: false, message: 'Не удалось создать все упражнения тренировки' }
+  }
+
+  addActivity('sport:create-workout', `создал(а) тренировку «${normalized.workout.name}»`, {
     workoutId,
-    workoutName: workout.title,
-    workoutFocus: workout.focus,
-    workoutColor: workout.color,
-    order: Date.now() + index,
-  })))
+    weekdays: normalized.workout.weekdays,
+    exerciseIds: created.map((exercise) => exercise.id),
+  })
+  return { ok: true, workoutId, template, exercises: created }
+}
+
+function deleteWorkoutTemplate(id) {
+  const target = workoutRepository.findById(id)
+  if (!target || target.userId !== authStore.currentUserId.value) return { ok: false, message: 'Шаблон тренировки не найден' }
+  workoutRepository.delete(id)
+  addActivity('sport:delete-workout-template', `удалил(а) шаблон тренировки «${target.title}»`, { workoutTemplateId: id })
+  return { ok: true }
+}
+
+function updateWorkout(workoutId, data) {
+  const normalized = normalizeWorkout(data)
+  if (!normalized.ok) return normalized
+
+  const current = getWorkoutExercises(workoutId, data.originalWeekday ?? normalized.workout.weekdays[0])
+  if (!current.length) return { ok: false, message: 'Тренировка не найдена' }
+
+  const savedIds = new Set()
+  const saved = []
+
+  normalized.workout.weekdays.forEach((weekday) => {
+    const currentForDay = current
+      .filter((exercise) => exercise.weekday === weekday)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+    normalized.workout.exercises.forEach((exercise, index) => {
+      const { id: sourceExerciseId, ...exerciseDetails } = exercise
+      const common = {
+        ...exerciseDetails,
+        weekday,
+        workoutId,
+        workoutName: normalized.workout.name,
+        workoutFocus: normalized.workout.focus,
+        workoutColor: normalized.workout.color,
+        order: Date.now() + index,
+      }
+      const existing = currentForDay.find((item) => item.id === sourceExerciseId) || currentForDay[index]
+      if (existing) {
+        const result = updateExercise(existing.id, common, { skipActivity: true })
+        if (result.ok) {
+          savedIds.add(existing.id)
+          saved.push(result.exercise)
+        }
+        return
+      }
+      const result = addExercise({ ...common, __skipActivity: true })
+      if (result.ok) saved.push(result.exercise)
+    })
+  })
+
+  current.filter((exercise) => !savedIds.has(exercise.id)).forEach((exercise) => {
+    deleteExercise(exercise.id, { skipActivity: true })
+  })
+  addActivity('sport:update-workout', `обновил(а) тренировку «${normalized.workout.name}»`, {
+    workoutId,
+    weekdays: normalized.workout.weekdays,
+    exerciseIds: saved.map((exercise) => exercise.id),
+  })
+  return { ok: true, workoutId, exercises: saved }
+}
+
+function deleteWorkout(workoutId, weekday) {
+  const targets = getWorkoutExercises(workoutId, weekday)
+  if (!targets.length) return { ok: false, message: 'Тренировка не найдена' }
+  const workoutName = targets[0].workoutName || 'Моя тренировка'
+  targets.forEach((exercise) => deleteExercise(exercise.id, { skipActivity: true }))
+  addActivity('sport:delete-workout', `удалил(а) тренировку «${workoutName}»`, {
+    workoutId,
+    weekday,
+    exerciseIds: targets.map((exercise) => exercise.id),
+  })
+  return { ok: true, deleted: targets.length }
+}
+
+function getWorkoutExercises(workoutId, weekday) {
+  return exercises.value.filter((exercise) => (
+    exercise.workoutId === workoutId
+    || (!exercise.workoutId && workoutId === `personal-${weekday}` && exercise.weekday === weekday)
+  ))
+}
+
+function normalizeWorkout(data) {
+  const name = normalizeText(data.name || data.title)
+  if (!name) return { ok: false, message: 'Укажи название тренировки' }
+  const rawExercises = Array.isArray(data.exercises) ? data.exercises : []
+  const workoutExercises = rawExercises.map((exercise) => ({
+    ...exercise,
+    title: normalizeText(exercise.title),
+    sets: normalizeText(exercise.sets) || '1 подход',
+    reps: normalizeText(exercise.reps) || '10 повторений',
+    note: normalizeText(exercise.note),
+    muscleGroups: normalizeStringList(exercise.muscleGroups),
+    durationMinutes: normalizeOptionalInteger(exercise.durationMinutes, 1, 300),
+  })).filter((exercise) => exercise.title)
+  if (!workoutExercises.length) return { ok: false, message: 'Добавь хотя бы одно упражнение' }
+  if (workoutExercises.length !== rawExercises.length) return { ok: false, message: 'Укажи название каждого упражнения' }
+  const weekdays = normalizeWorkoutWeekdays(data)
+  if (!weekdays.length) return { ok: false, message: 'Выбери хотя бы один день недели' }
+
+  return {
+    ok: true,
+    workout: {
+      name,
+      weekdays,
+      focus: normalizeStringList(data.focus),
+      color: normalizeText(data.color) || '#6ee7b7',
+      exercises: workoutExercises,
+    },
+  }
+}
+
+function normalizeWorkoutWeekdays(data) {
+  const values = Array.isArray(data.weekdays)
+    ? data.weekdays
+    : [data.weekdays ?? data.weekday]
+  return [...new Set(values
+    .filter((value) => value !== undefined && value !== null && value !== '')
+    .map((value) => normalizeWeekday(value)))]
 }
 
 function replaceWeeklyProgram(rawItems) {
@@ -400,6 +579,7 @@ function createDefaultExercise(id, weekday, title, sets, reps, note, order) {
 export const sportStore = {
   exercises,
   completions,
+  customWorkouts,
   weekProgram,
   todayKey,
   todayExercises,
@@ -415,11 +595,16 @@ export const sportStore = {
   deleteExercise,
   addExercisesBulk,
   addWorkout,
+  createWorkout,
+  updateWorkout,
+  deleteWorkout,
+  deleteWorkoutTemplate,
   replaceWeeklyProgram,
   importExercisesFromJson,
   loadWorkspace: (workspaceId) => Promise.all([
     exerciseRepository.loadWorkspace(workspaceId),
     completionRepository.loadWorkspace(workspaceId),
+    workoutRepository.loadWorkspace(workspaceId),
   ]),
 }
 

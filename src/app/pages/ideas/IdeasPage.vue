@@ -6,21 +6,11 @@
         <h1>Что бы поделать?</h1>
         <p>Сохраняй спонтанные планы, а когда появится время — отправляй их в календарь.</p>
       </div>
-      <strong>{{ ideas.length }}</strong>
-      <small>{{ ideaWord }}</small>
+      <div class="ideas-hero__actions">
+        <div><strong>{{ ideas.length }}</strong><small>{{ ideaWord }}</small></div>
+        <UiButton icon="plus" @click="openCreate">Новая идея</UiButton>
+      </div>
     </header>
-
-    <section class="idea-create panel">
-      <UiInput v-model="form.title" label="Новая идея" placeholder="Сходить в музей, устроить пикник…" @keydown.enter="createIdea" />
-      <label>
-        <span>Тип</span>
-        <UiSelect v-model="form.type">
-          <option v-for="type in IDEA_TYPES" :key="type.value" :value="type.value">{{ type.icon }} {{ type.label }}</option>
-        </UiSelect>
-      </label>
-      <UiInput v-model="form.note" label="Заметка" placeholder="Почему это интересно?" />
-      <UiButton icon="＋" @click="createIdea">Сохранить</UiButton>
-    </section>
 
     <nav class="idea-filters">
       <button v-for="filter in filters" :key="filter.value" type="button" :class="{ active: activeFilter === filter.value }" @click="activeFilter = filter.value">
@@ -62,6 +52,7 @@
 
       <div v-if="!filteredIdeas.length" class="ideas-empty">
         <span>✦</span><strong>Здесь пока пусто</strong><p>Запиши первую идею — даже самую маленькую.</p>
+        <UiButton v-if="!ideas.length" icon="plus" @click="openCreate">Добавить идею</UiButton>
       </div>
     </div>
 
@@ -85,9 +76,23 @@
         </tbody>
       </table>
     </div>
-    <div v-else class="ideas-empty"><span>✦</span><strong>Здесь пока пусто</strong><p>Запиши первую идею — даже самую маленькую.</p></div>
+    <div v-else class="ideas-empty"><span>✦</span><strong>Здесь пока пусто</strong><p>Запиши первую идею — даже самую маленькую.</p><UiButton v-if="!ideas.length" icon="plus" @click="openCreate">Добавить идею</UiButton></div>
 
     <CollectionPagination :page="page" :page-count="pageCount" @change="goToPage" />
+
+    <UiModal v-model="isCreateOpen" title="Новая идея" eyebrow="Копилка идей" width="520px">
+      <form class="idea-editor" @submit.prevent="createIdea">
+        <UiInput v-model="form.title" label="Название" placeholder="Сходить в музей, устроить пикник…" required />
+        <label>
+          <span>Тип</span>
+          <UiSelect v-model="form.type">
+            <option v-for="type in IDEA_TYPES" :key="type.value" :value="type.value">{{ type.icon }} {{ type.label }}</option>
+          </UiSelect>
+        </label>
+        <UiInput v-model="form.note" type="textarea" label="Заметка" placeholder="Почему это интересно?" />
+        <footer><UiButton type="button" variant="secondary" @click="isCreateOpen = false">Отмена</UiButton><UiButton type="submit" icon="check">Сохранить</UiButton></footer>
+      </form>
+    </UiModal>
 
     <UiModal v-model="isPlannerOpen" title="Запланировать идею" eyebrow="Копилка идей" width="420px">
       <div class="idea-planner">
@@ -128,6 +133,7 @@ const ideas = ideaStore.ideas
 const form = reactive({ title: '', type: 'other', note: '' })
 const activeFilter = ref('all')
 const randomIdea = ref(null)
+const isCreateOpen = ref(false)
 const isPlannerOpen = ref(false)
 const planningIdea = ref(null)
 const planDate = ref(DateHelper.toKey(new Date()))
@@ -147,7 +153,13 @@ function createIdea() {
   if (!result.ok) return notify(result.message, 'warning')
   form.title = ''
   form.note = ''
+  isCreateOpen.value = false
   notify('Идея сохранена', 'success')
+}
+
+function openCreate() {
+  Object.assign(form, { title: '', type: 'other', note: '' })
+  isCreateOpen.value = true
 }
 
 function pickRandom() {
@@ -182,11 +194,11 @@ function typeMeta(type) {
 </script>
 
 <style scoped>
-.ideas-page{display:grid;gap:14px;padding:14px}.ideas-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:4px 18px;padding:20px}.ideas-hero>div{grid-row:span 2}.ideas-hero span,.idea-create label>span{color:var(--text-muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.11em}.ideas-hero h1{margin:3px 0 6px}.ideas-hero p{max-width:650px;margin:0;color:var(--text-secondary)}.ideas-hero>strong{font-size:36px;line-height:1}.ideas-hero>small{color:var(--text-muted)}
-.idea-create{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(140px,.5fr) minmax(220px,1fr) auto;align-items:end;gap:8px;padding:12px}.idea-create label{display:grid;gap:5px}.idea-filters{display:flex;flex-wrap:wrap;gap:6px}.idea-filters button{min-height:30px;border:1px solid var(--border-color);border-radius:var(--radius-pill);padding:0 11px;color:var(--text-muted);background:var(--control-bg);font-size:11px;font-weight:750}.idea-filters button.active{color:var(--text-inverse);background:var(--accent)}.idea-filters__random{margin-left:auto;color:var(--text-primary)!important}
+.ideas-page{display:grid;gap:14px;padding:14px}.ideas-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px;padding:20px}.ideas-hero>div:first-child>span,.idea-editor label>span{color:var(--text-muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.11em}.ideas-hero h1{margin:3px 0 6px}.ideas-hero p{max-width:650px;margin:0;color:var(--text-secondary)}.ideas-hero__actions{display:flex;align-items:center;gap:12px}.ideas-hero__actions>div{display:grid;justify-items:end}.ideas-hero__actions strong{font-size:32px;line-height:1}.ideas-hero__actions small{color:var(--text-muted)}
+.idea-editor{display:grid;gap:12px}.idea-editor label{display:grid;gap:5px}.idea-editor footer{display:flex;justify-content:flex-end;gap:7px;border-top:1px solid var(--border-color);padding-top:12px}.idea-filters{display:flex;flex-wrap:wrap;gap:6px}.idea-filters button{min-height:30px;border:1px solid var(--border-color);border-radius:var(--radius-pill);padding:0 11px;color:var(--text-muted);background:var(--control-bg);font-size:11px;font-weight:750}.idea-filters button.active{color:var(--text-inverse);background:var(--accent)}.idea-filters__random{margin-left:auto;color:var(--text-primary)!important}
 .random-idea{display:grid;grid-template-columns:46px minmax(0,1fr) auto 26px;align-items:center;gap:12px;padding:14px;border-color:var(--accent-border)}.random-idea>span{display:grid;place-items:center;width:46px;height:46px;border-radius:13px;color:var(--text-inverse);background:var(--accent);font-size:20px}.random-idea small,.random-idea p{color:var(--text-muted)}.random-idea strong{display:block;font-size:17px}.random-idea p{margin:2px 0 0}.random-idea>button{border:0;color:var(--text-muted);background:transparent;font-size:20px}
 .idea-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.idea-card{display:grid;align-content:start;gap:8px;min-height:180px;border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:12px;background:var(--card-solid);transition:transform .18s var(--ease-out),border-color .18s var(--ease-out)}.idea-card:hover{transform:translateY(-2px);border-color:var(--border-strong)}.idea-card--planned{border-color:color-mix(in srgb,var(--success) 30%,var(--border-color))}.idea-card header{display:grid;grid-template-columns:28px minmax(0,1fr) 24px;align-items:center;gap:6px}.idea-card header>span{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--control-bg)}.idea-card header small{color:var(--text-muted)}.idea-card header button{border:0;color:var(--danger);background:transparent;font-size:17px}.idea-card>strong{font-size:15px}.idea-card>p{margin:0;color:var(--text-secondary)}.idea-card footer{display:flex;align-items:center;gap:7px;margin-top:auto}.idea-card footer>span{color:var(--success);font-size:10px;font-weight:800}.idea-card footer>button{border:0;padding:0;color:var(--text-muted);background:transparent;font-size:10px}
 .ideas-empty{grid-column:1/-1;display:grid;place-items:center;gap:5px;min-height:220px;border:1px dashed var(--border-color);border-radius:var(--radius-xl);color:var(--text-muted);text-align:center}.ideas-empty span{font-size:26px}.ideas-empty p{margin:0}.idea-planner{display:grid;gap:14px}.idea-planner>strong{font-size:17px}.idea-planner>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.idea-planner footer{display:flex;justify-content:flex-end;gap:7px}
 .idea-table-wrap{overflow:auto;border:1px solid var(--border-color);border-radius:var(--radius-xl);background:var(--card-solid)}.idea-table{width:100%;min-width:850px;border-collapse:collapse}.idea-table th{padding:11px 13px;color:var(--text-muted);background:var(--card-soft);font-size:9px;letter-spacing:.08em;text-align:left;text-transform:uppercase}.idea-table td{border-top:1px solid var(--border-color);padding:11px 13px;color:var(--text-secondary);vertical-align:middle}.idea-table tbody tr{transition:background .16s}.idea-table tbody tr:hover{background:var(--control-bg)}.idea-table__type{white-space:nowrap}.idea-table__note{display:block;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.idea-table__status{display:inline-flex;border-radius:var(--radius-pill);padding:4px 7px;color:var(--text-muted);background:var(--control-bg);font-size:9px;font-weight:750;white-space:nowrap}.idea-table__status.planned{color:var(--success);background:color-mix(in srgb,var(--success) 9%,var(--control-bg))}.idea-table__actions{display:flex;justify-content:flex-end;gap:5px;white-space:nowrap}
-@media(max-width:960px){.idea-create,.idea-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.ideas-page{padding:10px}.ideas-hero,.idea-create,.idea-grid,.random-idea{grid-template-columns:1fr}.ideas-hero{padding:14px}.idea-filters__random{margin-left:0}}
+@media(max-width:960px){.idea-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.ideas-page{padding:10px}.ideas-hero,.idea-grid,.random-idea{grid-template-columns:1fr}.ideas-hero{padding:14px}.ideas-hero__actions{justify-content:space-between}.idea-filters__random{margin-left:0}}
 </style>
