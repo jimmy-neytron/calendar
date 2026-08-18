@@ -2,6 +2,7 @@ import { birthdayStore } from '../../stores/birthday.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
 import { ideaStore } from '../../stores/idea.store.js'
+import { noteStore } from '../../stores/note.store.js'
 import { sportStore } from '../../stores/sport.store.js'
 import { notificationStore } from '../../stores/notification.store.js'
 import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
@@ -58,6 +59,7 @@ async function fetchWorkspaceData(workspaceId) {
   const results = await Promise.all([
     calendarStore.loadWorkspace(workspaceId),
     ideaStore.loadWorkspace(workspaceId),
+    noteStore.loadWorkspace(workspaceId),
     birthdayStore.loadWorkspace(workspaceId),
     notificationStore.loadWorkspace(workspaceId),
   ])

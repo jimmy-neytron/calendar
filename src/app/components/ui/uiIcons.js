@@ -9,6 +9,8 @@ export const UI_ICONS = Object.freeze({
   trash: { paths: ['M4 7h16', 'M9 7V4h6v3', 'M7 7l1 13h8l1-13', 'M10 11v5', 'M14 11v5'] },
   copy: { paths: ['M8 8h11v11H8z', 'M5 16H4V5h11v1'] },
   edit: { paths: ['M4 20h4l11-11-4-4L4 16v4z', 'M13.5 6.5l4 4'] },
+  notes: { paths: ['M5 3h14v18H5z', 'M8 8h8', 'M8 12h8', 'M8 16h5'] },
+  pin: { paths: ['M9 4h6', 'M10 4v5l-3 3v2h10v-2l-3-3V4', 'M12 14v7'] },
   check: { paths: ['M5 12l4 4L19 6'] },
   calendar: { paths: ['M5 4h14a1 1 0 011 1v15H4V5a1 1 0 011-1z', 'M8 2v4', 'M16 2v4', 'M4 9h16'] },
   activity: { paths: ['M4 12h4l2-6 4 12 2-6h4'] },

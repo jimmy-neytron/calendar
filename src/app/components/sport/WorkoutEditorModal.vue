@@ -11,10 +11,14 @@
         <UiInput v-model="form.name" label="Название" placeholder="Например: Силовая на всё тело" required />
         <fieldset class="workout-editor__weekdays">
           <legend>Дни недели</legend>
-          <label v-for="day in WEEKDAY_OPTIONS" :key="day.value" :class="{ active: form.weekdays.includes(day.value) }">
-            <input v-model="form.weekdays" type="checkbox" :value="day.value">
+          <div v-for="day in WEEKDAY_OPTIONS" :key="day.value" :class="{ active: form.weekdays.includes(day.value) }">
             <span>{{ day.short }}</span>
-          </label>
+            <UiToggle
+              :model-value="form.weekdays.includes(day.value)"
+              :label="day.label"
+              @update:model-value="setWeekday(day.value, $event)"
+            />
+          </div>
         </fieldset>
         <UiInput v-model="form.focus" label="Направления" placeholder="ноги, кор, мобильность" />
         <label class="workout-editor__field">
@@ -65,6 +69,7 @@ import UiButton from '../ui/UiButton.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
 import UiInput from '../ui/UiInput.vue'
 import UiModal from '../ui/UiModal.vue'
+import UiToggle from '../ui/UiToggle.vue'
 import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const props = defineProps({
@@ -105,6 +110,11 @@ function resetForm() {
 
 function addExercise() { form.exercises.push(createExercise()) }
 function removeExercise(index) { if (form.exercises.length > 1) form.exercises.splice(index, 1) }
+function setWeekday(weekday, selected) {
+  form.weekdays = selected
+    ? [...new Set([...form.weekdays, weekday])]
+    : form.weekdays.filter((value) => value !== weekday)
+}
 
 function submit() {
   if (!form.name.trim()) { error.value = 'Укажи название тренировки'; return }
@@ -130,9 +140,8 @@ function submit() {
 .workout-editor__field > span { color: var(--text-secondary); font-size: 11px; font-weight: 700; }
 .workout-editor__weekdays { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; border: 0; margin: 0; padding: 0; }
 .workout-editor__weekdays legend { width: 100%; margin-bottom: 5px; color: var(--text-secondary); font-size: 11px; font-weight: 700; }
-.workout-editor__weekdays label { min-width: 42px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border-color); border-radius: var(--radius-pill); color: var(--text-secondary); background: var(--control-bg); cursor: pointer; font-size: 11px; font-weight: 800; }
-.workout-editor__weekdays label.active { border-color: var(--accent-border); color: var(--text-inverse); background: var(--accent); }
-.workout-editor__weekdays input { position: absolute; opacity: 0; pointer-events: none; }
+.workout-editor__weekdays > div { min-width: 92px; display: flex; align-items: center; justify-content: space-between; gap: 7px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 5px 6px 5px 9px; color: var(--text-secondary); background: var(--control-bg); font-size: 11px; font-weight: 800; }
+.workout-editor__weekdays > div.active { border-color: var(--accent-border); color: var(--text-primary); background: var(--accent-soft); }
 .workout-editor__color { width: 100%; height: 36px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 4px; background: var(--field-bg); }
 .workout-editor__exercises { display: grid; gap: 8px; }
 .workout-editor__exercises > header { display: flex; align-items: end; justify-content: space-between; gap: 10px; }

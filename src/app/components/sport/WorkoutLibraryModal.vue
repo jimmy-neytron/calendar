@@ -12,10 +12,14 @@
           <option v-for="focus in focusOptions" :key="focus" :value="focus">{{ focus }}</option>
         </UiSelect>
         <div class="workout-library__weekdays">
-          <label v-for="day in WEEKDAY_OPTIONS" :key="day.value" :class="{ active: weekdays.includes(day.value) }">
-            <input v-model="weekdays" type="checkbox" :value="day.value">
+          <div v-for="day in WEEKDAY_OPTIONS" :key="day.value" :class="{ active: weekdays.includes(day.value) }">
             <span>{{ day.short }}</span>
-          </label>
+            <UiToggle
+              :model-value="weekdays.includes(day.value)"
+              :label="day.label"
+              @update:model-value="setWeekday(day.value, $event)"
+            />
+          </div>
         </div>
       </div>
 
@@ -53,6 +57,7 @@ import UiIconButton from '../ui/UiIconButton.vue'
 import UiInput from '../ui/UiInput.vue'
 import UiModal from '../ui/UiModal.vue'
 import UiSelect from '../ui/UiSelect.vue'
+import UiToggle from '../ui/UiToggle.vue'
 import { SPORT_WORKOUT_LIBRARY } from '../../config/sportWorkoutLibrary.js'
 import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
@@ -77,6 +82,11 @@ const allWorkouts = computed(() => [
 ])
 
 watch(() => props.initialWeekday, (value) => { weekdays.value = [value] })
+function setWeekday(weekday, selected) {
+  weekdays.value = selected
+    ? [...new Set([...weekdays.value, weekday])]
+    : weekdays.value.filter((value) => value !== weekday)
+}
 const filteredWorkouts = computed(() => {
   const query = search.value.trim().toLowerCase()
   return allWorkouts.value.filter((workout) => {
@@ -93,9 +103,8 @@ const filteredWorkouts = computed(() => {
 .workout-library__heading p { margin: 0; color: var(--text-secondary); font-size: 11px; }
 .workout-library__controls { display: grid; grid-template-columns: minmax(220px, 1fr) 190px; gap: 8px; }
 .workout-library__weekdays { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
-.workout-library__weekdays label { min-width: 42px; height: 32px; display: grid; place-items: center; border: 1px solid var(--border-color); border-radius: var(--radius-pill); color: var(--text-secondary); background: var(--control-bg); cursor: pointer; font-size: 10px; font-weight: 800; }
-.workout-library__weekdays label.active { border-color: var(--accent-border); color: var(--text-inverse); background: var(--accent); }
-.workout-library__weekdays input { position: absolute; opacity: 0; pointer-events: none; }
+.workout-library__weekdays > div { min-width: 88px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 4px 5px 4px 8px; color: var(--text-secondary); background: var(--control-bg); font-size: 10px; font-weight: 800; }
+.workout-library__weekdays > div.active { border-color: var(--accent-border); color: var(--text-primary); background: var(--accent-soft); }
 .workout-library__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .library-card { position: relative; display: grid; gap: 13px; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 13px; background: var(--card-solid); }
 .library-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--workout-color); content: ''; }

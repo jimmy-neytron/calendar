@@ -56,6 +56,7 @@ const groups = [
       { name: 'calendar', label: 'Календарь', description: 'Общие планы и расписание', icon: 'calendar' },
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
       { name: 'ideas', label: 'Идеи', description: 'Копилка семейных планов', icon: 'sparkles' },
+      { name: 'notes', label: 'Заметки', description: 'Быстрые записи и знания', icon: 'notes' },
     ],
   },
   {
