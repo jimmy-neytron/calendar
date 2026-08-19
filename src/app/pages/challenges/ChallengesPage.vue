@@ -62,31 +62,14 @@
           </footer>
         </section>
 
-        <section class="challenge-calendar panel">
-          <header>
-            <div>
-              <h3>Последние четыре недели</h3>
-              <p>Можно изменить отметку за любой доступный день.</p>
-            </div>
-            <span><i /> Выполнено</span>
-          </header>
-          <div class="challenge-calendar__weekdays">
-            <span v-for="day in ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']" :key="day">{{ day }}</span>
-          </div>
-          <div class="challenge-calendar__grid">
-            <button
-              v-for="day in recentDays"
-              :key="day.key"
-              type="button"
-              :disabled="!day.available"
-              :class="{ done: day.done, today: day.today }"
-              :title="day.label"
-              @click="toggleDay(day.key)"
-            >
-              {{ day.day }}
-            </button>
-          </div>
-        </section>
+        <ChallengeJourneyGrid
+          :start-date="activeChallenge.startDate"
+          :target-days="activeChallenge.targetDays"
+          :completed-dates="activeChallenge.completedDates"
+          :today-key="todayKey"
+          :color="activeChallenge.color"
+          @toggle="toggleDay"
+        />
       </main>
     </div>
 
@@ -113,6 +96,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ChallengeEditorModal from '../../components/challenges/ChallengeEditorModal.vue'
 import ChallengeProgressDoughnut from '../../components/challenges/ChallengeProgressDoughnut.vue'
+import ChallengeJourneyGrid from '../../components/challenges/ChallengeJourneyGrid.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiConfirmModal from '../../components/ui/UiConfirmModal.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
@@ -137,22 +121,6 @@ const isTodayDone = computed(() => activeChallenge.value?.completedDates?.includ
 const currentDay = computed(() => activeChallenge.value
   ? Math.min(activeChallenge.value.targetDays, Math.max(1, daysBetween(activeChallenge.value.startDate, todayKey) + 1))
   : 0)
-const recentDays = computed(() => {
-  if (!activeChallenge.value) return []
-  const monday = DateHelper.addDays(new Date(), -((new Date().getDay() + 6) % 7) - 21)
-  return Array.from({ length: 28 }, (_, index) => {
-    const date = DateHelper.addDays(monday, index)
-    const key = DateHelper.toKey(date)
-    return {
-      key,
-      day: date.getDate(),
-      label: longDate(key),
-      today: key === todayKey,
-      done: activeChallenge.value.completedDates.includes(key),
-      available: key >= activeChallenge.value.startDate && key <= todayKey,
-    }
-  })
-})
 
 watch(challenges, (items) => {
   if (!items.some((item) => item.id === activeId.value)) activeId.value = items[0]?.id || ''
@@ -170,9 +138,6 @@ function shortDate(key) {
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }).format(DateHelper.parseKey(key))
 }
 
-function longDate(key) {
-  return new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(DateHelper.parseKey(key))
-}
 
 function toggleToday() {
   toggleDay(todayKey)
@@ -431,90 +396,6 @@ async function confirmDelete() {
   gap: 5px;
 }
 
-.challenge-calendar {
-  padding: 18px;
-}
-
-.challenge-calendar > header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.challenge-calendar h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.challenge-calendar header p {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.challenge-calendar header > span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-  font-size: 9px;
-}
-
-.challenge-calendar header > span i {
-  width: 8px;
-  height: 8px;
-  background: var(--success);
-}
-
-.challenge-calendar__weekdays,
-.challenge-calendar__grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.challenge-calendar__weekdays span {
-  padding: 3px 4px 7px;
-  color: var(--text-muted);
-  font-size: 8px;
-  text-align: right;
-}
-
-.challenge-calendar__grid button {
-  min-height: 46px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  background: transparent;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.challenge-calendar__grid button:hover:not(:disabled) {
-  border-color: var(--text-muted);
-}
-
-.challenge-calendar__grid button.done {
-  border-color: var(--success);
-  color: var(--text-inverse);
-  background: var(--success);
-}
-
-.challenge-calendar__grid button.today {
-  outline: 1px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.challenge-calendar__grid button:disabled {
-  color: var(--text-muted);
-  background: var(--control-bg);
-  opacity: .35;
-}
-
 .challenge-empty {
   min-height: 420px;
   display: grid;
@@ -588,8 +469,5 @@ async function confirmDelete() {
     gap: 12px;
   }
 
-  .challenge-calendar__grid button {
-    min-height: 36px;
-  }
 }
 </style>
