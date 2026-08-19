@@ -1,21 +1,11 @@
 <template>
   <section class="purchases-page">
-    <header class="purchases-hero">
-      <div class="purchases-hero__copy">
-        <span>Список желаний</span>
-        <h1>Что хочу купить</h1>
-        <p>Собирайте технику, инструменты и любые вещи в одном красивом списке.</p>
-        <UiButton class="purchases-hero__create" icon="plus" @click="openCreateModal()">Добавить покупку</UiButton>
-      </div>
-      <div class="purchases-hero__stats">
-        <article><small>В списке</small><strong>{{ activeItems.length }}</strong></article>
-        <article><small>Примерная сумма</small><strong>{{ activeTotalLabel }}</strong></article>
-        <article><small>Уже куплено</small><strong>{{ boughtItems.length }}</strong></article>
-      </div>
-      <span class="purchases-hero__art" aria-hidden="true">
-        <UiIcon name="shopping" />
-      </span>
-    </header>
+    <UiPageHeader title="Покупки" eyebrow="Список желаний" description="Собирайте технику, инструменты и любые вещи в одном списке.">
+      <template #actions>
+        <div class="ui-page-header-stat"><small>В списке</small><strong>{{ activeItems.length }}</strong><span>{{ activeTotalLabel }}</span></div>
+        <UiButton @click="openCreateModal()">Добавить покупку</UiButton>
+      </template>
+    </UiPageHeader>
 
     <section class="purchases-toolbar">
       <UiInput v-model="search" type="search" placeholder="Поиск по покупкам" />
@@ -245,6 +235,7 @@ import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiIconButton from '../../../components/ui/UiIconButton.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
+import UiPageHeader from '../../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { purchaseWishlistStore } from '../../../stores/purchaseWishlist.store'

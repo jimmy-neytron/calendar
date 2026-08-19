@@ -1,24 +1,7 @@
 <template>
   <div class="courses-page">
-    <header class="courses-hero">
-      <div class="courses-hero__mesh" aria-hidden="true" />
-      <div class="courses-hero__copy">
-        <RouterLink :to="{ name: 'integrations' }"><UiIcon name="left" /> Интеграции</RouterLink>
-        <div class="courses-hero__title">
-          <span class="courses-hero__mark">
-            <img src="/images/integrations/courses-icon.svg" alt="">
-          </span>
-          <div>
-            <small>Обучение</small>
-            <h1>Courses</h1>
-          </div>
-        </div>
-        <p>Открывайте уроки прямо отсюда или превращайте весь курс в удобный план занятий.</p>
-      </div>
-      <figure class="courses-hero__cover" aria-hidden="true">
-        <img src="/images/integrations/courses-app-hero-v3.png" alt="">
-      </figure>
-    </header>
+    <RouterLink class="back-link" :to="{ name: 'integrations' }">← Интеграции</RouterLink>
+    <UiPageHeader title="Courses" eyebrow="Обучение" description="Открывайте уроки прямо отсюда или превращайте весь курс в удобный план занятий." />
 
     <section v-if="isLoading" class="courses-state">
       <UiIcon name="refresh" />
@@ -198,6 +181,7 @@ import UiButton from '../../../../components/ui/UiButton.vue'
 import UiIcon from '../../../../components/ui/UiIcon.vue'
 import UiInput from '../../../../components/ui/UiInput.vue'
 import UiModal from '../../../../components/ui/UiModal.vue'
+import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import { useNotification } from '../../../../composables/ui/useNotification.js'
 import { calendarStore } from '../../../../stores/calendar.store.js'
 import { calendarCollectionStore } from '../../../../stores/calendarCollection.store.js'

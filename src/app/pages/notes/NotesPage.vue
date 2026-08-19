@@ -1,16 +1,11 @@
 <template>
   <section class="notes-page">
-    <header class="notes-hero panel">
-      <div>
-        <span>Личное пространство</span>
-        <h1>Заметки</h1>
-        <p>Всё важное под рукой — находи по тексту, меткам или разделам.</p>
-      </div>
-      <div class="notes-hero__actions">
-        <div><strong>{{ notes.length }}</strong><small>{{ noteWord }}</small></div>
-        <UiButton icon="plus" @click="openCreate">Новая заметка</UiButton>
-      </div>
-    </header>
+    <UiPageHeader title="Заметки" eyebrow="Личное пространство" description="Всё важное под рукой — находи по тексту, меткам или разделам.">
+      <template #actions>
+        <div class="ui-page-header-stat"><strong>{{ notes.length }}</strong><small>{{ noteWord }}</small></div>
+        <UiButton @click="openCreate">Новая заметка</UiButton>
+      </template>
+    </UiPageHeader>
 
     <div class="notes-sections panel" aria-label="Разделы заметок">
       <button
@@ -118,6 +113,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiConfirmModal from '../../components/ui/UiConfirmModal.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { noteStore } from '../../stores/note.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { pluralizeRu } from '../../utils/formatters/pluralizeRu.js'

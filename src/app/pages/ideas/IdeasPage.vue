@@ -1,16 +1,11 @@
 <template>
   <section class="ideas-page">
-    <header class="ideas-hero panel">
-      <div>
-        <span>Копилка идей</span>
-        <h1>Что бы поделать?</h1>
-        <p>Сохраняй спонтанные планы, а когда появится время — отправляй их в календарь.</p>
-      </div>
-      <div class="ideas-hero__actions">
-        <div><strong>{{ ideas.length }}</strong><small>{{ ideaWord }}</small></div>
-        <UiButton icon="plus" @click="openCreate">Новая идея</UiButton>
-      </div>
-    </header>
+    <UiPageHeader title="Идеи" eyebrow="Копилка идей" description="Сохраняй спонтанные планы, а когда появится время — отправляй их в календарь.">
+      <template #actions>
+        <div class="ui-page-header-stat"><strong>{{ ideas.length }}</strong><small>{{ ideaWord }}</small></div>
+        <UiButton @click="openCreate">Новая идея</UiButton>
+      </template>
+    </UiPageHeader>
 
     <nav class="idea-filters">
       <button v-for="filter in filters" :key="filter.value" type="button" :class="{ active: activeFilter === filter.value }" @click="activeFilter = filter.value">
@@ -111,6 +106,7 @@ import CollectionViewControls from '../../components/collections/CollectionViewC
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiModal from '../../components/ui/UiModal.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { ideaStore } from '../../stores/idea.store.js'

@@ -1,21 +1,9 @@
 <template>
   <section v-if="project" class="project-page" :style="{ '--project-color': project.color }">
-    <header class="project-hero panel">
-      <RouterLink class="back-link" :to="{ name: 'time-tracking' }">
-        <UiIcon name="left" /> Учёт времени
-      </RouterLink>
-      <div class="project-hero__main">
-        <span class="project-mark"><UiIcon name="clock" /></span>
-        <div>
-          <small>Проект</small>
-          <h1>{{ project.name }}</h1>
-          <p>{{ entries.length }} {{ pluralize(entries.length, ['запись', 'записи', 'записей']) }} · {{ analytics.activeDays }} активных дней</p>
-        </div>
-      </div>
-      <button class="project-delete" type="button" @click="removeProject">
-        <UiIcon name="trash" /> Удалить проект
-      </button>
-    </header>
+    <RouterLink class="back-link" :to="{ name: 'time-tracking' }">← Учёт времени</RouterLink>
+    <UiPageHeader :title="project.name" eyebrow="Проект" :description="`${entries.length} ${pluralize(entries.length, ['запись', 'записи', 'записей'])} · ${analytics.activeDays} активных дней`">
+      <template #actions><button class="project-delete" type="button" @click="removeProject">Удалить проект</button></template>
+    </UiPageHeader>
 
     <section class="project-metrics">
       <article>
@@ -176,6 +164,7 @@ import CollectionPagination from '../../components/collections/CollectionPaginat
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { timeTrackingStore } from '../../stores/timeTracking.store'

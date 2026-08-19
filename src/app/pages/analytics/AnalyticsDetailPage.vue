@@ -1,15 +1,9 @@
 <template>
   <section class="detail-page" :style="{ '--section-color': config.color }">
-    <header class="detail-hero panel">
-      <div class="detail-hero__mesh" aria-hidden="true" />
-      <div class="detail-hero__orb" aria-hidden="true" />
-      <RouterLink class="back-link" :to="{ name: 'analytics' }"><UiIcon name="left" /> Аналитика</RouterLink>
-      <div class="detail-hero__main">
-        <span class="detail-icon"><UiIcon :name="config.icon" /></span>
-        <div><small>{{ config.eyebrow }}</small><h1>{{ config.title }}</h1><p>{{ config.description }}</p></div>
-      </div>
-      <RouterLink class="open-section" :to="{ name: config.targetRoute }">Открыть раздел <UiIcon name="right" /></RouterLink>
-    </header>
+    <RouterLink class="back-link" :to="{ name: 'analytics' }">← Аналитика</RouterLink>
+    <UiPageHeader :title="config.title" :eyebrow="config.eyebrow" :description="config.description">
+      <template #actions><RouterLink class="open-section" :to="{ name: config.targetRoute }">Открыть раздел →</RouterLink></template>
+    </UiPageHeader>
 
     <section class="metrics">
       <article v-for="(metric, index) in config.metrics" :key="metric.label" :style="{ '--delay': `${index * 65}ms` }">
@@ -47,6 +41,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import UiIcon from '../../components/ui/UiIcon.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import AnalyticsBarChart from './components/AnalyticsBarChart.vue'
 import AnalyticsDonut from './components/AnalyticsDonut.vue'
 import { useAnalyticsData } from './useAnalyticsData.js'

@@ -1,18 +1,15 @@
 <template>
   <section class="movies-page">
-    <header class="movies-hero panel">
-      <div class="movies-hero__copy">
-        <span>Кино на вечер</span>
-        <h1>Что будем смотреть?</h1>
-        <p>Ищи фильмы и сериалы, сохраняй понравившееся и возвращайся к списку, когда появится свободный вечер.</p>
-      </div>
+    <UiPageHeader title="Фильмы и сериалы" eyebrow="Кино на вечер" description="Ищи фильмы и сериалы, сохраняй понравившееся и возвращайся к списку, когда появится свободный вечер.">
+      <template #actions>
       <form class="movie-search" @submit.prevent="runSearch(1)">
         <UiIcon name="search" />
         <input v-model="searchQuery" type="search" placeholder="Название фильма или сериала" aria-label="Поиск фильмов и сериалов" @input="scheduleSearch">
         <button v-if="searchQuery" type="button" aria-label="Очистить поиск" @click="clearSearch"><UiIcon name="close" /></button>
         <span v-else>Enter</span>
       </form>
-    </header>
+      </template>
+    </UiPageHeader>
 
     <div v-if="!isTmdbConfigured" class="movies-setup panel">
       <span class="movies-setup__icon"><UiIcon name="key" /></span>
@@ -199,6 +196,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiModal from '../../components/ui/UiModal.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { getMediaDetails, getMediaGenres, getPopularMedia, getTmdbImageUrl, getTrendingMedia, isTmdbConfigured, searchMedia } from '../../services/tmdb.service'

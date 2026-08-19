@@ -1,13 +1,7 @@
 <template>
   <section class="integrations-page">
     <template v-if="isHub">
-      <header class="integrations-hero">
-        <div>
-          <span>Интеграции</span>
-          <h1>Интеграции</h1>
-          <p>Подключайте сервисы, которые помогают вести день без лишних переходов.</p>
-        </div>
-      </header>
+      <UiPageHeader title="Интеграции" eyebrow="Подключения" description="Подключайте сервисы, которые помогают вести день без лишних переходов." />
 
       <section class="integration-hub">
         <button
@@ -42,25 +36,8 @@
     <CoursesIntegrationPage v-else-if="activeIntegrationId === 'courses'" />
 
     <template v-else-if="activeIntegrationId === 'telegram'">
-      <header class="planera-hero">
-        <div class="planera-hero__mesh" aria-hidden="true" />
-        <div class="planera-hero__copy">
-          <RouterLink class="back-link" :to="{ name: 'integrations' }">
-            <UiIcon name="left" /> Интеграции
-          </RouterLink>
-          <div class="planera-hero__title">
-            <span class="planera-mark"><UiIcon name="mail" /></span>
-            <div>
-              <small>Telegram</small>
-              <h1>Planera Daily</h1>
-              <p>Ежедневная сводка событий календаря и спорта в Telegram в 08:00.</p>
-            </div>
-          </div>
-        </div>
-        <figure class="planera-cover" aria-hidden="true">
-          <img src="/images/integrations/planera-daily-cover.png" alt="">
-        </figure>
-      </header>
+      <RouterLink class="back-link" :to="{ name: 'integrations' }">← Интеграции</RouterLink>
+      <UiPageHeader title="Planera Daily" eyebrow="Telegram" description="Ежедневная сводка событий календаря и спорта в Telegram в 08:00." />
 
       <section class="planera-metrics">
         <article>
@@ -203,6 +180,7 @@ import { useRoute, useRouter } from 'vue-router'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
+import UiPageHeader from '../../../components/ui/UiPageHeader.vue'
 import UiToggle from '../../../components/ui/UiToggle.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { useSubscriptionSettings } from '../../../composables/preferences/useSubscriptionSettings.js'

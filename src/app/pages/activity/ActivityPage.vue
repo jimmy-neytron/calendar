@@ -1,9 +1,8 @@
 <template>
   <section class="activity-page">
-    <header class="activity-hero panel">
-      <div><span>История пространства</span><h1>Активность</h1><p>События, фильмы, спорт, идеи, дни рождения и изменения пространства в одном журнале.</p></div>
-      <strong>{{ total }}</strong><small>записей</small>
-    </header>
+    <UiPageHeader title="Активность" eyebrow="История пространства" description="События, фильмы, спорт, идеи, дни рождения и изменения пространства в одном журнале.">
+      <template #actions><div class="ui-page-header-stat"><strong>{{ total }}</strong><small>записей</small></div></template>
+    </UiPageHeader>
 
     <section class="activity-filters panel">
       <UiInput v-model="filters.query" placeholder="Поиск по изменениям" @keydown.enter="applyFilters" />
@@ -92,6 +91,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'

@@ -1,21 +1,14 @@
 <template>
-  <header class="tree-toolbar">
-    <div class="tree-toolbar__heading">
-      <span>СЕМЬЯ · {{ peopleCount }} ЧЕЛ.</span>
-      <h1>Семейное дерево</h1>
-      <p>Сохраняйте историю семьи, фотографии и родственные связи.</p>
-    </div>
-
-    <div class="tree-toolbar__actions">
+  <UiPageHeader title="Семейное дерево" :eyebrow="`Семья · ${peopleCount} чел.`" description="Сохраняйте историю семьи, фотографии и родственные связи.">
+    <template #actions>
       <UiButton
         variant="secondary"
-        icon="filter"
         :class="{ 'tree-toolbar__filter-button--active': hasActiveFilters }"
         @click="$emit('toggleFilters')"
       >
         {{ hasActiveFilters ? `Фильтры · ${visibleCount}` : 'Фильтры' }}
       </UiButton>
-      <UiButton variant="secondary" icon="↓" @click="$emit('export')">Экспорт</UiButton>
+      <UiButton variant="secondary" @click="$emit('export')">Экспорт</UiButton>
       <UiButton variant="secondary" @click="importInput?.click()">Импорт</UiButton>
       <input
         ref="importInput"
@@ -24,14 +17,15 @@
         accept=".json,application/json"
         @change="$emit('import', $event)"
       />
-      <UiButton icon="＋" @click="$emit('create')">Добавить человека</UiButton>
-    </div>
-  </header>
+      <UiButton @click="$emit('create')">Добавить человека</UiButton>
+    </template>
+  </UiPageHeader>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import UiButton from '../ui/UiButton.vue'
+import UiPageHeader from '../ui/UiPageHeader.vue'
 
 defineProps({
   peopleCount: { type: Number, default: 0 },

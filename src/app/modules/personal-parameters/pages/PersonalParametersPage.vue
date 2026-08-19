@@ -1,13 +1,8 @@
 <template>
   <section class="parameters-page">
-    <header class="parameters-hero panel">
-      <div class="parameters-hero__copy">
-        <span>Личная памятка</span>
-        <h1>Мои параметры</h1>
-        <p>Размеры, модели и характеристики, которые удобно иметь под рукой.</p>
-      </div>
-      <div class="parameters-hero__actions"><UiButton icon="plus" @click="openCreateModal">Новая карточка</UiButton></div>
-    </header>
+    <UiPageHeader title="Мои параметры" eyebrow="Личная памятка" description="Размеры, модели и характеристики, которые удобно иметь под рукой.">
+      <template #actions><UiButton @click="openCreateModal">Новая карточка</UiButton></template>
+    </UiPageHeader>
 
     <section class="parameters-summary" aria-label="Сводка">
       <article>
@@ -189,6 +184,7 @@ import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiIconButton from '../../../components/ui/UiIconButton.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
+import UiPageHeader from '../../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { authStore } from '../../../stores/auth.store.js'

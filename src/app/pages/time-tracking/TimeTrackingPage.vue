@@ -1,20 +1,15 @@
 <template>
   <section class="time-page">
-    <header class="time-hero panel">
-      <div>
-        <span>Учёт времени</span>
-        <h1>Часы без секундомера и мучений</h1>
-        <p>Выбирай проект, нажимай готовую длительность и сохраняй. Никаких полей «с 09:17 до 11:43».</p>
-      </div>
-      <div class="time-hero__actions">
-        <div class="time-hero__total">
+    <UiPageHeader title="Учёт времени" eyebrow="Проекты и записи" description="Выбирай проект, указывай готовую длительность и сохраняй запись.">
+      <template #actions>
+        <div class="ui-page-header-stat">
           <small>Эта неделя</small>
           <strong>{{ formatDuration(weekMinutes) }}</strong>
           <span>{{ projects.length }} {{ pluralize(projects.length, ['проект', 'проекта', 'проектов']) }}</span>
         </div>
-        <UiButton icon="plus" @click="isEntryModalOpen = true">Добавить время</UiButton>
-      </div>
-    </header>
+        <UiButton @click="isEntryModalOpen = true">Добавить время</UiButton>
+      </template>
+    </UiPageHeader>
 
     <section class="time-stats">
       <article class="time-stat panel">
@@ -90,6 +85,7 @@ import TimeEntryComposer from '../../components/time-tracking/TimeEntryComposer.
 import TimeEntryList from '../../components/time-tracking/TimeEntryList.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiModal from '../../components/ui/UiModal.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { timeTrackingStore } from '../../stores/timeTracking.store'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'

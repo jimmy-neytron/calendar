@@ -1,16 +1,11 @@
 <template>
-  <section class="sport-page panel">
-    <header class="sport-header">
-      <div>
-        <p>Моя активность</p>
-        <h1>Тренировки</h1>
-        <span>Собери свою неделю один раз — план будет повторяться, пока ты его не изменишь.</span>
-      </div>
-      <div class="sport-header__actions">
-        <UiButton variant="secondary" icon="sparkles" @click="applyBalancedWeek">Сбалансировать неделю</UiButton>
-        <UiButton icon="plus" @click="isLibraryOpen = true">Выбрать тренировку</UiButton>
-      </div>
-    </header>
+  <section class="sport-page">
+    <UiPageHeader title="Тренировки" eyebrow="Моя активность" description="Собери свою неделю один раз — план будет повторяться, пока ты его не изменишь.">
+      <template #actions>
+        <UiButton variant="secondary" @click="applyBalancedWeek">Сбалансировать неделю</UiButton>
+        <UiButton @click="isLibraryOpen = true">Выбрать тренировку</UiButton>
+      </template>
+    </UiPageHeader>
 
     <section class="sport-overview">
       <article class="sport-score">
@@ -136,6 +131,7 @@ import UiButton from '../../components/ui/UiButton.vue'
 import UiConfirmModal from '../../components/ui/UiConfirmModal.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import ExerciseDetailsModal from '../../components/sport/ExerciseDetailsModal.vue'
 import WorkoutLibraryModal from '../../components/sport/WorkoutLibraryModal.vue'
 import WorkoutEditorModal from '../../components/sport/WorkoutEditorModal.vue'

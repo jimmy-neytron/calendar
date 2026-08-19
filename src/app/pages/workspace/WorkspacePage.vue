@@ -1,11 +1,7 @@
 <template>
   <section class="workspace-page">
-    <header class="workspace-page__hero panel">
-      <div>
-        <span>Пространство</span>
-        <h1>{{ activeWorkspace?.name || 'Пространство' }}</h1>
-        <p>{{ activeWorkspaceMembers.length }} участников · {{ roleLabel(currentUserRole) }}</p>
-      </div>
+    <UiPageHeader :title="activeWorkspace?.name || 'Пространство'" eyebrow="Пространство" :description="`${activeWorkspaceMembers.length} участников · ${roleLabel(currentUserRole)}`">
+      <template #actions>
       <RouterLink
         v-if="activityLogEnabled"
         class="workspace-page__activity"
@@ -13,7 +9,8 @@
       >
         История изменений →
       </RouterLink>
-    </header>
+      </template>
+    </UiPageHeader>
 
     <div class="workspace-page__grid">
       <SettingsSectionCard
@@ -192,6 +189,7 @@ import UiSelect from '../../components/ui/UiSelect.vue'
 import UiColorPicker from '../../components/ui/UiColorPicker.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import UiModal from '../../components/ui/UiModal.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { useActivityLog } from '../../composables/history/useActivityLog.js'

@@ -1,13 +1,7 @@
 <template>
   <section class="settings-page">
-    <header class="settings-hero panel">
-      <div class="settings-hero__copy">
-        <span class="settings-eyebrow">Настройки пространства</span>
-        <h1>Под себя и свою семью</h1>
-        <p>Настрой профиль, семейные разделы и календарь так, чтобы всё важное оставалось под рукой.</p>
-      </div>
-
-      <div class="settings-hero__actions">
+    <UiPageHeader title="Настройки" eyebrow="Пространство и профиль" description="Настрой профиль, семейные разделы и календарь так, чтобы всё важное оставалось под рукой.">
+      <template #actions>
         <span v-if="preferencesSaved" class="saved-status">
           <UiIcon name="check" /> Сохранено
         </span>
@@ -17,8 +11,8 @@
         <UiButton size="sm" variant="secondary" icon="play" @click="openOnboarding">
           Обучение
         </UiButton>
-      </div>
-    </header>
+      </template>
+    </UiPageHeader>
 
     <section class="profile-settings panel">
       <div class="profile-settings__identity">
@@ -330,6 +324,7 @@ import { useRouter } from 'vue-router'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiModal from '../../components/ui/UiModal.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiToggle from '../../components/ui/UiToggle.vue'
 import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'

@@ -1,16 +1,11 @@
 <template>
   <section class="wardrobe-page">
-    <header class="wardrobe-hero panel">
-      <div>
-        <span>Личная коллекция</span>
-        <h1>Шкаф и образы</h1>
-        <p>Соберите вещи в одном месте и создавайте готовые сочетания.</p>
-      </div>
-      <div class="wardrobe-hero__actions">
-        <UiButton variant="secondary" icon="sparkles" :disabled="items.length < 2" @click="openLookCreate">Собрать образ</UiButton>
-        <UiButton icon="plus" @click="openItemCreate">Добавить вещь</UiButton>
-      </div>
-    </header>
+    <UiPageHeader title="Шкаф и образы" eyebrow="Личная коллекция" description="Соберите вещи в одном месте и создавайте готовые сочетания.">
+      <template #actions>
+        <UiButton variant="secondary" :disabled="items.length < 2" @click="openLookCreate">Собрать образ</UiButton>
+        <UiButton @click="openItemCreate">Добавить вещь</UiButton>
+      </template>
+    </UiPageHeader>
 
     <section class="wardrobe-overview">
       <button type="button" :class="{ active: activeTab === 'items' }" @click="activeTab='items'"><span><UiIcon name="hanger" /></span><div><small>Вещи</small><strong>{{ activeItemsCount }}</strong></div></button>
@@ -92,6 +87,7 @@ import UiColorPicker from '../../../components/ui/UiColorPicker.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
+import UiPageHeader from '../../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { authStore } from '../../../stores/auth.store.js'

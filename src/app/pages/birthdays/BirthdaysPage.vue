@@ -1,20 +1,15 @@
 <template>
   <section class="birthdays-page">
-    <header class="birthdays-hero panel">
-      <div>
-        <span>Дни рождения</span>
-        <h1>Не забыть важное</h1>
-        <p>Возраст, идеи подарков и ежегодные напоминания автоматически связаны с календарём.</p>
-      </div>
-      <div class="birthdays-hero__actions">
-        <div class="birthdays-hero__next" v-if="nextBirthday">
+    <UiPageHeader title="Дни рождения" eyebrow="Не забыть важное" description="Возраст, идеи подарков и ежегодные напоминания автоматически связаны с календарём.">
+      <template #actions>
+        <div v-if="nextBirthday" class="ui-page-header-stat">
           <small>Ближайший</small>
           <strong>{{ nextBirthday.name }}</strong>
           <span>{{ countdownLabel(nextBirthday.daysUntil) }}</span>
         </div>
-        <UiButton icon="plus" @click="openCreate">Добавить</UiButton>
-      </div>
-    </header>
+        <UiButton @click="openCreate">Добавить</UiButton>
+      </template>
+    </UiPageHeader>
 
     <section v-if="upcoming.length" class="upcoming-strip">
       <article v-for="birthday in upcoming" :key="birthday.id">
@@ -162,6 +157,7 @@ import CollectionViewControls from '../../components/collections/CollectionViewC
 import UiButton from '../../components/ui/UiButton.vue'
 import UiInput from '../../components/ui/UiInput.vue'
 import UiModal from '../../components/ui/UiModal.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import { birthdayStore } from '../../stores/birthday.store.js'

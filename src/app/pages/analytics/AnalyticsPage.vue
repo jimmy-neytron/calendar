@@ -1,30 +1,10 @@
 <template>
   <section class="analytics-overview">
-    <header class="overview-hero panel">
-      <div class="overview-hero__glow" aria-hidden="true" />
-      <div class="overview-hero__copy">
-        <span class="eyebrow">Аналитика пространства</span>
-        <h1>Всё важное — одним взглядом</h1>
-        <p>Спокойный обзор недели. Подробные графики и динамика находятся внутри каждого раздела.</p>
-        <div class="hero-status">
-          <span><i /> Данные обновляются вместе с пространством</span>
-          <strong>{{ activeDirections }} активных направлений</strong>
-        </div>
-      </div>
-      <div class="pulse">
-        <svg viewBox="0 0 120 120" aria-hidden="true">
-          <circle class="pulse__track" cx="60" cy="60" r="52" />
-          <circle
-            class="pulse__value"
-            cx="60"
-            cy="60"
-            r="52"
-            :style="{ '--pulse-progress': pulseScore }"
-          />
-        </svg>
-        <div><strong>{{ pulseScore }}</strong><span>пульс недели</span></div>
-      </div>
-    </header>
+    <UiPageHeader title="Аналитика" eyebrow="Обзор пространства" description="Спокойный обзор недели. Подробные графики и динамика находятся внутри каждого раздела.">
+      <template #actions>
+        <div class="ui-page-header-stat"><small>Пульс недели</small><strong>{{ pulseScore }}</strong><span>{{ activeDirections }} активных направлений</span></div>
+      </template>
+    </UiPageHeader>
 
     <section class="quick-stats">
       <article v-for="(stat, index) in overviewStats" :key="stat.label" :style="{ '--delay': `${index * 55}ms` }">
@@ -62,6 +42,7 @@
 <script setup>
 import { computed } from 'vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
 import { useAnalyticsData } from './useAnalyticsData.js'

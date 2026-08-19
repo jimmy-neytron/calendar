@@ -1,20 +1,15 @@
 <template>
   <section class="budget-page">
-    <header class="budget-toolbar">
-      <div>
-        <span>Бюджет</span>
-        <h1>{{ selectedMonthLabel }}</h1>
-      </div>
-
-      <div class="budget-toolbar__actions">
+    <UiPageHeader :title="selectedMonthLabel" eyebrow="Бюджет" description="Плановые и фактические расходы за выбранный месяц.">
+      <template #actions>
         <div class="month-picker">
           <UiIconButton icon="left" label="Предыдущий месяц" @click="shiftMonth(-1)" />
           <input :value="selectedMonth" type="month" aria-label="Месяц бюджета" @input="setMonth($event.target.value)" />
           <UiIconButton icon="right" label="Следующий месяц" @click="shiftMonth(1)" />
         </div>
         <UiIconButton icon="settings" label="Настройки бюджета" @click="openGlobalSetup" />
-      </div>
-    </header>
+      </template>
+    </UiPageHeader>
 
     <div v-if="isLoading" class="budget-loading panel">
       <span /><span /><span />
@@ -169,6 +164,7 @@ import BudgetSetupModal from '../../components/budget/BudgetSetupModal.vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
+import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { budgetStore } from '../../stores/budget.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
