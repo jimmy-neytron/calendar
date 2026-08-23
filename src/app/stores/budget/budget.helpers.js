@@ -37,6 +37,29 @@ export function getCurrentBudgetMonth(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
+export function createBudgetMonthRecord({
+  id,
+  workspaceId,
+  month,
+  plannedIncome = 0,
+  status = 'draft',
+  createdAt,
+  updatedAt = createdAt,
+}) {
+  const monthKey = toBudgetMonthKey(month)
+  if (!id || !workspaceId || !monthKey) return null
+
+  return {
+    id,
+    workspaceId,
+    month: `${monthKey}-01`,
+    plannedIncome: toBudgetAmount(plannedIncome),
+    status,
+    createdAt,
+    updatedAt,
+  }
+}
+
 export function findDuplicateBudgetName(items) {
   const names = new Set()
   for (const item of items || []) {

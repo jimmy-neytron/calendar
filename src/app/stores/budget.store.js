@@ -9,6 +9,7 @@ import { calendarStore } from './calendar.store.js'
 import { workspaceStore } from './workspace.store.js'
 import { CALENDAR_LINK_CHANGE_EVENT, LINKED_ENTITY_TYPES } from '../utils/constants/linkedEntityTypes.js'
 import {
+  createBudgetMonthRecord,
   disabledBudgetResult,
   findDuplicateBudgetName as findDuplicateName,
   formatBudgetAmount as formatAmount,
@@ -869,15 +870,16 @@ async function migrateLegacyBudget(workspaceId) {
     if (existingMonth) continue
 
     const now = new Date().toISOString()
-    const month = {
+    const month = createBudgetMonthRecord({
       id: generateId(),
       workspaceId,
-      month: `${monthKey}-01`,
-      plannedIncome: toAmount(legacyBudget.income),
+      month: monthKey,
+      plannedIncome: legacyBudget.income,
       status: 'active',
       createdAt: legacyBudget.updatedAt || now,
       updatedAt: legacyBudget.updatedAt || now,
-    }
+    })
+    if (!month) return
     const monthResult = await monthRepository.createAndWait(month)
     if (!monthResult.ok) return
 
@@ -941,15 +943,13 @@ async function ensureCurrentMonth() {
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
   monthCreatePromise = (async () => {
     const now = new Date().toISOString()
-    const month = {
+    const month = createBudgetMonthRecord({
       id: generateId(),
       workspaceId,
-      month: `${selectedMonth.value}-01`,
-      plannedIncome: 0,
-      status: 'draft',
+      month: selectedMonth.value,
       createdAt: now,
-      updatedAt: now,
-    }
+    })
+    if (!month) return { ok: false, message: 'Некорректный месяц бюджета' }
     const result = await monthRepository.createAndWait(month)
     return result.ok ? { ok: true, item: month } : result
   })()
@@ -968,15 +968,13 @@ async function ensureBudgetMonthForDate(dateKey) {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
   const now = new Date().toISOString()
-  const month = {
+  const month = createBudgetMonthRecord({
     id: generateId(),
     workspaceId,
-    month: `${monthKey}-01`,
-    plannedIncome: 0,
-    status: 'draft',
+    month: monthKey,
     createdAt: now,
-    updatedAt: now,
-  }
+  })
+  if (!month) return { ok: false, message: 'Некорректная дата платежа' }
   const result = await monthRepository.createAndWait(month)
   return result.ok ? { ok: true, item: month } : result
 }

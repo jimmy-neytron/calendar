@@ -71,7 +71,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
         scheduleRetry()
         return localItems
       }
-      this.handlePermanentError(error)
+      this.handlePermanentError(error, { notifyUser: false })
       return null
     }
   }
@@ -178,9 +178,9 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
         return { ok: true, queued: true }
       }
 
-      this.handlePermanentError(result.error)
+      this.handlePermanentError(result.error, { notifyUser: !options.wait })
       options.rollback?.()
-      return { ok: false, message: result.error.message }
+      return { ok: false, message: getSyncErrorMessage(result.error) }
     } catch (error) {
       if (isNetworkError(error)) {
         enqueueOperation(queuedOperation)
@@ -188,18 +188,18 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
         return { ok: true, queued: true }
       }
 
-      this.handlePermanentError(error)
+      this.handlePermanentError(error, { notifyUser: !options.wait })
       options.rollback?.()
-      return { ok: false, message: error.message }
+      return { ok: false, message: getSyncErrorMessage(error) }
     } finally {
       this.pendingCount.value = Math.max(0, this.pendingCount.value - 1)
     }
   }
 
-  handlePermanentError(error) {
-    const message = error?.message || 'Не удалось синхронизировать данные'
+  handlePermanentError(error, { notifyUser = true } = {}) {
+    const message = getSyncErrorMessage(error)
     this.lastError.value = message
-    reportSyncError(message)
+    if (notifyUser) reportSyncError(message)
     console.error('Supabase sync failed:', error)
   }
 
@@ -385,6 +385,28 @@ function isNetworkError(error) {
     || message.includes('network request failed')
     || message.includes('err_name_not_resolved')
     || message.includes('load failed')
+}
+
+export function getSyncErrorMessage(error) {
+  const originalMessage = String(error?.message || error || '')
+  const message = originalMessage.toLowerCase()
+  const missingColumn = originalMessage.match(/null value in column ["“]([^"”]+)["”]/i)?.[1]
+  if (missingColumn) {
+    return `В базе не заполнено обязательное поле «${missingColumn}» (код 23502). Примени последнюю миграцию Supabase.`
+  }
+  if (
+    message.includes('schema cache')
+    || message.includes('could not find the')
+  ) {
+    return 'Структура базы устарела. Примени последние миграции Supabase и повтори сохранение.'
+  }
+  if (message.includes('row-level security') || message.includes('permission denied')) {
+    return 'Недостаточно прав для сохранения этих данных.'
+  }
+  if (message.includes('duplicate key') || message.includes('unique constraint')) {
+    return 'Такая запись уже существует.'
+  }
+  return 'Не удалось сохранить изменения. Повтори попытку.'
 }
 
 function readQueue() {
