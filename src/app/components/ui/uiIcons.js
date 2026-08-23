@@ -29,6 +29,7 @@ export const UI_ICONS = Object.freeze({
   chart: { paths: ['M5 20V10', 'M12 20V4', 'M19 20v-7'] },
   wallet: { paths: ['M4 6h14a2 2 0 012 2v11H4a2 2 0 01-2-2V6a2 2 0 012-2h12', 'M15 11h5v4h-5a2 2 0 010-4z'] },
   shopping: { paths: ['M5 8h14l-1 12H6L5 8z', 'M9 10V6a3 3 0 016 0v4'] },
+  utensils: { paths: ['M7 3v7', 'M4 3v4a3 3 0 006 0V3', 'M7 10v11', 'M16 3v18', 'M16 3c3 2 4 5 4 8h-4'] },
   ruler: { paths: ['M5 3h14v18H5z', 'M9 6H5', 'M12 9H5', 'M9 12H5', 'M12 15H5', 'M9 18H5'] },
   hanger: { paths: ['M12 7a2.5 2.5 0 10-2.5-2.5', 'M12 7v2', 'M12 9L3 17v2h18v-2l-9-8z'] },
   camera: { paths: ['M4 7h4l2-3h4l2 3h4v12H4z'], circles: [{ cx: 12, cy: 13, r: 4 }] },

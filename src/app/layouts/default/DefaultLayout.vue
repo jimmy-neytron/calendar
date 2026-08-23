@@ -145,6 +145,7 @@ const commands = computed(() => [
   { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
   { id: 'notes', label: 'Открыть заметки', description: 'Поиск по личным записям', icon: 'notes', action: () => router.push({ name: 'notes' }) },
   { id: 'challenges', label: 'Открыть челленджи', description: 'Цели, серии и награды', icon: 'trophy', action: () => router.push({ name: 'challenges' }) },
+  { id: 'meals', label: 'Открыть питание', description: 'Меню недели и свои блюда', icon: 'utensils', action: () => router.push({ name: 'meals' }) },
   { id: 'challenge-rewards', label: 'Открыть коллекцию наград', description: 'Все достижения за челленджи', icon: 'star', action: () => router.push({ name: 'challenge-rewards' }) },
   ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),

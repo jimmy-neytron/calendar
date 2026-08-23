@@ -19,6 +19,7 @@ const AnalyticsDetailPage = () => import('../pages/analytics/AnalyticsDetailPage
 const IdeasPage = () => import('../pages/ideas/IdeasPage.vue')
 const NotesPage = () => import('../pages/notes/NotesPage.vue')
 const ChallengesPage = () => import('../pages/challenges/ChallengesPage.vue')
+const MealsPage = () => import('../modules/meals/pages/MealsPage.vue')
 const ChallengeRewardsPage = () => import('../pages/challenges/ChallengeRewardsPage.vue')
 const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const FamilyTreePage = () => import('../pages/family-tree/FamilyTreePage.vue')
@@ -67,6 +68,7 @@ export const routes = [
   { path: '/notes', name: 'notes', component: NotesPage, meta: { title: 'Заметки' } },
   { path: '/challenges', name: 'challenges', component: ChallengesPage, meta: { title: 'Челленджи' } },
   { path: '/challenges/rewards', name: 'challenge-rewards', component: ChallengeRewardsPage, meta: { title: 'Коллекция наград' } },
+  { path: '/meals', name: 'meals', component: MealsPage, meta: { title: 'Питание' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
   { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
   { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresExtraSections: true, requiresSubscriptionFeature: 'movies' } },
@@ -75,7 +77,6 @@ export const routes = [
   { path: '/wardrobe', name: 'wardrobe', component: WardrobePage, meta: { title: 'Шкаф', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
   { path: '/spaces', redirect: '/workspace' },
   { path: '/chores', redirect: '/' },
-  { path: '/meals', redirect: '/ideas' },
   { path: '/lists', redirect: '/' },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundPage, meta: { title: 'Страница не найдена' } },
 ]

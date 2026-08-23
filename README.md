@@ -11,6 +11,7 @@
 - повторяющиеся события, напоминания, участники, комментарии, фильтры и drag & drop;
 - Realtime-уведомления о событиях и комментариях;
 - бюджетирование с периодами, категориями, регулярными платежами и связью с календарём;
+- недельное меню, собственные блюда, необязательный расчёт калорий и список продуктов;
 - программы тренировок и отметки выполнения;
 - проекты и записи учёта времени;
 - идеи, дни рождения, фильмы и сериалы;
@@ -58,6 +59,7 @@ Supabase является основным backend приложения:
 | Личные разделы | `ideas`, `birthdays`, `movie_watchlist` |
 | Спорт | `sport_exercises`, `sport_completions` |
 | Бюджет | `budget_months`, `budget_categories`, `budget_recurring_rules`, `budget_payments` |
+| Питание | `meal_recipes`, `meal_weeks` |
 | Учёт времени | `time_projects`, `time_entries` |
 | Приложение и администрирование | `app_releases`, `landing_leads`, `admin_modals`, `admin_user_modal_overrides` |
 | Интеграции | `telegram_connections`, `telegram_link_codes` |
