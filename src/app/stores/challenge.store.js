@@ -6,6 +6,7 @@ import { DateHelper } from '../utils/date/dateHelper.js'
 import { useActivityLog } from '../composables/history/useActivityLog.js'
 import { authStore } from './auth.store.js'
 import { workspaceStore } from './workspace.store.js'
+import { getChallengeProgress } from '../utils/challenges/challengeProgress.ts'
 
 const repository = new SyncedCollectionRepository(`${APP_CONFIG.storageKey}:challenges`, [], 'challenges')
 const { addActivity } = useActivityLog()
@@ -34,7 +35,12 @@ function updateChallenge(id, data) {
   if (!target) return { ok: false, message: 'Челлендж не найден' }
   const normalized = normalizeChallenge(data)
   if (!normalized.ok) return normalized
-  const challenge = { ...target, ...normalized.challenge, updatedAt: new Date().toISOString() }
+  const challenge = {
+    ...target,
+    ...normalized.challenge,
+    dailyValues: data.dailyValues && typeof data.dailyValues === 'object' ? data.dailyValues : (target.dailyValues || {}),
+    updatedAt: new Date().toISOString(),
+  }
   repository.update(id, challenge)
   return { ok: true, challenge }
 }
@@ -45,10 +51,25 @@ function toggleDate(id, date = DateHelper.toKey(new Date())) {
   const completedDates = new Set(target.completedDates || [])
   const completed = !completedDates.has(date)
   completed ? completedDates.add(date) : completedDates.delete(date)
-  const challenge = { ...target, completedDates: [...completedDates].sort(), updatedAt: new Date().toISOString() }
+  const dailyValues = { ...(target.dailyValues || {}) }
+  if (!completed) delete dailyValues[date]
+  const challenge = { ...target, completedDates: [...completedDates].sort(), dailyValues, updatedAt: new Date().toISOString() }
   repository.update(id, challenge)
   addActivity(completed ? 'challenge:complete-day' : 'challenge:uncomplete-day', completed ? `выполнил(а) день челленджа «${target.title}»` : `снял(а) выполнение дня челленджа «${target.title}»`, { challengeId: id, date })
   return { ok: true, completed, challenge }
+}
+
+function recordResult(id, date, rawValue) {
+  const target = findOwn(id)
+  if (!target) return { ok: false, message: 'Цель не найдена' }
+  const value = Math.max(0, Number(rawValue) || 0)
+  if (!value) return { ok: false, message: 'Укажи результат больше нуля' }
+  const dailyValues = { ...(target.dailyValues || {}), [date]: value }
+  const completedDates = [...new Set([...(target.completedDates || []), date])].sort()
+  const challenge = { ...target, dailyValues, completedDates, updatedAt: new Date().toISOString() }
+  repository.update(id, challenge)
+  addActivity('challenge:record', `записал(а) результат для цели «${target.title}»`, { challengeId: id, date, value, unit: target.unit })
+  return { ok: true, challenge, progress: getChallengeProgress(challenge) }
 }
 
 function toggleActive(id) {
@@ -84,7 +105,12 @@ function normalizeChallenge(data) {
   return { ok: true, challenge: {
     title, description: String(data.description || '').trim(), activity: String(data.activity || '').trim() || title,
     targetDays, startDate: data.startDate || DateHelper.toKey(new Date()), color: data.color || '#a78bfa',
-    finalReward: String(data.finalReward || '').trim() || 'Большая личная победа',
+    goalType: ['consistency', 'total', 'best'].includes(data.goalType) ? data.goalType : 'consistency',
+    targetValue: Math.max(1, Number(data.targetValue) || targetDays),
+    startValue: Math.max(0, Number(data.startValue) || 0),
+    progressDirection: data.goalType === 'best' && data.progressDirection === 'decrease' ? 'decrease' : 'increase',
+    unit: String(data.unit || (data.goalType === 'consistency' ? 'дней' : 'раз')).trim(),
+    dailyValues: data.dailyValues && typeof data.dailyValues === 'object' ? data.dailyValues : {},
   } }
 }
 
@@ -101,7 +127,7 @@ async function ensureStarterChallenge(workspaceId) {
   const result = addChallenge({
     title: '200 дней пресса', activity: 'Тренировка на пресс', targetDays: 200,
     description: 'Каждый день уделяй время мышцам пресса. Главное — регулярность, а не идеальная тренировка.',
-    color: '#a78bfa', finalReward: 'Стальной пресс и железная дисциплина',
+    color: '#a78bfa',
   })
   if (result.ok && typeof localStorage !== 'undefined') localStorage.setItem(marker, '1')
 }
@@ -113,4 +139,4 @@ async function loadWorkspace(workspaceId) {
   return result
 }
 
-export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, toggleActive, deleteChallenge, getStreak, loadWorkspace }
+export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, recordResult, toggleActive, deleteChallenge, getStreak, getProgress: getChallengeProgress, loadWorkspace }

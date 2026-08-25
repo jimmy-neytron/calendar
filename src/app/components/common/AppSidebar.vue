@@ -57,7 +57,7 @@ const groups = [
       { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
       { name: 'ideas', label: 'Идеи', description: 'Копилка семейных планов', icon: 'sparkles' },
       { name: 'notes', label: 'Заметки', description: 'Быстрые записи и знания', icon: 'notes' },
-      { name: 'challenges', label: 'Челленджи', description: 'Цели, серии и награды', icon: 'trophy' },
+      { name: 'challenges', label: 'Цели', description: 'Прогресс и личные рекорды', icon: 'trophy' },
     ],
   },
   {

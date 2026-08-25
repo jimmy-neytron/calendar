@@ -20,7 +20,6 @@ const IdeasPage = () => import('../pages/ideas/IdeasPage.vue')
 const NotesPage = () => import('../pages/notes/NotesPage.vue')
 const ChallengesPage = () => import('../pages/challenges/ChallengesPage.vue')
 const MealsPage = () => import('../modules/meals/pages/MealsPage.vue')
-const ChallengeRewardsPage = () => import('../pages/challenges/ChallengeRewardsPage.vue')
 const BirthdaysPage = () => import('../pages/birthdays/BirthdaysPage.vue')
 const FamilyTreePage = () => import('../pages/family-tree/FamilyTreePage.vue')
 const SportPage = () => import('../pages/sport/SportPage.vue')
@@ -35,7 +34,7 @@ const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, NotesPage, ChallengesPage, ChallengeRewardsPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, WardrobePage, DayDisplayPage, TimeTrackingPage,
+  IdeasPage, NotesPage, ChallengesPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, WardrobePage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
 let pagesPreloaded = false
@@ -67,7 +66,6 @@ export const routes = [
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/notes', name: 'notes', component: NotesPage, meta: { title: 'Заметки' } },
   { path: '/challenges', name: 'challenges', component: ChallengesPage, meta: { title: 'Челленджи' } },
-  { path: '/challenges/rewards', name: 'challenge-rewards', component: ChallengeRewardsPage, meta: { title: 'Коллекция наград' } },
   { path: '/meals', name: 'meals', component: MealsPage, meta: { title: 'Питание' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
   { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
