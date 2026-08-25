@@ -93,6 +93,7 @@ function toggleExercise(exerciseId, dateKey, userId = authStore.currentUserId.va
     return { ok: true, completed: false }
   }
 
+  const exercise = exerciseRepository.findById(exerciseId)
   const completion = {
     id: generateId(),
     workspaceId: workspaceStore.activeWorkspace.value?.id,
@@ -100,10 +101,15 @@ function toggleExercise(exerciseId, dateKey, userId = authStore.currentUserId.va
     date: dateKey,
     userId,
     completedAt: new Date().toISOString(),
+    exerciseTitle: exercise?.title || '',
+    exerciseSets: exercise?.sets || '',
+    exerciseReps: exercise?.reps || '',
+    exerciseMuscleGroups: exercise?.muscleGroups || [],
+    workoutName: exercise?.workoutName || '',
+    durationMinutes: exercise?.durationMinutes ?? null,
   }
 
   completionRepository.create(completion)
-  const exercise = exerciseRepository.findById(exerciseId)
   addActivity('sport:complete', `выполнил(а) упражнение «${exercise?.title || 'Упражнение'}»`, {
     exerciseId,
     date: dateKey,
@@ -197,13 +203,22 @@ function updateExercise(id, updates, options = {}) {
 function deleteExercise(id, options = {}) {
   const target = exerciseRepository.findById(id)
   if (!target || target.userId !== authStore.currentUserId.value) return false
-  exerciseRepository.delete(id)
   completionRepository.items.value
     .filter((completion) => (
       completion.exerciseId === id
       && completion.userId === authStore.currentUserId.value
     ))
-    .forEach((completion) => completionRepository.delete(completion.id))
+    .forEach((completion) => completionRepository.update(completion.id, {
+      ...completion,
+      exerciseId: null,
+      exerciseTitle: completion.exerciseTitle || target.title || '',
+      exerciseSets: completion.exerciseSets || target.sets || '',
+      exerciseReps: completion.exerciseReps || target.reps || '',
+      exerciseMuscleGroups: completion.exerciseMuscleGroups?.length ? completion.exerciseMuscleGroups : (target.muscleGroups || []),
+      workoutName: completion.workoutName || target.workoutName || '',
+      durationMinutes: completion.durationMinutes ?? target.durationMinutes ?? null,
+    }))
+  exerciseRepository.delete(id)
   if (!options.skipActivity) {
     addActivity('sport:delete', `удалил(а) упражнение «${target.title}»`, { exerciseId: id })
   }
