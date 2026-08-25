@@ -1,30 +1,54 @@
 <template>
-  <div class="bar-chart" :class="{ compact }">
-    <article v-for="(item, index) in normalizedItems" :key="`${item.label}-${index}`">
-      <div class="bar-chart__value">{{ item.value }}</div>
-      <div class="bar-chart__track">
-        <i :style="{ height: `${item.percent}%`, '--bar-color': item.color || color, '--delay': `${index * 45}ms` }" />
-      </div>
-      <span>{{ item.label }}</span>
-    </article>
+  <div class="analytics-chart-scroll" :class="{ horizontal }">
+    <div class="analytics-chart-canvas" :style="canvasStyle">
+      <Bar :data="chartData" :options="chartOptions" :aria-label="ariaLabel" />
+    </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip, type ChartOptions } from 'chart.js'
+import { Bar } from 'vue-chartjs'
+import { useAnalyticsChartTheme } from '../useAnalyticsChartTheme'
 
-const props = defineProps({
-  items: { type: Array, default: () => [] },
-  color: { type: String, default: 'var(--info)' },
-  compact: { type: Boolean, default: false },
+ChartJS.register(BarElement, CategoryScale, Legend, LinearScale, Tooltip)
+interface ChartItem { label: string; value: number; color?: string }
+const props = withDefaults(defineProps<{ items: ChartItem[]; color?: string; compact?: boolean; horizontal?: boolean; ariaLabel?: string }>(), {
+  color: 'var(--info)', compact: false, horizontal: false, ariaLabel: 'Аналитический график',
 })
-
-const normalizedItems = computed(() => {
-  const max = Math.max(...props.items.map((item) => Number(item.value) || 0), 1)
-  return props.items.map((item) => ({ ...item, percent: (Number(item.value) || 0) / max * 100 }))
+const { palette, resolveColor } = useAnalyticsChartTheme()
+const canvasStyle = computed(() => props.horizontal
+  ? { height: `${Math.max(props.compact ? 190 : 230, props.items.length * 34)}px` }
+  : { height: `${props.compact ? 210 : 270}px`, width: `${Math.max(620, props.items.length * 48)}px` })
+const chartData = computed(() => ({
+  labels: props.items.map((item) => item.label),
+  datasets: [{
+    label: 'Количество',
+    data: props.items.map((item) => Number(item.value) || 0),
+    backgroundColor: props.items.map((item) => resolveColor(item.color || props.color, palette().accent)),
+    borderRadius: 4,
+    borderSkipped: false,
+    maxBarThickness: props.horizontal ? 18 : 26,
+  }],
+}))
+const chartOptions = computed<ChartOptions<'bar'>>(() => {
+  const theme = palette()
+  const valueScale = { beginAtZero: true, ticks: { color: theme.text, precision: 0 }, grid: { color: theme.grid }, border: { display: false } }
+  const categoryScale = { ticks: { color: theme.text, maxRotation: 0, autoSkip: !props.horizontal }, grid: { display: false }, border: { display: false } }
+  return {
+    indexAxis: props.horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { displayColors: false, backgroundColor: theme.surface, titleColor: theme.foreground, bodyColor: theme.foreground, padding: 9, cornerRadius: 6 },
+    },
+    scales: props.horizontal ? { x: valueScale, y: categoryScale } : { x: categoryScale, y: valueScale },
+  }
 })
 </script>
 
 <style scoped>
-.bar-chart{display:grid;grid-template-columns:repeat(auto-fit,minmax(34px,1fr));gap:7px;height:245px}.bar-chart article{display:grid;grid-template-rows:18px 1fr 18px;justify-items:center;min-width:0}.bar-chart__value{color:var(--text-muted);font-size:9px}.bar-chart__track{display:flex;align-items:end;justify-content:center;width:100%;border-bottom:1px solid var(--border-color);background:linear-gradient(to top,var(--border-color) 1px,transparent 1px);background-size:100% 25%}.bar-chart__track i{display:block;width:min(24px,55%);min-height:3px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,var(--bar-color),color-mix(in srgb,var(--bar-color) 42%,transparent));transform-origin:bottom;animation:growBar .65s calc(.12s + var(--delay)) var(--ease-out) both}.bar-chart span{overflow:hidden;max-width:100%;color:var(--text-muted);font-size:8px;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize}.bar-chart.compact{height:190px}@keyframes growBar{from{transform:scaleY(0);opacity:.3}to{transform:scaleY(1);opacity:1}}@media(prefers-reduced-motion:reduce){.bar-chart__track i{animation:none}}
+.analytics-chart-scroll { min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.analytics-chart-scroll.horizontal { overflow: visible; }
+.analytics-chart-canvas { min-width: 100%; }
 </style>

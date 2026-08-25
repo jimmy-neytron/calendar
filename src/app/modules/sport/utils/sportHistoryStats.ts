@@ -1,5 +1,7 @@
 export interface SportHistoryCompletion {
   date?: string
+  durationMinutes?: number | null
+  exerciseMuscleGroups?: string[]
 }
 
 export interface SportHistoryPoint {
@@ -15,14 +17,27 @@ export interface SportHistoryStats {
   longestStreak: number
   currentStreak: number
   averagePerActiveDay: number
+  totalDurationMinutes: number
   firstActivityDate: string | null
   monthlyActivity: SportHistoryPoint[]
+  monthlyActiveDays: SportHistoryPoint[]
   weekdayActivity: SportHistoryPoint[]
+  muscleActivity: SportHistoryPoint[]
 }
 
 const WEEKDAYS = [
   { key: '1', label: 'Пн' }, { key: '2', label: 'Вт' }, { key: '3', label: 'Ср' },
   { key: '4', label: 'Чт' }, { key: '5', label: 'Пт' }, { key: '6', label: 'Сб' }, { key: '0', label: 'Вс' },
+]
+
+const MUSCLE_GROUPS = [
+  { key: 'chest', label: 'Грудь', aliases: ['груд'] },
+  { key: 'back', label: 'Спина', aliases: ['спин', 'широч'] },
+  { key: 'shoulders', label: 'Плечи', aliases: ['плеч', 'дельт'] },
+  { key: 'arms', label: 'Руки', aliases: ['рук', 'бицеп', 'трицеп', 'предплеч'] },
+  { key: 'legs', label: 'Ноги', aliases: ['ног', 'бедр', 'квадриц', 'икр'] },
+  { key: 'glutes', label: 'Ягодицы', aliases: ['ягод'] },
+  { key: 'core', label: 'Кор', aliases: ['кор', 'пресс', 'живот'] },
 ]
 
 export function buildSportHistoryStats(completions: SportHistoryCompletion[], today = new Date()): SportHistoryStats {
@@ -32,12 +47,20 @@ export function buildSportHistoryStats(completions: SportHistoryCompletion[], to
     .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= todayKey)
   const uniqueDates = [...new Set(validDates)].sort()
   const monthlyActivity = buildMonthlyActivity(validDates, uniqueDates[0] || todayKey, today)
+  const monthlyActiveDays = buildMonthlyActivity(uniqueDates, uniqueDates[0] || todayKey, today)
   const weekdayCounts = Object.fromEntries(WEEKDAYS.map((item) => [item.key, 0])) as Record<string, number>
   validDates.forEach((dateKey) => {
     const weekday = String(parseDateKey(dateKey).getDay())
     weekdayCounts[weekday] += 1
   })
   const streaks = calculateStreaks(uniqueDates, todayKey)
+  const muscleCounts = Object.fromEntries(MUSCLE_GROUPS.map((item) => [item.key, 0])) as Record<string, number>
+  completions.forEach((completion) => {
+    const muscles = (completion.exerciseMuscleGroups || []).join(' ').toLowerCase()
+    MUSCLE_GROUPS.forEach((group) => {
+      if (group.aliases.some((alias) => muscles.includes(alias))) muscleCounts[group.key] += 1
+    })
+  })
 
   return {
     totalCompletions: validDates.length,
@@ -46,9 +69,12 @@ export function buildSportHistoryStats(completions: SportHistoryCompletion[], to
     longestStreak: streaks.longest,
     currentStreak: streaks.current,
     averagePerActiveDay: uniqueDates.length ? validDates.length / uniqueDates.length : 0,
+    totalDurationMinutes: completions.reduce((sum, item) => sum + Math.max(0, Number(item.durationMinutes) || 0), 0),
     firstActivityDate: uniqueDates[0] || null,
     monthlyActivity,
+    monthlyActiveDays,
     weekdayActivity: WEEKDAYS.map((item) => ({ ...item, value: weekdayCounts[item.key] })),
+    muscleActivity: MUSCLE_GROUPS.map((item) => ({ key: item.key, label: item.label, value: muscleCounts[item.key] })),
   }
 }
 

@@ -1,37 +1,42 @@
 <template>
-  <div class="donut-layout">
-    <div class="donut" :style="{ '--gradient': gradient }">
-      <div><strong>{{ total }}</strong><span>{{ label }}</span></div>
+  <div class="analytics-doughnut">
+    <div v-if="total" class="analytics-doughnut__canvas">
+      <Doughnut :data="chartData" :options="chartOptions" :aria-label="`Распределение: ${label}`" />
     </div>
-    <div class="donut-list">
-      <article v-for="item in items" :key="item.label">
-        <i :style="{ background: item.color }" /><span>{{ item.label }}</span><strong>{{ item.value }}</strong>
-      </article>
-      <p v-if="!items.length">Данных пока недостаточно</p>
-    </div>
+    <p v-else>Данных пока нет.</p>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import { ArcElement, Chart as ChartJS, Legend, Tooltip, type ChartOptions } from 'chart.js'
+import { Doughnut } from 'vue-chartjs'
+import { useAnalyticsChartTheme } from '../useAnalyticsChartTheme'
 
-const props = defineProps({
-  items: { type: Array, default: () => [] },
-  label: { type: String, default: 'всего' },
-})
+ChartJS.register(ArcElement, Legend, Tooltip)
+interface ChartItem { label: string; value: number; color?: string }
+const props = withDefaults(defineProps<{ items: ChartItem[]; label?: string }>(), { label: 'всего' })
+const { palette, resolveColor } = useAnalyticsChartTheme()
 const total = computed(() => props.items.reduce((sum, item) => sum + Number(item.value || 0), 0))
-const gradient = computed(() => {
-  if (!total.value) return 'conic-gradient(var(--control-bg) 0 100%)'
-  let offset = 0
-  const stops = props.items.map((item) => {
-    const start = offset
-    offset += item.value / total.value * 100
-    return `${item.color} ${start}% ${offset}%`
-  })
-  return `conic-gradient(${stops.join(',')})`
+const fallbackColors = ['var(--info)', 'var(--success)', 'var(--warning)', 'var(--pink)', 'var(--orange)', 'var(--cyan)']
+const chartData = computed(() => ({
+  labels: props.items.map((item) => item.label),
+  datasets: [{ data: props.items.map((item) => Number(item.value) || 0), backgroundColor: props.items.map((item, index) => resolveColor(item.color || fallbackColors[index % fallbackColors.length], palette().accent)), borderWidth: 0, hoverOffset: 4 }],
+}))
+const chartOptions = computed<ChartOptions<'doughnut'>>(() => {
+  const theme = palette()
+  return {
+    responsive: true, maintainAspectRatio: false, cutout: '62%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: theme.text, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 13 } },
+      tooltip: { backgroundColor: theme.surface, titleColor: theme.foreground, bodyColor: theme.foreground, padding: 9, cornerRadius: 6, callbacks: { label: (context) => `${context.label}: ${context.formattedValue}` } },
+    },
+  }
 })
 </script>
 
 <style scoped>
-.donut-layout{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:22px}.donut{display:grid;place-items:center;width:150px;height:150px;border-radius:50%;background:var(--gradient);animation:donutReveal .75s .15s var(--ease-out) both}.donut>div{display:grid;place-items:center;width:104px;height:104px;border-radius:50%;background:var(--card-solid)}.donut strong{font-size:27px}.donut span{color:var(--text-muted);font-size:9px}.donut-list{display:grid;gap:9px}.donut-list article{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:8px}.donut-list i{width:8px;height:8px;border-radius:50%}.donut-list span{color:var(--text-secondary);font-size:10px}.donut-list p{color:var(--text-muted);font-size:10px}@keyframes donutReveal{from{opacity:0;transform:scale(.72) rotate(-35deg)}to{opacity:1;transform:none}}@media(max-width:480px){.donut-layout{grid-template-columns:1fr;justify-items:center}.donut-list{width:100%}}@media(prefers-reduced-motion:reduce){.donut{animation:none}}
+.analytics-doughnut { min-height: 270px; display: grid; place-items: center; }
+.analytics-doughnut__canvas { width: 100%; height: 270px; }
+.analytics-doughnut p { color: var(--text-muted); font-size: 11px; }
 </style>

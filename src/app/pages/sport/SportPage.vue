@@ -1,6 +1,6 @@
 <template>
   <section class="sport-page">
-    <UiPageHeader title="Тренировки" eyebrow="Моя активность" description="Собери свою неделю один раз — план будет повторяться, пока ты его не изменишь.">
+    <UiPageHeader title="Тренировки" description="План, упражнения и история выполнения.">
       <template v-if="activeSection === 'plan'" #actions>
         <UiButton variant="secondary" @click="applyBalancedWeek">Сбалансировать неделю</UiButton>
         <UiButton @click="isLibraryOpen = true">Выбрать тренировку</UiButton>
@@ -10,7 +10,7 @@
     <nav class="sport-navigation" aria-label="Разделы тренировок">
       <button v-for="item in SPORT_SECTIONS" :key="item.id" type="button" :class="{ active: activeSection === item.id }" :aria-pressed="activeSection === item.id" @click="activeSection = item.id">
         <UiIcon :name="item.icon" />
-        <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
+        <strong>{{ item.label }}</strong>
       </button>
     </nav>
 
@@ -21,7 +21,6 @@
         <div class="sport-dashboard__copy">
           <small>Эта неделя</small>
           <h2>{{ weekProgress.done }} из {{ weekProgress.total }} упражнений</h2>
-          <p>{{ weekMotivation }}</p>
           <i><b :style="{ width: `${weekProgress.percent}%` }"></b></i>
         </div>
         <UiButton size="sm" variant="secondary" @click="activeSection = 'catalog'">Найти упражнение</UiButton>
@@ -38,7 +37,7 @@
 
     <section class="week-plan">
       <div class="section-title">
-        <div><small>Постоянный шаблон</small><h2>Твоя неделя</h2></div>
+        <div><h2>Неделя</h2></div>
         <UiButton size="sm" variant="secondary" icon="plus" @click="openWorkoutCreator">Своя тренировка</UiButton>
       </div>
 
@@ -57,7 +56,7 @@
 
     <section class="day-section">
       <div class="section-title">
-        <div><small>Выбранный день</small><h2>{{ selectedDayTitle }}</h2></div>
+        <div><h2>{{ selectedDayTitle }}</h2></div>
         <div class="section-title__actions">
           <UiButton size="sm" variant="secondary" @click="isLibraryOpen = true">Из библиотеки</UiButton>
           <UiButton size="sm" icon="plus" @click="openWorkoutCreator">Своя тренировка</UiButton>
@@ -146,9 +145,9 @@ import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
 
 const { notify } = useNotification()
 const SPORT_SECTIONS = [
-  { id: 'plan', label: 'План', description: 'Неделя и тренировки', icon: 'calendar' },
-  { id: 'catalog', label: 'Упражнения', description: 'Открытая база wger', icon: 'sport' },
-  { id: 'progress', label: 'Прогресс', description: 'Регулярность и баланс', icon: 'chart' },
+  { id: 'plan', label: 'План', icon: 'calendar' },
+  { id: 'catalog', label: 'Упражнения', icon: 'sport' },
+  { id: 'analytics', label: 'Аналитика', icon: 'chart' },
 ]
 const activeSection = ref('plan')
 const selectedDateKey = ref(DateHelper.toKey(new Date()))
@@ -173,12 +172,6 @@ const selectedDayTitle = computed(() => new Intl.DateTimeFormat('ru-RU', { weekd
 const selectedWorkouts = computed(() => groupWorkouts(selectedExercises.value, selectedWeekday.value, selectedDateKey.value))
 const activeDayCount = computed(() => sportStore.weekProgram.value.filter((day) => day.exercises.length).length)
 const weeklyWorkoutCount = computed(() => sportStore.weekProgram.value.reduce((sum, day) => sum + groupWorkouts(day.exercises, day.weekday).length, 0))
-const weekMotivation = computed(() => {
-  if (!weekProgress.value.total) return 'Добавь первую тренировку или выбери упражнение из справочника.'
-  if (weekProgress.value.percent === 100) return 'Неделя закрыта. Отличная регулярность.'
-  if (weekProgress.value.percent >= 50) return 'Больше половины готово — продолжай в том же ритме.'
-  return 'Начни с одного упражнения: небольшая тренировка тоже считается.'
-})
 const weekDays = computed(() => {
   const start = getMonday(DateHelper.parseKey(selectedDateKey.value))
   return WEEKDAY_OPTIONS.map((meta, index) => {
@@ -307,11 +300,9 @@ function confirmPendingAction() {
 .sport-header > div > span { color: var(--text-secondary); font-size: 12px; }
 .sport-header__actions { display: flex; gap: 8px; }
 .sport-navigation { width: fit-content; display: flex; gap: 3px; border: 1px solid var(--border-color); border-radius: 15px; padding: 4px; background: var(--control-bg); }
-.sport-navigation button { display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 7px; border: 0; border-radius: 11px; padding: 7px 12px 7px 8px; color: var(--text-secondary); background: transparent; text-align: left; }
+.sport-navigation button { display: flex; align-items: center; gap: 7px; border: 0; border-radius: 11px; padding: 7px 12px 7px 8px; color: var(--text-secondary); background: transparent; }
 .sport-navigation button > svg { width: 26px; height: 26px; border-radius: 8px; padding: 6px; color: var(--text-muted); }
-.sport-navigation button > span { min-width: 0; display: grid; gap: 2px; }
 .sport-navigation button strong { font-size: 11px; }
-.sport-navigation button small { overflow: hidden; color: var(--text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .sport-navigation button.active { color: var(--text-primary); background: var(--card-solid); box-shadow: var(--shadow-sm); }
 .sport-navigation button.active > svg { color: var(--accent); background: var(--accent-soft); }
 .section-title__actions { display: flex; gap: 7px; }
@@ -370,5 +361,5 @@ function confirmPendingAction() {
 .day-empty > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: var(--accent); background: var(--accent-soft); }
 .day-empty p { margin: 0 0 5px; color: var(--text-secondary); font-size: 11px; }
 @media (max-width: 1050px) { .sport-dashboard { grid-template-columns: 1fr 1fr; }.sport-dashboard__primary { grid-column: 1 / -1; } }
-@media (max-width: 650px) { .sport-page { padding: 0; }.sport-header, .sport-header__actions { display: grid; }.sport-navigation { width: 100%; }.sport-navigation button { min-width: 0; flex: 1; grid-template-columns: 1fr; justify-items: center; padding: 7px; text-align: center; }.sport-navigation button > span { justify-items: center; }.sport-navigation button small { display: none; }.sport-dashboard { grid-template-columns: 1fr; }.sport-dashboard__primary { grid-column: auto; grid-template-columns: 58px 1fr; }.sport-dashboard__primary > :last-child { grid-column: 1 / -1; }.sport-score__ring { width: 58px; height: 58px; }.section-title { align-items: end; }.section-title__actions { display: grid; }.workout-card__head { grid-template-columns: 40px 1fr auto; }.workout-card__progress { display: none !important; }.workout-card__actions { grid-column: 2 / -1; justify-content: flex-end; }.workout-card__exercises > article { grid-template-columns: 30px 1fr 28px; }.exercise-muscles { display: none; } }
+@media (max-width: 650px) { .sport-page { padding: 0; }.sport-header, .sport-header__actions { display: grid; }.sport-navigation { width: 100%; }.sport-navigation button { min-width: 0; flex: 1; justify-content: center; padding: 7px; }.sport-dashboard { grid-template-columns: 1fr; }.sport-dashboard__primary { grid-column: auto; grid-template-columns: 58px 1fr; }.sport-dashboard__primary > :last-child { grid-column: 1 / -1; }.sport-score__ring { width: 58px; height: 58px; }.section-title { align-items: end; }.section-title__actions { display: grid; }.workout-card__head { grid-template-columns: 40px 1fr auto; }.workout-card__progress { display: none !important; }.workout-card__actions { grid-column: 2 / -1; justify-content: flex-end; }.workout-card__exercises > article { grid-template-columns: 30px 1fr 28px; }.exercise-muscles { display: none; } }
 </style>

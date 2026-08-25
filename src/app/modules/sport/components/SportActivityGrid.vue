@@ -2,8 +2,8 @@
   <section class="activity-grid-card">
     <header class="activity-grid-card__header">
       <div>
-        <small>Последние 12 месяцев</small>
         <strong>{{ activeDayCount }} активных дней</strong>
+        <small>за последние 12 месяцев</small>
       </div>
       <div class="activity-grid-card__day" aria-live="polite">
         <strong>{{ selectedDay.label }}</strong>
@@ -41,7 +41,6 @@
     </div>
 
     <footer class="activity-grid-card__footer">
-      <span>Каждая клетка — один день. Насыщенность зависит от доли выполненных упражнений.</span>
       <div aria-label="Легенда интенсивности"><span>Меньше</span><i class="level-0"></i><i class="level-1"></i><i class="level-2"></i><i class="level-3"></i><i class="level-4"></i><span>Больше</span></div>
     </footer>
 
@@ -106,10 +105,10 @@ function openDay(day: SportActivityDay) {
 </script>
 
 <style scoped>
-.activity-grid-card { min-width: 0; display: grid; gap: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 16px; background: var(--card-solid); box-shadow: var(--shadow-sm); }
+.activity-grid-card { min-width: 0; display: grid; gap: 16px; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; background: var(--card-solid); }
 .activity-grid-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .activity-grid-card__header > div { display: grid; gap: 3px; }
-.activity-grid-card__header small { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.activity-grid-card__header small { color: var(--text-muted); font-size: 9px; }
 .activity-grid-card__header > div:first-child strong { font-size: 16px; }
 .activity-grid-card__day { min-height: 34px; justify-items: end; text-align: right; }
 .activity-grid-card__day strong { font-size: 11px; text-transform: capitalize; }
@@ -132,7 +131,7 @@ function openDay(day: SportActivityDay) {
 .activity-grid-card :is(.level-2) { background: color-mix(in srgb, var(--accent) 48%, var(--control-bg)); }
 .activity-grid-card :is(.level-3) { background: color-mix(in srgb, var(--accent) 72%, var(--control-bg)); }
 .activity-grid-card :is(.level-4) { border-color: color-mix(in srgb, var(--accent) 85%, var(--border-color)); background: var(--accent); }
-.activity-grid-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--text-muted); font-size: 9px; }
+.activity-grid-card__footer { display: flex; align-items: center; justify-content: flex-end; color: var(--text-muted); font-size: 9px; }
 .activity-grid-card__footer > div { display: flex; align-items: center; flex: 0 0 auto; gap: 4px; }
 .activity-grid-card__footer i { border: 0; }
 @media (max-width: 650px) {
