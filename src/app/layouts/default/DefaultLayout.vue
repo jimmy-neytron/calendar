@@ -145,6 +145,8 @@ const commands = computed(() => [
   { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
   { id: 'notes', label: 'Открыть заметки', description: 'Поиск по личным записям', icon: 'notes', action: () => router.push({ name: 'notes' }) },
   { id: 'challenges', label: 'Открыть цели', description: 'Цели, серии и личные рекорды', icon: 'trophy', action: () => router.push({ name: 'challenges' }) },
+  { id: 'investments', label: 'Открыть инвестиции', description: 'Портфель, источники и курсы', icon: 'chart', action: () => router.push({ name: 'investments' }) },
+  { id: 'coupons', label: 'Открыть купоны', description: 'Скидки, QR-коды и промокоды', icon: 'ticket', action: () => router.push({ name: 'coupons' }) },
   { id: 'meals', label: 'Открыть питание', description: 'Меню недели и свои блюда', icon: 'utensils', action: () => router.push({ name: 'meals' }) },
   ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),

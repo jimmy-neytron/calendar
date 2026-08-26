@@ -64,8 +64,10 @@ const groups = [
     label: 'Семья и быт',
     items: [
       { name: 'budget', label: 'Бюджет', description: 'Доходы и семейные расходы', icon: 'wallet' },
+      { name: 'investments', label: 'Инвестиции', description: 'Активы, источники и курсы', icon: 'chart' },
       { name: 'meals', label: 'Питание', description: 'Меню, блюда и продукты', icon: 'utensils' },
       { name: 'purchases', label: 'Покупки', description: 'Нужное, желания и техника', icon: 'shopping', feature: 'purchases', extra: true },
+      { name: 'coupons', label: 'Купоны', description: 'Скидки, QR и промокоды', icon: 'ticket' },
       { name: 'wardrobe', label: 'Шкаф', description: 'Вещи и готовые образы', icon: 'hanger', feature: 'extraSections', extra: true },
       { name: 'family-tree', label: 'Семейное дерево', description: 'Люди, поколения и связи', icon: 'users', feature: 'extraSections', extra: true },
     ],
