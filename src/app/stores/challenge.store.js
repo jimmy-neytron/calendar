@@ -119,24 +119,8 @@ function findOwn(id) {
   return item?.userId === authStore.currentUserId.value ? item : null
 }
 
-async function ensureStarterChallenge(workspaceId) {
-  const userId = authStore.currentUserId.value
-  if (!workspaceId || !userId || challenges.value.length) return
-  const marker = `${APP_CONFIG.storageKey}:starter-challenge:${workspaceId}:${userId}`
-  if (typeof localStorage !== 'undefined' && localStorage.getItem(marker)) return
-  const result = addChallenge({
-    title: '200 дней пресса', activity: 'Тренировка на пресс', targetDays: 200,
-    description: 'Каждый день уделяй время мышцам пресса. Главное — регулярность, а не идеальная тренировка.',
-    color: '#a78bfa',
-  })
-  if (result.ok && typeof localStorage !== 'undefined') localStorage.setItem(marker, '1')
-}
-
 async function loadWorkspace(workspaceId) {
-  const result = await repository.loadWorkspace(workspaceId)
-  if (result === null) return null
-  ensureStarterChallenge(workspaceId)
-  return result
+  return repository.loadWorkspace(workspaceId)
 }
 
 export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, recordResult, toggleActive, deleteChallenge, getStreak, getProgress: getChallengeProgress, loadWorkspace }

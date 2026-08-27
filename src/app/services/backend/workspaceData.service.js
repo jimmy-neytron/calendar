@@ -3,6 +3,7 @@ import { calendarCollectionStore } from '../../stores/calendarCollection.store.j
 import { calendarStore } from '../../stores/calendar.store.js'
 import { ideaStore } from '../../stores/idea.store.js'
 import { noteStore } from '../../stores/note.store.js'
+import { knowledgeStore } from '../../modules/knowledge/stores/knowledge.store.js'
 import { challengeStore } from '../../stores/challenge.store.js'
 import { investmentStore } from '../../stores/investment.store'
 import { couponStore } from '../../stores/coupon.store'
@@ -63,6 +64,7 @@ async function fetchWorkspaceData(workspaceId) {
     calendarStore.loadWorkspace(workspaceId),
     ideaStore.loadWorkspace(workspaceId),
     noteStore.loadWorkspace(workspaceId),
+    knowledgeStore.loadWorkspace(workspaceId),
     challengeStore.loadWorkspace(workspaceId),
     investmentStore.loadWorkspace(workspaceId),
     couponStore.loadWorkspace(workspaceId),

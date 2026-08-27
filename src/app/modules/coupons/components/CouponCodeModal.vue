@@ -50,10 +50,11 @@ async function copyCode() {
 function discountText(coupon: Coupon) { if (coupon.discountLabel) return coupon.discountLabel; if (coupon.discountType === 'percent') return `${coupon.discountValue}%`; if (coupon.discountType === 'amount') return `${new Intl.NumberFormat('ru-RU').format(coupon.discountValue)} ₽`; return 'Специальное предложение' }
 function formatDate(value: string) { return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${value}T00:00:00`)) }
 function renderBarcode(target: HTMLCanvasElement, coupon: Coupon) {
-  const options = { bcid: coupon.barcodeFormat, text: coupon.codeValue, scale: 3, height: 18, includetext: true, textxalign: 'center' as const, padding: 4, backgroundcolor: 'ffffff' }
-  if (coupon.barcodeFormat === 'ean13') return ean13(target, options)
-  if (coupon.barcodeFormat === 'ean8') return ean8(target, options)
-  if (coupon.barcodeFormat === 'upca') return upca(target, options)
+  const options = { bcid: coupon.barcodeFormat, text: coupon.codeValue, scale: 3, height: 18, includetext: true, textxalign: 'center' as const, textsize: 10, padding: 4, backgroundcolor: 'ffffff' }
+  const retailOptions = { ...options, height: 16, textsize: 9, textyoffset: -9, guarddescent: 2, paddingbottom: 10 }
+  if (coupon.barcodeFormat === 'ean13') return ean13(target, retailOptions)
+  if (coupon.barcodeFormat === 'ean8') return ean8(target, retailOptions)
+  if (coupon.barcodeFormat === 'upca') return upca(target, retailOptions)
   return code128(target, options)
 }
 </script>

@@ -18,6 +18,7 @@ const AnalyticsPage = () => import('../pages/analytics/AnalyticsPage.vue')
 const AnalyticsDetailPage = () => import('../pages/analytics/AnalyticsDetailPage.vue')
 const IdeasPage = () => import('../pages/ideas/IdeasPage.vue')
 const NotesPage = () => import('../pages/notes/NotesPage.vue')
+const KnowledgePage = () => import('../modules/knowledge/pages/KnowledgePage.vue')
 const ChallengesPage = () => import('../pages/challenges/ChallengesPage.vue')
 const InvestmentsPage = () => import('../modules/investments/pages/InvestmentsPage.vue')
 const CouponsPage = () => import('../modules/coupons/pages/CouponsPage.vue')
@@ -36,7 +37,7 @@ const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 const protectedPageLoaders = [
   IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, NotesPage, ChallengesPage, InvestmentsPage, CouponsPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, WardrobePage, DayDisplayPage, TimeTrackingPage,
+  IdeasPage, NotesPage, KnowledgePage, ChallengesPage, InvestmentsPage, CouponsPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, WardrobePage, DayDisplayPage, TimeTrackingPage,
   TimeProjectPage,
 ]
 let pagesPreloaded = false
@@ -67,6 +68,7 @@ export const routes = [
   { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true, requiresSubscriptionFeature: 'activity' } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/notes', name: 'notes', component: NotesPage, meta: { title: 'Заметки' } },
+  { path: '/knowledge', name: 'knowledge', component: KnowledgePage, meta: { title: 'Знания' } },
   { path: '/challenges', name: 'challenges', component: ChallengesPage, meta: { title: 'Челленджи' } },
   { path: '/investments', name: 'investments', component: InvestmentsPage, meta: { title: 'Инвестиции' } },
   { path: '/coupons', name: 'coupons', component: CouponsPage, meta: { title: 'Купоны' } },
