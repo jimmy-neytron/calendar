@@ -19,15 +19,13 @@
         </div>
       </section>
     </div>
-    <KnowledgeEditorModal v-model="isEditorOpen" :note="editingNote" :sections="sections.map((section) => section.name)" :initial-section="activeSection === 'all' ? '' : activeSection" @save="saveNote" />
+    <KnowledgeEditorModal v-if="isEditorOpen" v-model="isEditorOpen" :note="editingNote" :sections="sections.map((section) => section.name)" :initial-section="activeSection === 'all' ? '' : activeSection" @save="saveNote" />
     <UiConfirmModal v-model="isDeleteOpen" title="Удалить материал?" :message="`Материал «${deletingNote?.title || ''}» будет удалён без возможности восстановления.`" confirm-label="Удалить материал" @confirm="confirmDelete" />
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
-import KnowledgeEditorModal from '../components/KnowledgeEditorModal.vue'
-import KnowledgeGraph from '../components/KnowledgeGraph.vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import KnowledgeNoteList from '../components/KnowledgeNoteList.vue'
 import KnowledgeOverview from '../components/KnowledgeOverview.vue'
 import KnowledgeReader from '../components/KnowledgeReader.vue'
@@ -40,6 +38,9 @@ import { useKnowledgeBase } from '../composables/useKnowledgeBase.js'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import { knowledgeStore } from '../stores/knowledge.store.js'
 import { pluralizeRu } from '../../../utils/formatters/pluralizeRu.js'
+
+const KnowledgeEditorModal = defineAsyncComponent(() => import('../components/KnowledgeEditorModal.vue'))
+const KnowledgeGraph = defineAsyncComponent(() => import('../components/KnowledgeGraph.vue'))
 
 const { notify } = useNotification()
 const notes = knowledgeStore.notes

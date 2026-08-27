@@ -1,51 +1,104 @@
-import { birthdayStore } from '../../stores/birthday.store.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
-import { ideaStore } from '../../stores/idea.store.js'
-import { noteStore } from '../../stores/note.store.js'
-import { knowledgeStore } from '../../modules/knowledge/stores/knowledge.store.js'
-import { challengeStore } from '../../stores/challenge.store.js'
-import { investmentStore } from '../../stores/investment.store'
-import { couponStore } from '../../stores/coupon.store'
-import { sportStore } from '../../stores/sport.store.js'
 import { notificationStore } from '../../stores/notification.store.js'
-import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
-import { purchaseWishlistStore } from '../../stores/purchaseWishlist.store'
-import { personalParametersStore } from '../../stores/personalParameters.store'
-import { wardrobeStore } from '../../stores/wardrobe.store'
-import { useActivityLog } from '../../composables/history/useActivityLog.js'
 import { authStore } from '../../stores/auth.store.js'
-import { timeTrackingStore } from '../../stores/timeTracking.store'
-import { budgetStore } from '../../stores/budget.store.js'
 import { loadWorkspaceFeatures } from '../../composables/preferences/useBudgetSettings.js'
-import { readExtraSectionsSetting } from '../../composables/preferences/useExtraSectionsSettings.js'
-import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { queryClient } from '../../query/queryClient.js'
 import { queryKeys } from '../../query/queryKeys.js'
+import { resolveWorkspaceDataSections, WORKSPACE_DATA_SECTIONS } from './workspaceDataRoutes.js'
+
+const sectionLoaders = {
+  [WORKSPACE_DATA_SECTIONS.ACTIVITY]: async (workspaceId) => {
+    const { useActivityLog } = await import('../../composables/history/useActivityLog.js')
+    return useActivityLog().loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.BIRTHDAYS]: async (workspaceId) => {
+    const { birthdayStore } = await import('../../stores/birthday.store.js')
+    return birthdayStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.BUDGET]: async (workspaceId) => {
+    const { budgetStore } = await import('../../stores/budget.store.js')
+    budgetStore.setSelectedMonth(getCurrentMonth())
+    return budgetStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.CHALLENGES]: async (workspaceId) => {
+    const { challengeStore } = await import('../../stores/challenge.store.js')
+    return challengeStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.COUPONS]: async (workspaceId) => {
+    const { couponStore } = await import('../../stores/coupon.store')
+    return couponStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.IDEAS]: async (workspaceId) => {
+    const { ideaStore } = await import('../../stores/idea.store.js')
+    return ideaStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.INVESTMENTS]: async (workspaceId) => {
+    const { investmentStore } = await import('../../stores/investment.store')
+    return investmentStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.KNOWLEDGE]: async (workspaceId) => {
+    const { knowledgeStore } = await import('../../modules/knowledge/stores/knowledge.store.js')
+    return knowledgeStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.MOVIES]: async (workspaceId) => {
+    const { movieWatchlistStore } = await import('../../stores/movieWatchlist.store')
+    return movieWatchlistStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.NOTES]: async (workspaceId) => {
+    const { noteStore } = await import('../../stores/note.store.js')
+    return noteStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.PARAMETERS]: async (workspaceId) => {
+    const { personalParametersStore } = await import('../../stores/personalParameters.store')
+    return personalParametersStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.PURCHASES]: async (workspaceId) => {
+    const { purchaseWishlistStore } = await import('../../stores/purchaseWishlist.store')
+    return purchaseWishlistStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.SPORT]: async (workspaceId) => {
+    const { sportStore } = await import('../../stores/sport.store.js')
+    return sportStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.TIME_TRACKING]: async (workspaceId) => {
+    const { timeTrackingStore } = await import('../../stores/timeTracking.store')
+    return timeTrackingStore.loadWorkspace(workspaceId)
+  },
+  [WORKSPACE_DATA_SECTIONS.WARDROBE]: async (workspaceId) => {
+    const { wardrobeStore } = await import('../../stores/wardrobe.store')
+    return wardrobeStore.loadWorkspace(workspaceId)
+  },
+}
 
 /**
- * Загружает все серверные данные выбранного workspace.
- * TanStack Query дедуплицирует параллельные вызовы из router/layout и хранит
- * успешный результат до явной инвалидации workspace.
+ * Загружает только обязательные данные приложения и данные текущего маршрута.
+ * Вызовы без routeName сохраняют прежнее поведение полной загрузки — это нужно
+ * для миграций, экспорта и переключения workspace.
  */
-export async function loadWorkspaceData(workspaceId, { force = false } = {}) {
+export async function loadWorkspaceData(workspaceId, {
+  force = false,
+  routeName = '',
+  analyticsSection = '',
+} = {}) {
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
-  const queryKey = queryKeys.workspace.data(workspaceId, authStore.currentUserId.value)
 
   if (force) {
-    await queryClient.invalidateQueries({ queryKey, exact: true })
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.workspace.data(workspaceId, authStore.currentUserId.value),
+    })
   }
 
+  const sections = resolveWorkspaceDataSections(routeName, analyticsSection)
+
   try {
-    return await queryClient.fetchQuery({
-      queryKey,
-      staleTime: force ? 0 : Infinity,
-      queryFn: async () => {
-        const result = await fetchWorkspaceData(workspaceId)
-        if (!result.ok) throw new Error(result.message)
-        return result
-      },
-    })
+    const results = await Promise.all([
+      loadCoreWorkspaceData(workspaceId),
+      ...sections.map((section) => loadWorkspaceSection(workspaceId, section)),
+    ])
+    return results.some(hasLoadFailure)
+      ? { ok: false, message: 'Часть данных не загрузилась из Supabase' }
+      : { ok: true }
   } catch (error) {
     return {
       ok: false,
@@ -54,43 +107,41 @@ export async function loadWorkspaceData(workspaceId, { force = false } = {}) {
   }
 }
 
-async function fetchWorkspaceData(workspaceId) {
-  await loadWorkspaceFeatures(workspaceId)
-  const collections = await calendarCollectionStore.loadWorkspace(workspaceId)
-  if (collections === null) return { ok: false, message: 'Не удалось загрузить календари' }
-  await calendarCollectionStore.ensureWorkspaceCollections()
+function loadCoreWorkspaceData(workspaceId) {
+  return fetchCachedWorkspacePart(workspaceId, 'core', async () => {
+    const [, collections] = await Promise.all([
+      loadWorkspaceFeatures(workspaceId),
+      calendarCollectionStore.loadWorkspace(workspaceId),
+    ])
+    if (collections === null) return null
+    await calendarCollectionStore.ensureWorkspaceCollections()
+    return Promise.all([
+      calendarStore.loadWorkspace(workspaceId),
+      notificationStore.loadWorkspace(workspaceId),
+    ])
+  })
+}
 
-  const results = await Promise.all([
-    calendarStore.loadWorkspace(workspaceId),
-    ideaStore.loadWorkspace(workspaceId),
-    noteStore.loadWorkspace(workspaceId),
-    knowledgeStore.loadWorkspace(workspaceId),
-    challengeStore.loadWorkspace(workspaceId),
-    investmentStore.loadWorkspace(workspaceId),
-    couponStore.loadWorkspace(workspaceId),
-    birthdayStore.loadWorkspace(workspaceId),
-    notificationStore.loadWorkspace(workspaceId),
-  ])
-  if (readSubscriptionFeature('activity')) {
-    results.push(await useActivityLog().loadWorkspace(workspaceId))
-  }
-  if (readExtraSectionsSetting()) {
-    results.push(...await Promise.all([
-      sportStore.loadWorkspace(workspaceId),
-      movieWatchlistStore.loadWorkspace(workspaceId),
-      purchaseWishlistStore.loadWorkspace(workspaceId),
-      personalParametersStore.loadWorkspace(workspaceId),
-      wardrobeStore.loadWorkspace(workspaceId),
-      timeTrackingStore.loadWorkspace(workspaceId),
-    ]))
-  }
+function loadWorkspaceSection(workspaceId, section) {
+  const loader = sectionLoaders[section]
+  if (!loader) return Promise.resolve([])
+  return fetchCachedWorkspacePart(workspaceId, section, () => loader(workspaceId))
+}
 
-  budgetStore.setSelectedMonth(getCurrentMonth())
-  const budgetResult = await budgetStore.loadWorkspace(workspaceId)
+function fetchCachedWorkspacePart(workspaceId, section, queryFn) {
+  return queryClient.fetchQuery({
+    queryKey: queryKeys.workspace.section(
+      workspaceId,
+      authStore.currentUserId.value,
+      section,
+    ),
+    staleTime: Infinity,
+    queryFn,
+  })
+}
 
-  return results.some((result) => result === null) || budgetResult === null
-    ? { ok: false, message: 'Часть данных не загрузилась из Supabase' }
-    : { ok: true }
+function hasLoadFailure(result) {
+  return result === null || (Array.isArray(result) && result.some(hasLoadFailure))
 }
 
 function getCurrentMonth() {
@@ -99,11 +150,12 @@ function getCurrentMonth() {
 }
 
 /**
- * Помечает снимок workspace устаревшим. Следующий переход повторно запросит данные.
+ * Помечает снимки workspace устаревшими. Следующий переход запросит только
+ * обязательные данные и данные открываемого раздела.
  */
 export function invalidateWorkspaceData(workspaceId = '') {
   const queryKey = workspaceId
-    ? queryKeys.workspace.data(workspaceId, authStore.currentUserId.value).slice(0, 2)
+    ? queryKeys.workspace.data(workspaceId, authStore.currentUserId.value)
     : queryKeys.workspace.root
   return queryClient.invalidateQueries({ queryKey })
 }

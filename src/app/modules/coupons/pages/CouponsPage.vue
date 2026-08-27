@@ -21,14 +21,14 @@
 
     <section v-else class="coupon-empty panel"><span><UiIcon :name="search ? 'search' : 'ticket'" /></span><h2>{{ search || filter !== 'all' ? 'Купоны не найдены' : 'Добавь первый купон' }}</h2><p>{{ search || filter !== 'all' ? 'Измени запрос или выбери другой фильтр.' : 'Сохрани QR-код, штрихкод или промокод — он будет доступен всей семье.' }}</p><UiButton v-if="!search && filter === 'all'" @click="openEditor()">Добавить купон</UiButton></section>
 
-    <CouponModal v-model="isEditorOpen" :coupon="editingCoupon" :merchants="merchantOptions" @save="saveCoupon" />
-    <CouponCodeModal v-model="isCodeOpen" :coupon="selectedCoupon" @edit="openEditorFromCode" @toggle-used="toggleUsed" />
+    <CouponModal v-if="isEditorOpen" v-model="isEditorOpen" :coupon="editingCoupon" :merchants="merchantOptions" @save="saveCoupon" />
+    <CouponCodeModal v-if="isCodeOpen" v-model="isCodeOpen" :coupon="selectedCoupon" @edit="openEditorFromCode" @toggle-used="toggleUsed" />
     <UiConfirmModal v-model="isDeleteOpen" title="Удалить купон?" :message="`Купон «${deletingCoupon?.title || ''}» будет удалён для всей семьи.`" confirm-label="Удалить" @confirm="deleteCoupon" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiConfirmModal from '../../../components/ui/UiConfirmModal.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
@@ -37,8 +37,9 @@ import { useNotification } from '../../../composables/ui/useNotification.js'
 import { couponStore } from '../../../stores/coupon.store'
 import type { Coupon, CouponPayload } from '../../../types/coupon'
 import CouponCard from '../components/CouponCard.vue'
-import CouponCodeModal from '../components/CouponCodeModal.vue'
-import CouponModal from '../components/CouponModal.vue'
+
+const CouponCodeModal = defineAsyncComponent(() => import('../components/CouponCodeModal.vue'))
+const CouponModal = defineAsyncComponent(() => import('../components/CouponModal.vue'))
 
 type CouponFilter = 'all' | 'active' | 'expiring' | 'used' | 'expired'
 type CouponStatus = Exclude<CouponFilter, 'all'>

@@ -49,6 +49,7 @@
     </button>
 
     <CommandPalette
+      v-if="isCommandPaletteOpen"
       v-model="isCommandPaletteOpen"
       :commands="commands"
       :smart-suggestion="smartSuggestion"
@@ -57,7 +58,6 @@
       @smart-create="createSmartEvent"
     />
 
-<!--    <AppOnboarding />-->
     <PwaPrompt />
     <GlobalAdminModal />
 
@@ -77,14 +77,12 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppContainer from '../../components/common/AppContainer.vue'
 import AppHeader from '../../components/common/AppHeader.vue'
 import AppSidebar from '../../components/common/AppSidebar.vue'
-import CommandPalette from '../../components/common/CommandPalette.vue'
 import AppToast from '../../components/common/AppToast.vue'
-import AppOnboarding from '../../components/onboarding/AppOnboarding.vue'
 import PwaPrompt from '../../components/common/PwaPrompt.vue'
 import GlobalAdminModal from '../../components/common/GlobalAdminModal.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
@@ -98,7 +96,6 @@ import { useExtraSectionsSettings } from '../../composables/preferences/useExtra
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { parseSmartEvent } from '../../services/smartEventParser.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
-import { useOnboarding } from '../../composables/onboarding/useOnboarding.js'
 import { useLocalEventReminders } from '../../composables/notifications/useLocalEventReminders.js'
 import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
 import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
@@ -111,7 +108,7 @@ const calendarViewMode = ref('month')
 const isCommandPaletteOpen = ref(false)
 const paletteQuery = ref('')
 const { notifications, dismiss, notify } = useNotification()
-const { start: startOnboarding } = useOnboarding()
+const CommandPalette = defineAsyncComponent(() => import('../../components/common/CommandPalette.vue'))
 const { isEnabled: budgetEnabled } = useBudgetSettings()
 const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const { runDailyAutoBackup } = useAutoBackup()
@@ -124,13 +121,13 @@ const {
   stop: stopRealtimeNotifications,
 } = useRealtimeNotifications()
 const { unreadLeadCount, startUnreadLeadPolling, stopUnreadLeadPolling } = useAdminLeadNotifications()
+let cancelScheduledBackup = () => {}
 useCalendarPreferences()
 const currentUser = authStore.currentUser
 const activeWorkspace = workspaceStore.activeWorkspace
 const isAuthRoute = computed(() => route.name === 'login')
 const isStandaloneRoute = computed(() => isAuthRoute.value || route.meta.standalone)
 const standaloneRouteKey = computed(() => route.matched[0]?.path || route.name)
-let onboardingTimer = null
 const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
   members: workspaceStore.activeWorkspaceMembers.value,
   calendars: calendarCollectionStore.activeCollections.value,
@@ -262,7 +259,7 @@ function handleBackendSyncComplete() {
 }
 
 onMounted(() => {
-  runDailyAutoBackup()
+  cancelScheduledBackup = scheduleIdleTask(runDailyAutoBackup)
   startUnreadLeadPolling()
   document.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('backend-sync-error', handleBackendSyncError)
@@ -270,7 +267,6 @@ onMounted(() => {
 })
 
 watch([currentUser, isAuthRoute], async ([user, authRoute]) => {
-  window.clearTimeout(onboardingTimer)
   if (!user || authRoute) {
     stopLocalEventReminders()
     await stopRealtimeNotifications()
@@ -278,18 +274,26 @@ watch([currentUser, isAuthRoute], async ([user, authRoute]) => {
   }
   startLocalEventReminders()
   await startRealtimeNotifications()
-  onboardingTimer = window.setTimeout(() => startOnboarding(), 650)
 }, { immediate: true })
 
 onBeforeUnmount(() => {
+  cancelScheduledBackup()
   document.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('backend-sync-error', handleBackendSyncError)
   window.removeEventListener('backend-sync-complete', handleBackendSyncComplete)
   stopLocalEventReminders()
   stopRealtimeNotifications()
   stopUnreadLeadPolling()
-  window.clearTimeout(onboardingTimer)
 })
+
+function scheduleIdleTask(task) {
+  if ('requestIdleCallback' in window) {
+    const id = window.requestIdleCallback(task, { timeout: 2_000 })
+    return () => window.cancelIdleCallback(id)
+  }
+  const id = window.setTimeout(task, 500)
+  return () => window.clearTimeout(id)
+}
 </script>
 
 <style scoped>

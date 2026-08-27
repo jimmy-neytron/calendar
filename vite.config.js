@@ -8,9 +8,12 @@ function pwaServiceWorker() {
     name: 'workspace-pwa-service-worker',
     apply: 'build',
     generateBundle(_, bundle) {
-      const generatedAssets = Object.keys(bundle)
-        .filter((file) => !file.endsWith('.wasm'))
-        .map((file) => `/${file}`)
+      const entryAssets = new Set()
+      Object.values(bundle).forEach((output) => {
+        if (output.type !== 'chunk' || !output.isEntry) return
+        entryAssets.add(`/${output.fileName}`)
+        output.viteMetadata?.importedCss?.forEach((file) => entryAssets.add(`/${file}`))
+      })
       const publicAssets = [
         '/',
         '/index.html',
@@ -21,7 +24,7 @@ function pwaServiceWorker() {
         '/icons/icon-maskable-512.png',
         '/icons/apple-touch-icon.png',
       ]
-      const precacheManifest = JSON.stringify([...new Set([...publicAssets, ...generatedAssets])])
+      const precacheManifest = JSON.stringify([...new Set([...publicAssets, ...entryAssets])])
       const version = `workspace-calendar-${Date.now()}`
       const source = readFileSync(resolve('pwa-sw.js'), 'utf8')
         .replace('__CACHE_VERSION__', version)

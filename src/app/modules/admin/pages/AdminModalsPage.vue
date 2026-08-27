@@ -301,9 +301,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
 import { adminApi } from '../api/admin.api.js'
-import AdminRichTextEditor from '../components/AdminRichTextEditor.vue'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
@@ -320,6 +319,8 @@ import {
   sanitizeAdminModalHtml as sanitizeHtml,
   stripAdminModalHtml as stripHtml,
 } from '../services/adminModalMapper.js'
+
+const AdminRichTextEditor = defineAsyncComponent(() => import('../components/AdminRichTextEditor.vue'))
 
 const { notify } = useNotification()
 const modals = ref([])

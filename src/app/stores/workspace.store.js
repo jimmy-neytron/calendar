@@ -124,7 +124,6 @@ async function ensureActiveWorkspace() {
     await initialize(true)
   }
   activeWorkspaceId.value = activeWorkspace.value?.id || null
-  await loadInvites()
   return activeWorkspace.value
 }
 
@@ -133,7 +132,7 @@ async function switchWorkspace(workspaceId) {
   activeWorkspaceId.value = workspaceId
   await loadInvites()
   const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
-  await loadWorkspaceData(workspaceId)
+  await loadWorkspaceData(workspaceId, { routeName: 'workspace' })
   return true
 }
 
@@ -160,7 +159,7 @@ async function createWorkspace(name) {
   await initialize(true)
   activeWorkspaceId.value = data
   const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
-  await loadWorkspaceData(data)
+  await loadWorkspaceData(data, { routeName: 'workspace' })
   return { ok: true, workspace: activeWorkspace.value }
 }
 
@@ -232,7 +231,7 @@ async function deleteWorkspace(workspaceId) {
   activeWorkspaceId.value = workspaces.value[0]?.id || null
   if (activeWorkspaceId.value) {
     const { loadWorkspaceData } = await import('../services/backend/workspaceData.service.js')
-    await loadWorkspaceData(activeWorkspaceId.value, { force: true })
+    await loadWorkspaceData(activeWorkspaceId.value, { force: true, routeName: 'workspace' })
   }
   return { ok: true, workspaceId: activeWorkspaceId.value }
 }
@@ -248,6 +247,7 @@ export const workspaceStore = {
   workspaces, invites, activeWorkspaceId, currentUserSpaces, activeWorkspace,
   activeWorkspaceMembers, activeWorkspaceInvites, loading, error,
   initialize, ensureActiveWorkspace, switchWorkspace, createWorkspace,
+  loadInvites,
   updateWorkspace, createInvite, acceptInvite, removeMember,
   deleteWorkspace, updateMemberRole, getCurrentUserRole,
 }

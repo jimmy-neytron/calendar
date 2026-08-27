@@ -104,6 +104,7 @@
     <SportProgressPanel v-else />
 
     <WorkoutLibraryModal
+      v-if="isLibraryOpen"
       v-model="isLibraryOpen"
       :initial-weekday="selectedWeekday"
       :custom-workouts="sportStore.customWorkouts.value"
@@ -111,8 +112,8 @@
       @create-custom="createWorkoutFromLibrary"
       @delete-custom="removeWorkoutTemplate"
     />
-    <ExerciseDetailsModal v-model="isExerciseOpen" :exercise="activeExercise" @save="saveExercise" />
-    <WorkoutEditorModal v-model="isWorkoutEditorOpen" :workout="activeWorkout" :initial-weekday="selectedWeekday" @save="saveWorkout" />
+    <ExerciseDetailsModal v-if="isExerciseOpen" v-model="isExerciseOpen" :exercise="activeExercise" @save="saveExercise" />
+    <WorkoutEditorModal v-if="isWorkoutEditorOpen" v-model="isWorkoutEditorOpen" :workout="activeWorkout" :initial-weekday="selectedWeekday" @save="saveWorkout" />
     <UiConfirmModal
       v-model="confirmation.isOpen"
       :title="confirmation.title"
@@ -125,23 +126,24 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref } from 'vue'
 import UiButton from '../../components/ui/UiButton.vue'
 import UiConfirmModal from '../../components/ui/UiConfirmModal.vue'
 import UiIcon from '../../components/ui/UiIcon.vue'
 import UiIconButton from '../../components/ui/UiIconButton.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
-import ExerciseDetailsModal from '../../components/sport/ExerciseDetailsModal.vue'
-import WorkoutLibraryModal from '../../components/sport/WorkoutLibraryModal.vue'
-import WorkoutEditorModal from '../../components/sport/WorkoutEditorModal.vue'
 import WorkoutRadioWidget from '../../components/sport/WorkoutRadioWidget.vue'
-import ExerciseCatalog from '../../modules/sport/components/ExerciseCatalog.vue'
-import SportProgressPanel from '../../modules/sport/components/SportProgressPanel.vue'
 import { sportStore } from '../../stores/sport.store.js'
 import { buildBalancedWeek } from '../../config/sportWorkoutLibrary.js'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { DateHelper } from '../../utils/date/dateHelper.js'
 import { WEEKDAY_OPTIONS } from '../../utils/constants/calendarConstants.js'
+
+const ExerciseCatalog = defineAsyncComponent(() => import('../../modules/sport/components/ExerciseCatalog.vue'))
+const ExerciseDetailsModal = defineAsyncComponent(() => import('../../components/sport/ExerciseDetailsModal.vue'))
+const SportProgressPanel = defineAsyncComponent(() => import('../../modules/sport/components/SportProgressPanel.vue'))
+const WorkoutEditorModal = defineAsyncComponent(() => import('../../components/sport/WorkoutEditorModal.vue'))
+const WorkoutLibraryModal = defineAsyncComponent(() => import('../../components/sport/WorkoutLibraryModal.vue'))
 
 const { notify } = useNotification()
 const SPORT_SECTIONS = [

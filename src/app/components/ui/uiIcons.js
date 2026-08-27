@@ -11,6 +11,7 @@ export const UI_ICONS = Object.freeze({
   edit: { paths: ['M4 20h4l11-11-4-4L4 16v4z', 'M13.5 6.5l4 4'] },
   notes: { paths: ['M5 3h14v18H5z', 'M8 8h8', 'M8 12h8', 'M8 16h5'] },
   book: { paths: ['M4 5a3 3 0 013-3h5v18H7a3 3 0 00-3 2V5z', 'M20 5a3 3 0 00-3-3h-5v18h5a3 3 0 013 2V5z'] },
+  library: { paths: ['M4 4h5v16H4z', 'M9 6h5v14H9z', 'M15 5l4-1 3 15-4 1-3-15z', 'M5.5 8h2', 'M10.5 10h2'] },
   folder: { paths: ['M3 6h7l2 2h9v11H3V6z'] },
   compass: { paths: ['M15.5 8.5l-2 5-5 2 2-5 5-2z'], circles: [{ cx: 12, cy: 12, r: 9 }] },
   'check-circle': { paths: ['M8 12l3 3 6-7'], circles: [{ cx: 12, cy: 12, r: 9 }] },

@@ -1,4 +1,6 @@
 import { computed, ref } from 'vue'
+import { queryClient } from '../../../query/queryClient.js'
+import { queryKeys } from '../../../query/queryKeys.js'
 import { investmentStore } from '../../../stores/investment.store'
 import { aggregateInvestmentAssets, calculatePortfolioDayChange, calculatePortfolioValueChange, type ValuedHolding } from '../../../utils/investments/investmentPortfolio'
 import { loadCryptoQuotes, loadFiatRates } from '../api/investmentMarket.api'
@@ -53,7 +55,11 @@ export function useInvestmentPortfolio() {
     try {
       const cryptoIds = [...new Set(investmentStore.holdings.value.filter((item) => item.assetType === 'crypto').map((item) => item.assetId))]
       const fiatCodes = [...new Set(investmentStore.holdings.value.flatMap((item) => item.assetType === 'fiat' ? [item.symbol, item.costCurrency] : [item.costCurrency]).filter(Boolean).map((item) => item.toUpperCase()))]
-      const [nextCryptoQuotes, nextFiatRates] = await Promise.all([loadCryptoQuotes(cryptoIds), loadFiatRates(fiatCodes)])
+      const [nextCryptoQuotes, nextFiatRates] = await queryClient.fetchQuery({
+        queryKey: queryKeys.external.investmentMarket(cryptoIds, fiatCodes),
+        staleTime: 5 * 60_000,
+        queryFn: () => Promise.all([loadCryptoQuotes(cryptoIds), loadFiatRates(fiatCodes)]),
+      })
       cryptoQuotes.value = nextCryptoQuotes
       fiatRates.value = nextFiatRates
       lastUpdatedAt.value = new Date().toISOString()

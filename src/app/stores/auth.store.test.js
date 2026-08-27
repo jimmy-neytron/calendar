@@ -58,6 +58,18 @@ describe('authStore', () => {
     expect(authStore.isAuthenticated.value).toBe(true)
   })
 
+  it('не повторяет запрос профиля при быстрых переходах между страницами', async () => {
+    const authUser = { id: 'u1', email: 'anya@example.com', user_metadata: {} }
+    authApiMock.signIn.mockResolvedValue({ data: { session: { user: authUser } }, error: null })
+    authApiMock.getProfile.mockResolvedValue({ data: null, error: null })
+    await authStore.login('anya@example.com', 'secret')
+
+    await authStore.refreshCurrentUser()
+    await authStore.refreshCurrentUser()
+
+    expect(authApiMock.getProfile).toHaveBeenCalledTimes(1)
+  })
+
   it('немедленно завершает сессию деактивированного пользователя', async () => {
     const authUser = { id: 'u1', email: 'blocked@example.com', user_metadata: {} }
     authApiMock.signIn.mockResolvedValue({ data: { session: { user: authUser } }, error: null })

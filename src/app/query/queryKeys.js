@@ -11,6 +11,7 @@ export const queryKeys = {
   workspace: {
     root: ['workspace-data'],
     data: (workspaceId, userId) => ['workspace-data', workspaceId, userId || 'guest'],
+    section: (workspaceId, userId, section) => ['workspace-data', workspaceId, userId || 'guest', section],
     features: (workspaceId) => ['workspace-features', workspaceId],
   },
   activity: {
@@ -24,6 +25,11 @@ export const queryKeys = {
     users: () => ['admin', 'users'],
     leads: () => ['admin', 'leads'],
     overview: () => ['admin', 'overview'],
+  },
+  external: {
+    investmentMarket: (cryptoIds, fiatCodes) => ['external', 'investment-market', [...cryptoIds].sort(), [...fiatCodes].sort()],
+    movieCatalog: () => ['external', 'movies', 'catalog'],
+    movieGenres: () => ['external', 'movies', 'genres'],
   },
   releaseNotes: () => ['release-notes'],
   familyTree: (workspaceId) => ['family-tree', workspaceId],

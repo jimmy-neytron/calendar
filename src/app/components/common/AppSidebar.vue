@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
@@ -46,7 +46,7 @@ const activeWorkspace = workspaceStore.activeWorkspace
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 const { isEnabled: budgetEnabled } = useBudgetSettings()
 const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
-const { unreadLeadCount, loadUnreadLeadCount } = useAdminLeadNotifications()
+const { unreadLeadCount } = useAdminLeadNotifications()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
 
 const groups = [
@@ -113,7 +113,6 @@ const visibleGroups = computed(() => groups
   }))
   .filter((group) => group.items.length))
 
-onMounted(loadUnreadLeadCount)
 </script>
 
 <style scoped>

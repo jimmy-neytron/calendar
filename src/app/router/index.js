@@ -6,7 +6,8 @@ import { readActivityLogSetting } from '../composables/preferences/useActivityLo
 import { loadWorkspaceFeatures, readBudgetSetting } from '../composables/preferences/useBudgetSettings.js'
 import { readExtraSectionsSetting } from '../composables/preferences/useExtraSectionsSettings.js'
 import { readSubscriptionFeature } from '../composables/preferences/useSubscriptionSettings.js'
-import { adminPageLoaders, adminRoutes } from '../modules/admin/routes.js'
+import { adminRoutes } from '../modules/admin/routes.js'
+import { navigationStore } from '../stores/navigation.store.js'
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
@@ -35,13 +36,6 @@ const DayDisplayPage = () => import('../pages/display/DayDisplayPage.vue')
 const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.vue')
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
-const protectedPageLoaders = [
-  IndexPage, ...adminPageLoaders, SettingsPage, IntegrationsPage, BudgetPage, WorkspacePage, AnalyticsPage, AnalyticsDetailPage,
-  IdeasPage, NotesPage, KnowledgePage, ChallengesPage, InvestmentsPage, CouponsPage, BirthdaysPage, FamilyTreePage, SportPage, ActivityPage, MoviesPage, PurchasesPage, PersonalParametersPage, WardrobePage, DayDisplayPage, TimeTrackingPage,
-  TimeProjectPage,
-]
-let pagesPreloaded = false
-
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
@@ -96,16 +90,14 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  navigationStore.start(to)
   await authStore.initialize()
   if (!to.meta.public && !authStore.isAuthenticated.value) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   if (!to.meta.public) {
-    const profile = await authStore.refreshCurrentUser()
-    if (profile.blocked || !authStore.isAuthenticated.value) {
-      return { name: 'login', query: { redirect: to.fullPath } }
-    }
+    refreshProfileInBackground(to.fullPath)
   }
 
   if (to.meta.requiresActivityLog && !readActivityLogSetting()) {
@@ -122,21 +114,45 @@ router.beforeEach(async (to) => {
 
   if (to.name === 'login' && authStore.isAuthenticated.value) {
     const workspace = await workspaceStore.ensureActiveWorkspace()
-    if (workspace) await loadWorkspaceData(workspace.id)
+    if (workspace) {
+      const dataOptions = { routeName: 'calendar' }
+      await Promise.all([
+        preloadRouteComponents(router.resolve({ name: 'calendar' })),
+        loadWorkspaceData(workspace.id, dataOptions),
+      ])
+    }
     return { name: 'calendar' }
   }
 
   if (!to.meta.public) {
     const workspace = workspaceStore.activeWorkspace.value
       || await workspaceStore.ensureActiveWorkspace()
-    if (workspace) await loadWorkspaceFeatures(workspace.id)
+    const workspaceFeaturesPromise = workspace
+      ? loadWorkspaceFeatures(workspace.id)
+      : Promise.resolve()
+    if (to.meta.requiresExtraSections || to.meta.requiresBudget) {
+      await workspaceFeaturesPromise
+    }
     if (to.meta.requiresExtraSections && !readExtraSectionsSetting()) {
       return { name: 'settings' }
     }
     if (to.meta.requiresBudget && !readBudgetSetting()) {
       return { name: 'settings' }
     }
-    if (workspace) await loadWorkspaceData(workspace.id)
+    if (workspace) {
+      const dataOptions = {
+        routeName: String(to.name || ''),
+        analyticsSection: String(to.meta.analyticsSection || ''),
+      }
+      await Promise.all([
+        workspaceFeaturesPromise,
+        preloadRouteComponents(to),
+        loadWorkspaceData(workspace.id, dataOptions),
+        to.name === 'workspace' ? workspaceStore.loadInvites() : Promise.resolve(),
+      ])
+    }
+  } else {
+    await preloadRouteComponents(to)
   }
 
   return true
@@ -144,13 +160,25 @@ router.beforeEach(async (to) => {
 
 router.afterEach((to) => {
   document.title = `${to.meta.title || 'Календарь'} · Семейное пространство`
-  if (!to.meta.public) preloadProtectedPages()
+  navigationStore.finish(to)
 })
 
-function preloadProtectedPages() {
-  if (pagesPreloaded) return
-  pagesPreloaded = true
-  const preload = () => Promise.allSettled(protectedPageLoaders.map((load) => load()))
-  if ('requestIdleCallback' in window) window.requestIdleCallback(preload, { timeout: 1800 })
-  else window.setTimeout(preload, 350)
+router.onError(() => navigationStore.cancel())
+
+function preloadRouteComponents(route) {
+  const imports = route.matched
+    .flatMap((record) => Object.values(record.components || {}))
+    .filter((component) => typeof component === 'function')
+    .map((component) => Promise.resolve(component()))
+  return Promise.all(imports)
+}
+
+function refreshProfileInBackground(redirectPath) {
+  void authStore.refreshCurrentUser()
+    .then((profile) => {
+      if (!profile.blocked && authStore.isAuthenticated.value) return
+      if (router.currentRoute.value.name === 'login') return
+      return router.replace({ name: 'login', query: { redirect: redirectPath } })
+    })
+    .catch(() => {})
 }

@@ -44,6 +44,7 @@ export async function loadWorkspaceFeatures(workspaceId) {
   try {
     const data = await queryClient.fetchQuery({
       queryKey: queryKeys.workspace.features(workspaceId),
+      staleTime: Infinity,
       queryFn: async () => {
         const result = await workspaceFeaturesApi.get(workspaceId)
         if (result.error) throw result.error

@@ -13,7 +13,6 @@ const app = createApp(App)
 
 app.use(router)
 app.use(VueQueryPlugin, { queryClient })
-await router.isReady()
 app.mount('#app')
 
 window.addEventListener('load', initializePwa)

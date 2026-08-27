@@ -39,11 +39,11 @@
       <footer><UiButton type="button" variant="secondary" @click="emit('update:modelValue', false)">Отмена</UiButton><UiButton type="submit">{{ coupon ? 'Сохранить' : 'Добавить купон' }}</UiButton></footer>
     </form>
   </UiModal>
-  <CouponQrScannerModal v-model="isQrScannerOpen" @scan="applyScannedQr" />
+  <CouponQrScannerModal v-if="isQrScannerOpen" v-model="isQrScannerOpen" @scan="applyScannedQr" />
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { defineAsyncComponent, reactive, ref, watch } from 'vue'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
@@ -51,7 +51,8 @@ import UiModal from '../../../components/ui/UiModal.vue'
 import type { Coupon, CouponBarcodeFormat, CouponCodeType, CouponDiscountType, CouponPayload } from '../../../types/coupon'
 import { decodeCouponCodeImage } from '../services/couponCodeImage.service'
 import CouponMerchantInput from './CouponMerchantInput.vue'
-import CouponQrScannerModal from './CouponQrScannerModal.vue'
+
+const CouponQrScannerModal = defineAsyncComponent(() => import('./CouponQrScannerModal.vue'))
 
 const props = withDefaults(defineProps<{ modelValue: boolean; coupon: Coupon | null; merchants?: string[] }>(), { merchants: () => [] })
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; save: [payload: CouponPayload] }>()

@@ -11,12 +11,7 @@
       </template>
     </UiPageHeader>
 
-    <div v-if="isLoading" class="budget-loading panel">
-      <span /><span /><span />
-    </div>
-
-    <template v-else>
-      <section class="balance-panel panel" :class="{ negative: remainingAmount < 0 }">
+    <section class="balance-panel panel" :class="{ negative: remainingAmount < 0 }">
         <div class="balance-panel__main">
           <span class="balance-label">{{ remainingAmount < 0 ? 'Не хватает по плану' : 'Свободно после плана' }}</span>
           <strong>{{ formatMoney(Math.abs(remainingAmount)) }}</strong>
@@ -35,9 +30,9 @@
           <UiButton icon="edit" @click="isMonthModalOpen = true">План месяца</UiButton>
           <UiButton variant="secondary" icon="chart" @click="isActualsModalOpen = true">Внести факт</UiButton>
         </div>
-      </section>
+    </section>
 
-      <section class="budget-cards">
+    <section class="budget-cards">
         <article class="simple-card simple-card--required panel">
           <header class="required-card__header">
             <div class="required-card__heading">
@@ -110,8 +105,7 @@
             {{ hasActuals ? 'Изменить факт' : 'Заполнить факт' }}
           </UiButton>
         </article>
-      </section>
-    </template>
+    </section>
 
     <BudgetSetupModal
       v-model="isSetupModalOpen"
@@ -168,7 +162,6 @@ import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
 import { budgetStore } from '../../stores/budget.store.js'
 import { calendarStore } from '../../stores/calendar.store.js'
-import { workspaceStore } from '../../stores/workspace.store.js'
 import { formatRubles as formatMoney } from '../../utils/formatters/currencyFormatter.js'
 import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
@@ -227,7 +220,6 @@ const selectedMonthLabel = computed(() => new Intl.DateTimeFormat('ru-RU', {
   year: 'numeric',
 }).format(parseMonth(selectedMonth.value)))
 
-const isLoading = ref(true)
 const isSetupModalOpen = ref(false)
 const isMonthModalOpen = ref(false)
 const isActualsModalOpen = ref(false)
@@ -302,7 +294,7 @@ function parseMonth(month) {
 }
 
 watch(selectedMonth, async () => {
-  if (isLoading.value || !isSetupComplete.value || isChangingMonth.value) return
+  if (!isSetupComplete.value || isChangingMonth.value) return
   isChangingMonth.value = true
   const result = await budgetStore.ensureSelectedMonthFromTemplate()
   isChangingMonth.value = false
@@ -316,18 +308,7 @@ watch(calendarStore.events, (events) => {
     .forEach((event) => budgetStore.syncPaymentFromCalendar(event))
 }, { immediate: true })
 
-onMounted(async () => {
-  const workspaceId = workspaceStore.activeWorkspaceId.value
-  if (!workspaceId) {
-    isLoading.value = false
-    return
-  }
-  const result = await budgetStore.loadWorkspace(workspaceId)
-  isLoading.value = false
-  if (result === null) {
-    notify('Не удалось загрузить бюджет', 'warning')
-    return
-  }
+onMounted(() => {
   if (!isSetupComplete.value) isSetupModalOpen.value = true
   if (route.query.payment) isRequiredModalOpen.value = true
 })

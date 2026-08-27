@@ -199,6 +199,8 @@ import UiModal from '../../components/ui/UiModal.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiSelect from '../../components/ui/UiSelect.vue'
 import { useNotification } from '../../composables/ui/useNotification.js'
+import { queryClient } from '../../query/queryClient.js'
+import { queryKeys } from '../../query/queryKeys.js'
 import { getMediaDetails, getMediaGenres, getPopularMedia, getTmdbImageUrl, getTrendingMedia, isTmdbConfigured, searchMedia } from '../../services/tmdb.service'
 import { movieWatchlistStore } from '../../stores/movieWatchlist.store'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
@@ -306,14 +308,7 @@ watch(errorMessage, (message) => {
 })
 
 onMounted(async () => {
-  await loadCatalog()
-  if (isTmdbConfigured) {
-    try {
-      genres.value = await getMediaGenres()
-    } catch {
-      genres.value = []
-    }
-  }
+  await Promise.all([loadCatalog(), loadGenres()])
 })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
@@ -322,7 +317,11 @@ async function loadCatalog(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   try {
-    const [trend, movies, tv] = await Promise.all([getTrendingMedia(), getPopularMedia('movie'), getPopularMedia('tv')])
+    const [trend, movies, tv] = await queryClient.fetchQuery({
+      queryKey: queryKeys.external.movieCatalog(),
+      staleTime: 10 * 60_000,
+      queryFn: () => Promise.all([getTrendingMedia(), getPopularMedia('movie'), getPopularMedia('tv')]),
+    })
     trending.value = trend
     popularMovies.value = movies
     popularTv.value = tv
@@ -330,6 +329,19 @@ async function loadCatalog(): Promise<void> {
     errorMessage.value = getErrorMessage(error)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadGenres(): Promise<void> {
+  if (!isTmdbConfigured) return
+  try {
+    genres.value = await queryClient.fetchQuery({
+      queryKey: queryKeys.external.movieGenres(),
+      staleTime: 24 * 60 * 60_000,
+      queryFn: getMediaGenres,
+    })
+  } catch {
+    genres.value = []
   }
 }
 

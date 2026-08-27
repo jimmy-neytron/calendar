@@ -15,6 +15,9 @@ const initialized = ref(false)
 const loading = ref(false)
 const blockedAccount = ref(null)
 let initializePromise = null
+let profileRefreshPromise = null
+let lastProfileRefreshAt = 0
+const PROFILE_REFRESH_TTL = 30_000
 
 const currentUser = computed(() => users.value.find((user) => user.id === currentUserId.value) || null)
 const isAuthenticated = computed(() => Boolean(currentUserId.value))
@@ -43,6 +46,7 @@ async function applySession(session) {
   if (!session?.user) {
     users.value = []
     currentUserId.value = null
+    lastProfileRefreshAt = 0
     return
   }
   const { data } = await authApi.getProfile(session.user.id)
@@ -56,6 +60,7 @@ async function applySession(session) {
   }
   users.value = [user]
   currentUserId.value = user.id
+  lastProfileRefreshAt = Date.now()
 }
 
 function initialize() {
@@ -117,23 +122,35 @@ async function logout() {
   await applySession(null)
 }
 
-async function refreshCurrentUser() {
+async function refreshCurrentUser({ force = false } = {}) {
   if (!currentUserId.value) return { ok: false }
-  const previousUser = currentUser.value
-  const { data, error } = await authApi.getProfile(currentUserId.value)
-  if (error) return { ok: false, message: error.message }
-
-  const user = mapUser(data, previousUser)
-  if (!user.isActive) {
-    blockedAccount.value = { email: user.email, name: user.name }
-    await authApi.signOut()
-    users.value = []
-    currentUserId.value = null
-    return { ok: false, blocked: true }
+  if (!force && currentUser.value && Date.now() - lastProfileRefreshAt < PROFILE_REFRESH_TTL) {
+    return { ok: true, user: currentUser.value }
   }
+  if (profileRefreshPromise) return profileRefreshPromise
 
-  users.value = [user]
-  return { ok: true, user }
+  profileRefreshPromise = (async () => {
+    const previousUser = currentUser.value
+    const { data, error } = await authApi.getProfile(currentUserId.value)
+    if (error) return { ok: false, message: error.message }
+
+    const user = mapUser(data, previousUser)
+    if (!user.isActive) {
+      blockedAccount.value = { email: user.email, name: user.name }
+      await authApi.signOut()
+      users.value = []
+      currentUserId.value = null
+      lastProfileRefreshAt = 0
+      return { ok: false, blocked: true }
+    }
+
+    users.value = [user]
+    lastProfileRefreshAt = Date.now()
+    return { ok: true, user }
+  })().finally(() => {
+    profileRefreshPromise = null
+  })
+  return profileRefreshPromise
 }
 
 function dismissBlockedAccount() {
@@ -153,6 +170,7 @@ async function updateCurrentUser(updates) {
   const { data, error } = await authApi.updateProfile(currentUser.value.id, payload)
   if (error) return { ok: false, message: error.message }
   users.value = [mapUser(data, null)]
+  lastProfileRefreshAt = Date.now()
   await authApi.updateUser({ name: data.name, color: data.color })
   return { ok: true }
 }
