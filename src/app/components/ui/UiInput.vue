@@ -58,6 +58,7 @@ defineEmits(['update:modelValue', 'focus', 'blur', 'keydown'])
 
 <style scoped>
 .ui-input {
+  min-width: 0;
   display: grid;
   gap: 5px;
 }
@@ -74,6 +75,8 @@ defineEmits(['update:modelValue', 'focus', 'blur', 'keydown'])
 
 .ui-input__control {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 36px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);

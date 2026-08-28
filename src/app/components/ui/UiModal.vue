@@ -69,15 +69,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   position: fixed;
   inset: 0;
   z-index: 50;
+  width: 100%;
+  max-width: 100vw;
   display: grid;
   place-items: center;
   padding: 16px;
+  overflow-x: hidden;
   background: rgba(3, 4, 9, 0.72);
   backdrop-filter: blur(12px);
 }
 
 .ui-modal__dialog {
   width: min(100%, var(--ui-modal-width, 560px));
+  min-width: 0;
   max-height: min(760px, calc(100vh - 32px));
   display: flex;
   flex-direction: column;
@@ -89,6 +93,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 }
 
 .ui-modal__header {
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -99,6 +104,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 .ui-modal__header h2 {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .ui-modal__header :slotted(.global-admin-modal__badge) {
@@ -115,8 +121,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 }
 
 .ui-modal__body {
+  min-width: 0;
   padding: 16px;
   overflow: auto;
+  overflow-x: hidden;
 }
 
 .ui-modal--fullscreen { padding: 0; }
@@ -144,5 +152,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 @media (max-width: 720px) {
   .ui-modal--fullscreen .ui-modal__body { overflow: auto; }
+}
+
+@media (max-width: 599px) {
+  .ui-modal { padding: 8px; }
+  .ui-modal__dialog {
+    max-height: calc(100dvh - 16px);
+    border-radius: var(--radius-lg);
+  }
+  .ui-modal__header { padding: 12px 12px 9px; }
+  .ui-modal__body { padding: 12px; }
 }
 </style>
