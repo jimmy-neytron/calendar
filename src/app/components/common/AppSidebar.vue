@@ -1,5 +1,5 @@
 <template>
-  <aside class="app-sidebar">
+  <aside class="app-sidebar" aria-label="Основная навигация">
     <div class="app-sidebar__context">
       <span class="app-sidebar__mark">{{ workspaceInitial }}</span>
       <div>
@@ -28,11 +28,55 @@
         <i><UiIcon name="right" /></i>
       </RouterLink>
     </nav>
+
+    <div class="app-sidebar__actions">
+      <button type="button" @click="isCustomizeOpen = true">
+        <span><UiIcon name="settings" /></span>
+        <b>Настроить меню</b>
+      </button>
+    </div>
+
+    <nav class="app-sidebar__mobile" aria-label="Мобильная навигация">
+      <RouterLink
+        v-for="item in mobileItems"
+        :key="item.name"
+        :to="{ name: item.name }"
+        :title="item.label"
+      >
+        <span>
+          <UiIcon :name="item.icon" />
+          <b v-if="item.badge" class="app-sidebar__badge">{{ item.badge }}</b>
+        </span>
+        <small>{{ item.label }}</small>
+      </RouterLink>
+      <button type="button" title="Все разделы" @click="isAllSectionsOpen = true">
+        <span><UiIcon name="grid" /></span>
+        <small>Ещё</small>
+      </button>
+    </nav>
   </aside>
+
+  <AllSectionsModal
+    v-model="isAllSectionsOpen"
+    :groups="orderedAvailableGroups"
+    :hidden-section-ids="hiddenSectionIds"
+    @customize="openCustomizeFromCatalog"
+  />
+
+  <SidebarCustomizeModal
+    v-model="isCustomizeOpen"
+    :groups="availableGroups"
+    :preferences="sidebarPreferences"
+    :saving="sidebarSaving"
+    :error="sidebarError"
+    @save="setSidebarPreferences"
+    @reset="resetSidebarPreferences"
+  />
 </template>
 
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { workspaceStore } from '../../stores/workspace.store.js'
 import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
 import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
@@ -40,78 +84,95 @@ import { useExtraSectionsSettings } from '../../composables/preferences/useExtra
 import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
 import { authStore } from '../../stores/auth.store.js'
 import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
+import { useSidebarPreferences } from '../../composables/preferences/useSidebarPreferences'
+import { SIDEBAR_GROUPS, type SidebarGroup, type SidebarSection } from '../../navigation/sidebarSections'
+import AllSectionsModal from './AllSectionsModal.vue'
+import SidebarCustomizeModal from './SidebarCustomizeModal.vue'
 import UiIcon from '../ui/UiIcon.vue'
 
+const route = useRoute()
 const activeWorkspace = workspaceStore.activeWorkspace
 const { isEnabled: activityLogEnabled } = useActivityLogSettings()
 const { isEnabled: budgetEnabled } = useBudgetSettings()
 const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
 const { unreadLeadCount } = useAdminLeadNotifications()
+const {
+  preferences: sidebarPreferences,
+  saving: sidebarSaving,
+  error: sidebarError,
+  setPreferences: setSidebarPreferences,
+  reset: resetSidebarPreferences,
+} = useSidebarPreferences()
 const workspaceInitial = computed(() => activeWorkspace.value?.name?.slice(0, 1).toUpperCase() || 'К')
+const isCustomizeOpen = ref(false)
+const isAllSectionsOpen = ref(false)
 
-const groups = [
-  {
-    label: 'Главное',
-    items: [
-      { name: 'calendar', label: 'Календарь', description: 'Общие планы и расписание', icon: 'calendar' },
-      { name: 'birthdays', label: 'Дни рождения', description: 'Подарки и напоминания', icon: 'heart' },
-      { name: 'ideas', label: 'Идеи', description: 'Копилка семейных планов', icon: 'sparkles' },
-      { name: 'notes', label: 'Заметки', description: 'Быстрые записи и мысли', icon: 'notes' },
-      { name: 'knowledge', label: 'Знания', description: 'Учёба, работа и связи', icon: 'book' },
-      { name: 'challenges', label: 'Цели', description: 'Прогресс и личные рекорды', icon: 'trophy' },
-    ],
-  },
-  {
-    label: 'Семья и быт',
-    items: [
-      { name: 'budget', label: 'Бюджет', description: 'Доходы и семейные расходы', icon: 'wallet' },
-      { name: 'meals', label: 'Питание', description: 'Меню, блюда и продукты', icon: 'utensils' },
-      { name: 'purchases', label: 'Покупки', description: 'Нужное, желания и техника', icon: 'shopping', feature: 'purchases', extra: true },
-      { name: 'coupons', label: 'Купоны', description: 'Скидки, QR и промокоды', icon: 'ticket' },
-      { name: 'wardrobe', label: 'Шкаф', description: 'Вещи и готовые образы', icon: 'hanger', feature: 'extraSections', extra: true },
-      { name: 'family-tree', label: 'Семейное дерево', description: 'Люди, поколения и связи', icon: 'users', feature: 'extraSections', extra: true },
-    ],
-  },
-  {
-    label: 'Личное',
-    items: [
-      { name: 'investments', label: 'Инвестиции', description: 'Активы, источники и курсы', icon: 'chart' },
-      { name: 'sport', label: 'Спорт', description: 'Программа и прогресс', icon: 'sport', feature: 'sport', extra: true },
-      { name: 'time-tracking', label: 'Учёт времени', description: 'Проекты и часы', icon: 'clock', feature: 'timeTracking', extra: true },
-      { name: 'movies', label: 'Фильмы', description: 'Найти и посмотреть вместе', icon: 'movie', feature: 'movies', extra: true },
-      { name: 'personal-parameters', label: 'Мои параметры', description: 'Размеры и характеристики', icon: 'ruler', feature: 'extraSections', extra: true },
-    ],
-  },
-  {
-    label: 'Управление',
-    items: [
-      { name: 'workspace', label: 'Семья', description: 'Участники и доступ', icon: 'users', feature: 'workspace' },
-      { name: 'analytics', label: 'Аналитика', description: 'Ритм семейной жизни', icon: 'chart', feature: 'analytics' },
-      { name: 'activity', label: 'Активность', description: 'История изменений', icon: 'activity', feature: 'activity' },
-      { name: 'integrations', label: 'Интеграции', description: 'Telegram и внешние сервисы', icon: 'link', feature: 'integrations' },
-      { name: 'admin-overview', label: 'Админка', description: 'Пользователи и заявки', icon: 'key' },
-      { name: 'settings', label: 'Настройки', description: 'Профиль и приложение', icon: 'settings' },
-    ],
-  },
-]
+const currentSidebarName = computed(() => {
+  const routeName = String(route.name || '')
+  if (routeName === 'time-project') return 'time-tracking'
+  if (routeName === 'integration-detail') return 'integrations'
+  if (routeName.startsWith('analytics-')) return 'analytics'
+  return routeName
+})
 
-const visibleGroups = computed(() => groups
+function isAvailable(item: SidebarSection) {
+  return (
+    (item.name !== 'activity' || activityLogEnabled.value)
+    && (item.name !== 'budget' || budgetEnabled.value)
+    && (!item.extra || extraSectionsEnabled.value)
+    && (!item.feature || readSubscriptionFeature(item.feature))
+    && (item.name !== 'admin-overview' || authStore.isAdmin.value)
+  )
+}
+
+function withBadge(item: SidebarSection) {
+  return {
+    ...item,
+    badge: item.name === 'admin-overview' ? unreadLeadCount.value : 0,
+  }
+}
+
+function orderGroups(groups: SidebarGroup[]) {
+  const order = sidebarPreferences.value.sectionOrder
+  return groups.map((group) => ({
+    ...group,
+    items: [...group.items].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name)),
+  }))
+}
+
+const availableGroups = computed<SidebarGroup[]>(() => SIDEBAR_GROUPS
+  .map((group) => ({ ...group, items: group.items.filter(isAvailable) }))
+  .filter((group) => group.items.length))
+
+const orderedAvailableGroups = computed(() => orderGroups(availableGroups.value))
+const visibleGroups = computed(() => orderGroups(availableGroups.value)
   .map((group) => ({
     ...group,
     items: group.items
-      .filter((item) => (
-        (item.name !== 'activity' || activityLogEnabled.value)
-        && (item.name !== 'budget' || budgetEnabled.value)
-        && (!item.extra || extraSectionsEnabled.value)
-        && (!item.feature || readSubscriptionFeature(item.feature))
-        && (item.name !== 'admin-overview' || authStore.isAdmin.value)
-      ))
-      .map((item) => ({
-        ...item,
-        badge: item.name === 'admin-overview' ? unreadLeadCount.value : item.badge || 0,
-      })),
+      .filter((item) => item.fixed || sidebarPreferences.value.visibleSectionIds.includes(item.name) || currentSidebarName.value === item.name)
+      .map(withBadge),
   }))
   .filter((group) => group.items.length))
+
+const hiddenSectionIds = computed(() => availableGroups.value
+  .flatMap((group) => group.items)
+  .filter((item) => !item.fixed && !sidebarPreferences.value.visibleSectionIds.includes(item.name))
+  .map((item) => item.name))
+
+const mobileItems = computed(() => {
+  const available = orderedAvailableGroups.value.flatMap((group) => group.items)
+  const byName = new Map(available.map((item) => [item.name, item]))
+  const selected = sidebarPreferences.value.mobileFavoriteIds
+    .map((id) => byName.get(id))
+    .filter((item): item is SidebarSection => Boolean(item && (item.fixed || sidebarPreferences.value.visibleSectionIds.includes(item.name))))
+  const fallback = selected.length ? selected : available.filter((item) => item.fixed || sidebarPreferences.value.visibleSectionIds.includes(item.name)).slice(0, 4)
+  return fallback.slice(0, 4).map(withBadge)
+})
+
+function openCustomizeFromCatalog() {
+  isAllSectionsOpen.value = false
+  isCustomizeOpen.value = true
+}
 
 </script>
 
@@ -263,6 +324,45 @@ const visibleGroups = computed(() => groups
   opacity: 1;
 }
 
+.app-sidebar__actions {
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.app-sidebar__actions button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: 3px 7px;
+  color: var(--text-muted);
+  background: transparent;
+  text-align: left;
+}
+
+.app-sidebar__actions button:hover {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  background: var(--control-bg);
+}
+
+.app-sidebar__actions button span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--control-bg);
+}
+
+.app-sidebar__actions button b { font-size: 10px; }
+.app-sidebar__mobile { display: none; }
+
 @media (max-width: 860px) {
   .app-sidebar {
     position: fixed;
@@ -270,11 +370,10 @@ const visibleGroups = computed(() => groups
     left: 50%;
     bottom: 10px;
     top: auto;
-    width: auto;
-    max-width: calc(100vw - 16px);
-    height: 58px;
-    flex-direction: row;
-    gap: 3px;
+    width: min(390px, calc(100vw - 16px));
+    max-width: none;
+    height: 64px;
+    display: block;
     padding: 6px;
     border: 1px solid var(--border-color);
     border-radius: 18px;
@@ -282,36 +381,67 @@ const visibleGroups = computed(() => groups
     backdrop-filter: blur(18px);
     box-shadow: var(--shadow-md);
     transform: translateX(-50%);
-    overflow-x: auto;
-    scrollbar-width: none;
+    overflow: visible;
   }
 
   .app-sidebar__context,
-  .app-sidebar__label {
+  .app-sidebar__group,
+  .app-sidebar__actions {
     display: none;
   }
 
-  .app-sidebar__group {
-    display: flex;
-    gap: 3px;
-  }
-
-  .app-sidebar__item {
+  .app-sidebar__mobile {
+    height: 100%;
     display: grid;
-    grid-template-columns: 1fr;
-    min-width: 46px;
-    min-height: 44px;
-    padding: 5px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
   }
 
-  .app-sidebar__icon {
-    width: 34px;
-    height: 34px;
+  .app-sidebar__mobile>a,
+  .app-sidebar__mobile>button {
+    min-width: 0;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    border: 0;
+    border-radius: 12px;
+    padding: 3px 2px;
+    color: var(--text-muted);
+    background: transparent;
+    text-decoration: none;
   }
 
-  .app-sidebar__copy,
-  .app-sidebar__item i {
-    display: none;
+  .app-sidebar__mobile>a>span,
+  .app-sidebar__mobile>button>span {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    font-size: 16px;
   }
+
+  .app-sidebar__mobile small {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 8px;
+    font-weight: 750;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-sidebar__mobile>a.router-link-active {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .app-sidebar__mobile>a.router-link-active>span {
+    color: var(--text-inverse);
+    background: var(--accent);
+  }
+
+  .app-sidebar__mobile .app-sidebar__badge { top: -5px; right: -8px; border-color: var(--sidebar-floating-bg); }
 }
 </style>
