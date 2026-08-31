@@ -33,7 +33,6 @@ const MoviesPage = () => import('../pages/movies/MoviesPage.vue')
 const PurchasesPage = () => import('../modules/purchases/pages/PurchasesPage.vue')
 const PersonalParametersPage = () => import('../modules/personal-parameters/pages/PersonalParametersPage.vue')
 const WardrobePage = () => import('../modules/wardrobe/pages/WardrobePage.vue')
-const DayDisplayPage = () => import('../pages/display/DayDisplayPage.vue')
 const TimeTrackingPage = () => import('../pages/time-tracking/TimeTrackingPage.vue')
 const TimeProjectPage = () => import('../pages/time-tracking/TimeProjectPage.vue')
 const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
@@ -42,7 +41,7 @@ export const routes = [
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
   { path: '/today', name: 'today', component: TodayPage, meta: { title: 'Сегодня' } },
   ...adminRoutes,
-  { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
+  { path: '/display', redirect: { name: 'today' } },
   { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет', requiresBudget: true } },
   { path: '/sport', name: 'sport', component: SportPage, meta: { title: 'Спорт', requiresExtraSections: true, requiresSubscriptionFeature: 'sport' } },
   { path: '/sport/focus', redirect: '/sport' },

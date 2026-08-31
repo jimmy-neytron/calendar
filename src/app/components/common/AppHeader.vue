@@ -42,15 +42,6 @@
       >
         {{ viewMode === 'day' ? 'Месяц' : 'День' }}
       </UiButton>
-      <RouterLink
-        v-if="isCalendarRoute"
-        class="app-header__display"
-        :to="{ name: 'day-display' }"
-        title="Открыть экран дня"
-      >
-        <UiIcon name="grid" />
-        <span>Экран дня</span>
-      </RouterLink>
       <NotificationBell />
       <RouterLink class="app-header__user" :to="{ name: 'settings' }" :title="currentUser?.email">
         {{ currentUser?.avatar || '?' }}
@@ -166,20 +157,6 @@ const requestLabel = computed(() => networkActivityStore.activeRequests.value > 
   gap: 6px;
 }
 
-.app-header__display {
-  display: flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 10px;
-  color: var(--text-secondary);
-  background: var(--control-bg);
-  text-decoration: none;
-  transition: border-color .18s var(--ease-out), background .18s var(--ease-out);
-}
-
 .app-header__today {
   display: flex;
   min-height: 36px;
@@ -203,18 +180,11 @@ const requestLabel = computed(() => networkActivityStore.activeRequests.value > 
   background: color-mix(in srgb, var(--accent) 8%, var(--control-bg));
 }
 
-.app-header__display:hover {
-  border-color: var(--accent-border);
-  background: var(--control-bg-hover);
-}
-
 @media (max-width: 1040px) {
-  .app-header__display span,
   .app-header__today span {
     display: none;
   }
 
-  .app-header__display,
   .app-header__today {
     width: 38px;
     justify-content: center;
