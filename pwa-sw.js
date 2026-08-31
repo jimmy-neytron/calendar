@@ -69,6 +69,6 @@ async function cacheFirstAsset(request) {
 
 function isStaticAsset(request, url) {
   return ['script', 'style', 'font', 'image', 'worker'].includes(request.destination)
-    || /\.(?:js|css|woff2?|png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname)
+    || /\.(?:js|css|woff2?|png|jpg|jpeg|webp|svg|ico|wasm|traineddata(?:\.gz)?)$/i.test(url.pathname)
 }
 

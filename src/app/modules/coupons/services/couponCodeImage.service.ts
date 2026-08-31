@@ -31,10 +31,17 @@ const qrFormats = new Set(['qr_code', 'qr_code_model_1', 'qr_code_model_2', 'mic
 
 export function mapDetectedCouponCode(result: DetectedCode): DecodedCouponCode {
   return {
-    value: result.rawValue,
+    value: normalizeDetectedValue(result.rawValue, result.format),
     codeType: qrFormats.has(result.format) ? 'qr' : 'barcode',
     barcodeFormat: mapBarcodeFormat(result.format),
   }
+}
+
+function normalizeDetectedValue(value: string, format: string): string {
+  const trimmed = value.trim()
+  if (qrFormats.has(format)) return trimmed
+  const withoutFalsePrefix = trimmed.match(/^\D(\d{11,})$/)?.[1]
+  return withoutFalsePrefix || trimmed
 }
 
 export async function decodeCouponCodeImage(file: File): Promise<DecodedCouponCodeImage> {

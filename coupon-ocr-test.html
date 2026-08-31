@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+  <body>
+    <input id="coupon-photo" type="file" accept="image/*">
+    <pre id="progress">Ожидание файла</pre>
+    <pre id="result"></pre>
+    <script type="module">
+      import { analyzeCouponPhoto } from '/src/app/modules/coupons/services/couponPhotoAnalysis.service.ts'
+      document.querySelector('#coupon-photo').addEventListener('change', async (event) => {
+        const file = event.target.files?.[0]
+        if (!file) return
+        const progress = document.querySelector('#progress')
+        const output = document.querySelector('#result')
+        try {
+          const result = await analyzeCouponPhoto(file, (state) => { progress.textContent = state.message })
+          progress.textContent = 'Готово'
+          output.textContent = JSON.stringify(result, null, 2)
+        } catch (error) {
+          output.textContent = String(error?.stack || error)
+        }
+      })
+    </script>
+  </body>
+</html>

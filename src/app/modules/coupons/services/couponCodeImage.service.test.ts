@@ -25,6 +25,11 @@ describe('mapDetectedCouponCode', () => {
       barcodeFormat: 'code128',
     })
   })
+
+  it('removes a spurious non-digit prefix from a long numeric barcode', () => {
+    expect(mapDetectedCouponCode({ rawValue: 'N780171102436001012', format: 'code_128' }).value)
+      .toBe('780171102436001012')
+  })
 })
 
 describe('normalizeDetectedCodes', () => {
