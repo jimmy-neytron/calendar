@@ -101,6 +101,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import CollectionPagination from '../../components/collections/CollectionPagination.vue'
 import CollectionViewControls from '../../components/collections/CollectionViewControls.vue'
 import UiButton from '../../components/ui/UiButton.vue'
@@ -125,10 +126,12 @@ const IDEA_TYPES = [
 ]
 
 const { notify } = useNotification()
+const route = useRoute()
 const ideas = ideaStore.ideas
 const form = reactive({ title: '', type: 'other', note: '' })
 const activeFilter = ref('all')
 const randomIdea = ref(null)
+const handledIdeaId = ref('')
 const isCreateOpen = ref(false)
 const isPlannerOpen = ref(false)
 const planningIdea = ref(null)
@@ -143,6 +146,14 @@ const {
 const ideaWord = computed(() => pluralize(ideas.value.length, ['идея', 'идеи', 'идей']))
 
 watch(activeFilter, resetPage)
+watch([ideas, () => route.query.idea], ([items, ideaId]) => {
+  if (typeof ideaId !== 'string' || handledIdeaId.value === ideaId) return
+  const idea = items.find((item) => item.id === ideaId)
+  if (!idea) return
+  handledIdeaId.value = ideaId
+  activeFilter.value = 'all'
+  randomIdea.value = idea
+}, { immediate: true })
 
 function createIdea() {
   const result = ideaStore.addIdea(form)

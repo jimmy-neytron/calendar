@@ -4,12 +4,13 @@
       <div v-if="modelValue" class="command-palette" @click.self="close">
         <section role="dialog" aria-modal="true" aria-label="Командная палитра">
           <header>
-            <span>⌕</span>
+            <span class="command-palette__search-icon"><UiIcon name="search" /></span>
             <input
               ref="inputRef"
               v-model="query"
+              autofocus
               type="search"
-              placeholder="Найти действие, событие или раздел…"
+              placeholder="Найти событие, заметку, идею или раздел…"
               @keydown.down.prevent="move(1)"
               @keydown.up.prevent="move(-1)"
               @keydown.enter.prevent="runActive"
@@ -27,7 +28,7 @@
               @mouseenter="activeIndex = 0"
               @click="createSmartEvent"
             >
-              <span>✦</span>
+              <span><UiIcon name="sparkles" /></span>
               <span>
                 <strong>Создать «{{ smartSuggestion.title }}»</strong>
                 <small>
@@ -46,7 +47,7 @@
               @mouseenter="activeIndex = index + smartOffset"
               @click="run(command)"
             >
-              <span>{{ command.icon }}</span>
+              <span><UiIcon :name="command.icon" /></span>
               <span>
                 <strong>{{ command.label }}</strong>
                 <small>{{ command.description }}</small>
@@ -63,6 +64,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import UiIcon from '../ui/UiIcon.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -76,9 +78,9 @@ const activeIndex = ref(0)
 const smartOffset = computed(() => props.smartSuggestion ? 1 : 0)
 const filteredCommands = computed(() => {
   const needle = query.value.trim().toLowerCase()
-  if (!needle) return props.commands
+  if (!needle) return props.commands.filter((command) => !command.searchOnly)
   return props.commands.filter((command) => (
-    `${command.label} ${command.description || ''}`.toLowerCase().includes(needle)
+    `${command.label} ${command.description || ''} ${command.keywords || ''}`.toLowerCase().includes(needle)
   ))
 })
 
@@ -88,7 +90,7 @@ watch(() => props.modelValue, async (open) => {
   activeIndex.value = 0
   await nextTick()
   inputRef.value?.focus()
-})
+}, { immediate: true })
 
 watch(query, (value) => emit('query-change', value))
 
@@ -160,6 +162,8 @@ function close() {
   border-bottom: 1px solid var(--border-color);
   padding: 12px 14px;
 }
+
+.command-palette__search-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;color:var(--accent);background:var(--accent-soft);font-size:15px}
 
 .command-palette input {
   min-width: 0;

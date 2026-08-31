@@ -12,6 +12,7 @@
       :is-calendar-route="route.name === 'calendar'"
       :view-mode="calendarViewMode"
       @today="goCalendarToday"
+      @search="isCommandPaletteOpen = true"
       @toggle-calendar-view="toggleCalendarView"
     />
 
@@ -38,7 +39,6 @@
     </div>
 
     <button
-      v-if="route.name === 'calendar'"
       class="quick-create"
       type="button"
       title="Новое событие (N)"
@@ -54,7 +54,7 @@
       :commands="commands"
       :smart-suggestion="smartSuggestion"
       @run="runCommand"
-      @query-change="paletteQuery = $event"
+      @query-change="handlePaletteQuery"
       @smart-create="createSmartEvent"
     />
 
@@ -99,6 +99,7 @@ import { calendarCollectionStore } from '../../stores/calendarCollection.store.j
 import { useLocalEventReminders } from '../../composables/notifications/useLocalEventReminders.js'
 import { useRealtimeNotifications } from '../../composables/notifications/useRealtimeNotifications.js'
 import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
+import { useGlobalSearchCommands } from '../../composables/navigation/useGlobalSearchCommands'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,6 +122,7 @@ const {
   stop: stopRealtimeNotifications,
 } = useRealtimeNotifications()
 const { unreadLeadCount, startUnreadLeadPolling, stopUnreadLeadPolling } = useAdminLeadNotifications()
+const { entityCommands, searchEntities } = useGlobalSearchCommands()
 let cancelScheduledBackup = () => {}
 useCalendarPreferences()
 const currentUser = authStore.currentUser
@@ -134,27 +136,27 @@ const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
 }))
 const commands = computed(() => [
   { id: 'today-overview', label: 'Открыть Сегодня', description: 'Ежедневная сводка по доступным разделам', icon: 'home', action: () => router.push({ name: 'today' }) },
-  { id: 'new-event', label: 'Новое событие', description: 'Открыть быстрое создание', icon: '＋', shortcut: 'N', action: openEventDrawer },
-  { id: 'today', label: 'Перейти к сегодня', description: 'Вернуть календарь к текущей дате', icon: '◎', shortcut: 'T', action: goCalendarToday },
-  { id: 'month', label: 'Режим месяца', description: 'Показать сетку месяца', icon: '▦', shortcut: 'M', action: () => setCalendarMode('month') },
-  { id: 'week', label: 'Режим недели', description: 'Показать неделю', icon: '▤', shortcut: 'W', action: () => setCalendarMode('week') },
-  { id: 'day', label: 'Режим дня', description: 'Показать расписание дня', icon: '◫', shortcut: 'D', action: () => setCalendarMode('day') },
-  ...(readSubscriptionFeature('analytics') ? [{ id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) }] : []),
-  { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
+  { id: 'new-event', label: 'Новое событие', description: 'Открыть быстрое создание', icon: 'plus', shortcut: 'N', action: openEventDrawer },
+  { id: 'today', label: 'Перейти к сегодня', description: 'Вернуть календарь к текущей дате', icon: 'target', shortcut: 'T', action: goCalendarToday },
+  { id: 'month', label: 'Режим месяца', description: 'Показать сетку месяца', icon: 'grid', shortcut: 'M', action: () => setCalendarMode('month') },
+  { id: 'week', label: 'Режим недели', description: 'Показать неделю', icon: 'table', shortcut: 'W', action: () => setCalendarMode('week') },
+  { id: 'day', label: 'Режим дня', description: 'Показать расписание дня', icon: 'calendar', shortcut: 'D', action: () => setCalendarMode('day') },
+  ...(readSubscriptionFeature('analytics') ? [{ id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: 'chart', action: () => router.push({ name: 'analytics' }) }] : []),
+  { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: 'sparkles', action: () => router.push({ name: 'ideas' }) },
   { id: 'notes', label: 'Открыть заметки', description: 'Поиск по быстрым записям', icon: 'notes', action: () => router.push({ name: 'notes' }) },
   ...(readSubscriptionFeature('knowledge') ? [{ id: 'knowledge', label: 'Открыть знания', description: 'Учёба, работа и связанные материалы', icon: 'book', action: () => router.push({ name: 'knowledge' }) }] : []),
   { id: 'challenges', label: 'Открыть цели', description: 'Цели, серии и личные рекорды', icon: 'trophy', action: () => router.push({ name: 'challenges' }) },
   ...(readSubscriptionFeature('investments') ? [{ id: 'investments', label: 'Открыть инвестиции', description: 'Портфель, источники и курсы', icon: 'chart', action: () => router.push({ name: 'investments' }) }] : []),
   ...(readSubscriptionFeature('coupons') ? [{ id: 'coupons', label: 'Открыть купоны', description: 'Скидки, QR-коды и промокоды', icon: 'ticket', action: () => router.push({ name: 'coupons' }) }] : []),
   ...(readSubscriptionFeature('meals') ? [{ id: 'meals', label: 'Открыть питание', description: 'Меню недели и свои блюда', icon: 'utensils', action: () => router.push({ name: 'meals' }) }] : []),
-  ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
-  ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
-  ...(extraSectionsEnabled.value && readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) }] : []),
+  ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: 'wallet', action: () => router.push({ name: 'budget' }) }] : []),
+  ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: 'clock', action: () => router.push({ name: 'time-tracking' }) }] : []),
+  ...(extraSectionsEnabled.value && readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: 'movie', action: () => router.push({ name: 'movies' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('purchases') ? [{ id: 'purchases', label: 'Открыть покупки', description: 'Вещи, техника и список желаний', icon: 'shopping', action: () => router.push({ name: 'purchases' }) }] : []),
   ...(extraSectionsEnabled.value ? [{ id: 'family-tree', label: 'Открыть семейное дерево', description: 'Люди, поколения и связи', icon: 'users', action: () => router.push({ name: 'family-tree' }) }] : []),
-  { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: '♡', action: () => router.push({ name: 'birthdays' }) },
+  { id: 'birthdays', label: 'Открыть дни рождения', description: 'Возраст, подарки и напоминания', icon: 'heart', action: () => router.push({ name: 'birthdays' }) },
   ...(extraSectionsEnabled.value && readSubscriptionFeature('sport') ? [{ id: 'sport', label: 'Открыть спорт', description: 'Программа и прогресс', icon: 'sport', action: () => router.push({ name: 'sport' }) }] : []),
-  ...(readSubscriptionFeature('workspace') ? [{ id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: '◇', action: () => router.push({ name: 'workspace' }) }] : []),
+  ...(readSubscriptionFeature('workspace') ? [{ id: 'workspace', label: 'Открыть команду', description: 'Участники и приглашения', icon: 'users', action: () => router.push({ name: 'workspace' }) }] : []),
   ...(authStore.isAdmin.value ? [{
     id: 'admin',
     label: 'Открыть админку',
@@ -162,14 +164,17 @@ const commands = computed(() => [
     icon: 'key',
     action: () => router.push({ name: 'admin-overview' }),
   }] : []),
-  { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: '⚙', action: () => router.push({ name: 'settings' }) },
+  { id: 'settings', label: 'Открыть настройки', description: 'Профиль, вид и данные', icon: 'settings', action: () => router.push({ name: 'settings' }) },
   ...calendarStore.sortedEvents.value.slice(0, 12).map((event) => ({
     id: `event-${event.id}`,
     label: event.title,
     description: `${event.date}${event.startTime ? ` · ${event.startTime}` : ''}`,
-    icon: '•',
+    icon: 'calendar',
+    keywords: `${event.location || ''} ${event.notes || ''}`,
+    searchOnly: true,
     action: () => openEventById(event.id),
   })),
+  ...entityCommands.value,
 ])
 
 const goToCalendar = async (query = {}) => {
@@ -209,6 +214,11 @@ function runCommand(command) {
   command.action?.()
 }
 
+function handlePaletteQuery(value) {
+  paletteQuery.value = value
+  void searchEntities(value)
+}
+
 async function createSmartEvent(eventData) {
   if (!eventData) return
   const { preview, ...data } = eventData
@@ -230,7 +240,7 @@ function handleGlobalKeydown(event) {
   const target = event.target
   const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable
 
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+  if (event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'k') {
     event.preventDefault()
     isCommandPaletteOpen.value = !isCommandPaletteOpen.value
     return

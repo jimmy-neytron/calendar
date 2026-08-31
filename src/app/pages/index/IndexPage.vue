@@ -373,6 +373,7 @@ watch(
   (query) => {
     if (query.mode === 'day') enableDayMode()
     if (query.today) goToday()
+    if (query.create) createEvent()
     if (query.event) {
       editEventById(query.eventDate ? `${query.event}::${query.eventDate}` : query.event)
     }
@@ -381,8 +382,8 @@ watch(
 )
 
 function clearEventQuery() {
-  if (!route.query.event && !route.query.eventDate && !route.query.notification) return
-  const { event, eventDate, notification, ...query } = route.query
+  if (!route.query.event && !route.query.eventDate && !route.query.notification && !route.query.create) return
+  const { event, eventDate, notification, create, ...query } = route.query
   router.replace({ name: route.name, query })
 }
 

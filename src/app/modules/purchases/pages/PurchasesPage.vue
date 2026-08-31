@@ -229,7 +229,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiIconButton from '../../../components/ui/UiIconButton.vue'
@@ -286,6 +287,7 @@ const commonCurrencies = [
 ]
 
 const { notify } = useNotification()
+const route = useRoute()
 const items = purchaseWishlistStore.items
 const search = ref('')
 const categoryFilter = ref('all')
@@ -298,6 +300,7 @@ const isSaving = ref(false)
 const isDeleteOpen = ref(false)
 const isDeleting = ref(false)
 const editingItem = ref<PurchaseItem | null>(null)
+const handledPurchaseId = ref('')
 const deletingItem = ref<PurchaseItem | null>(null)
 const editorError = ref('')
 const failedImages = ref(new Set<string>())
@@ -336,6 +339,14 @@ const filteredItems = computed(() => {
     return second.priority - first.priority || second.createdAt.localeCompare(first.createdAt)
   })
 })
+
+watch([items, () => route.query.purchase], ([currentItems, purchaseId]) => {
+  if (typeof purchaseId !== 'string' || handledPurchaseId.value === purchaseId) return
+  const item = currentItems.find((candidate) => candidate.id === purchaseId)
+  if (!item) return
+  handledPurchaseId.value = purchaseId
+  openEditModal(item)
+}, { immediate: true })
 
 function openCreateModal(preview?: Partial<ProductLinkPreview>) {
   editingItem.value = null
@@ -425,14 +436,18 @@ function openDeleteModal(item: PurchaseItem) {
 }
 
 async function deleteItem() {
-  if (!deletingItem.value || isDeleting.value) return
+  const item = deletingItem.value
+  if (!item || isDeleting.value) return
   isDeleting.value = true
-  const result = await purchaseWishlistStore.remove(deletingItem.value.id)
+  const result = await purchaseWishlistStore.remove(item.id)
   isDeleting.value = false
   if (!result.ok) return notify(result.message || 'Не удалось удалить покупку', 'warning')
   isDeleteOpen.value = false
   deletingItem.value = null
-  notify('Покупка удалена', 'success')
+  notify('Покупка удалена', 'info', { duration: 8000, actionLabel: 'Вернуть', action: async () => {
+    const restored = await purchaseWishlistStore.restore(item)
+    notify(restored.ok ? 'Покупка восстановлена' : restored.message, restored.ok ? 'success' : 'danger')
+  } })
 }
 
 function emptyForm(): PurchaseForm {

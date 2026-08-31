@@ -107,6 +107,11 @@ async function deleteChallenge(id) {
   return { ok: true }
 }
 
+async function restoreChallenge(challenge) {
+  if (!challenge?.id) return { ok: false, message: 'Не удалось восстановить цель' }
+  return repository.createAndWait(challenge)
+}
+
 function getStreak(challenge, today = new Date()) {
   const dates = new Set(challenge?.completedDates || [])
   let cursor = new Date(today)
@@ -149,4 +154,4 @@ async function loadWorkspace(workspaceId) {
   return repository.loadWorkspace(workspaceId)
 }
 
-export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, recordResult, removeResult, toggleActive, deleteChallenge, getStreak, getProgress: getChallengeProgress, loadWorkspace }
+export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, recordResult, removeResult, toggleActive, deleteChallenge, restoreChallenge, getStreak, getProgress: getChallengeProgress, loadWorkspace }

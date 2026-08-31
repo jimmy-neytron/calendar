@@ -126,7 +126,11 @@ const goalStatus = computed(() => {
   return { kind: 'active', label: 'В процессе' }
 })
 
-watch(challenges, (items) => { if (!items.some((item) => item.id === activeId.value)) activeId.value = items[0]?.id || '' }, { immediate: true })
+watch([challenges, () => route.query.goal], ([items, requestedGoal]) => {
+  const requested = typeof requestedGoal === 'string' ? requestedGoal : ''
+  if (requested && items.some((item) => item.id === requested)) activeId.value = requested
+  else if (!items.some((item) => item.id === activeId.value)) activeId.value = items[0]?.id || ''
+}, { immediate: true })
 function goalTypeLabel(item) { return item.goalType === 'total' ? `Набрать ${item.targetValue} ${item.unit}` : item.goalType === 'best' ? `${item.progressDirection === 'decrease' ? 'Снизить до' : 'Достичь'} ${item.targetValue} ${item.unit}` : `${item.targetValue || item.targetDays} выполнений` }
 function shortDate(key) { return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(DateHelper.parseKey(key)) }
 function dayWord(value) { const last = value % 10; const lastTwo = value % 100; return lastTwo >= 11 && lastTwo <= 14 ? 'дней' : last === 1 ? 'день' : last >= 2 && last <= 4 ? 'дня' : 'дней' }
@@ -143,7 +147,7 @@ function openCreate() { editingChallenge.value = null; isEditorOpen.value = true
 function selectTab(tab) { activeView.value = tab; router.replace({ query: tab === 'records' ? { view: 'records' } : {} }) }
 function openEdit() { editingChallenge.value = activeChallenge.value; isEditorOpen.value = true }
 function saveChallenge(data) { const result = data.id ? challengeStore.updateChallenge(data.id, data) : challengeStore.addChallenge(data); if (!result.ok) return notify(result.message, 'warning'); activeId.value = result.challenge.id; isEditorOpen.value = false; notify(data.id ? 'Цель обновлена' : 'Цель создана', 'success') }
-async function confirmDelete() { isDeleteOpen.value = false; const result = await challengeStore.deleteChallenge(activeChallenge.value.id); notify(result.ok ? 'Цель удалена' : result.message, result.ok ? 'info' : 'danger') }
+async function confirmDelete() { isDeleteOpen.value = false; const challenge = activeChallenge.value; if (!challenge) return; const result = await challengeStore.deleteChallenge(challenge.id); if (!result.ok) return notify(result.message, 'danger'); notify('Цель удалена', 'info', { duration: 8000, actionLabel: 'Вернуть', action: async () => { const restored = await challengeStore.restoreChallenge(challenge); notify(restored.ok ? 'Цель восстановлена' : restored.message, restored.ok ? 'success' : 'danger') } }) }
 </script>
 
 <style scoped>

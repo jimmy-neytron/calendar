@@ -7,6 +7,8 @@ import { sportStore } from '../../../stores/sport.store.js'
 import { timeTrackingStore } from '../../../stores/timeTracking.store'
 import { couponStore } from '../../../stores/coupon.store'
 import { workspaceStore } from '../../../stores/workspace.store.js'
+import { noteStore } from '../../../stores/note.store.js'
+import { ideaStore } from '../../../stores/idea.store.js'
 import { mealPlanStore } from '../../meals/stores/mealPlan.store'
 import { getCouponDaysLeft, getCouponStatus } from '../../coupons/utils/couponExpiry'
 import { useAvailableSections } from '../../../composables/navigation/useAvailableSections'
@@ -18,6 +20,8 @@ export interface TodayCardItem {
   label: string
   meta?: string
   done?: boolean
+  action?: 'toggle-event' | 'toggle-challenge' | 'toggle-exercise'
+  routeQuery?: Record<string, string>
 }
 
 export interface TodaySection {
@@ -58,6 +62,7 @@ export function useTodaySections() {
     const result: TodaySection[] = [calendarSection(todayKey), birthdaySection()]
     if (isSectionAvailable('budget')) result.push(budgetSection(todayKey, weekEndKey))
     result.push(challengeSection(todayKey))
+    result.push(notesSection(), ideasSection())
     if (isSectionAvailable('meals')) result.push(mealsSection(todayKey))
     if (isSectionAvailable('sport')) result.push(sportSection())
     if (isSectionAvailable('time-tracking')) result.push(timeSection())
@@ -75,6 +80,8 @@ function calendarSection(todayKey: string): TodaySection {
     label: event.title,
     meta: event.allDay ? 'Весь день' : [event.startTime, event.location].filter(Boolean).join(' · '),
     done: Boolean(event.completedAt),
+    action: 'toggle-event' as const,
+    routeQuery: { event: String(event.id), eventDate: String(event.date) },
   }))
   return makeSection('calendar', 'Расписание', 'События на сегодня', 'calendar', 'calendar', items, 'На сегодня событий нет')
 }
@@ -84,6 +91,7 @@ function birthdaySection(): TodaySection {
     id: item.id,
     label: item.name,
     meta: item.daysUntil === 0 ? 'Сегодня день рождения' : `Через ${item.daysUntil} дн.`,
+    routeQuery: { birthday: String(item.id) },
   }))
   return makeSection('birthdays', 'Дни рождения', 'Ближайшие семь дней', 'heart', 'birthdays', items, 'В ближайшую неделю дней рождения нет')
 }
@@ -92,7 +100,7 @@ function budgetSection(todayKey: string, weekEndKey: string): TodaySection {
   const items = budgetStore.payments.value
     .filter((item) => item.status === 'planned' && item.dueDate >= todayKey && item.dueDate <= weekEndKey)
     .slice(0, 4)
-    .map((item) => ({ id: item.id, label: item.title, meta: `${formatRubles(item.plannedAmount)} · ${formatRelativeDate(item.dueDate, todayKey)}` }))
+    .map((item) => ({ id: item.id, label: item.title, meta: `${formatRubles(item.plannedAmount)} · ${formatRelativeDate(item.dueDate, todayKey)}`, routeQuery: { payment: String(item.id) } }))
   return makeSection('budget', 'Платежи', 'Сроки на ближайшую неделю', 'wallet', 'budget', items, 'Ближайших платежей нет')
 }
 
@@ -102,6 +110,8 @@ function challengeSection(todayKey: string): TodaySection {
     label: item.title,
     meta: (item.completedDates || []).includes(todayKey) ? 'Сегодня выполнено' : 'Ждёт отметки сегодня',
     done: (item.completedDates || []).includes(todayKey),
+    action: (item.goalType || 'consistency') === 'consistency' ? 'toggle-challenge' as const : undefined,
+    routeQuery: { goal: String(item.id) },
   }))
   return makeSection('challenges', 'Цели', 'Личный прогресс', 'trophy', 'challenges', items, 'Активных целей пока нет')
 }
@@ -122,8 +132,30 @@ function sportSection(): TodaySection {
     label: item.title,
     meta: [item.sets, item.reps].filter(Boolean).join(' · '),
     done: sportStore.isExerciseDone(item.id, sportStore.todayKey.value),
+    action: 'toggle-exercise' as const,
   }))
   return makeSection('sport', 'Тренировка', 'Программа на сегодня', 'sport', 'sport', items, 'Сегодня день восстановления')
+}
+
+function notesSection(): TodaySection {
+  const items = noteStore.notes.value.slice(0, 4).map((item) => ({
+    id: item.id,
+    label: item.title,
+    meta: item.pinned ? `Закреплено · ${item.section}` : item.section,
+    done: false,
+    routeQuery: { note: String(item.id) },
+  }))
+  return makeSection('notes', 'Заметки', 'Закреплённое и недавнее', 'notes', 'notes', items, 'Заметок пока нет')
+}
+
+function ideasSection(): TodaySection {
+  const items = ideaStore.ideas.value.filter((item) => !item.plannedEventId).slice(0, 4).map((item) => ({
+    id: item.id,
+    label: item.title,
+    meta: item.note || 'Можно запланировать',
+    routeQuery: { idea: String(item.id) },
+  }))
+  return makeSection('ideas', 'Идеи', 'Что можно запланировать', 'sparkles', 'ideas', items, 'Все идеи уже запланированы')
 }
 
 function timeSection(): TodaySection {
@@ -136,7 +168,7 @@ function couponSection(): TodaySection {
   const items = couponStore.items.value
     .filter((item) => getCouponStatus(item) === 'expiring')
     .slice(0, 4)
-    .map((item) => ({ id: item.id, label: item.title, meta: `${item.merchant || 'Купон'} · осталось ${getCouponDaysLeft(item.expiresOn)} дн.` }))
+    .map((item) => ({ id: item.id, label: item.title, meta: `${item.merchant || 'Купон'} · осталось ${getCouponDaysLeft(item.expiresOn)} дн.`, routeQuery: { coupon: String(item.id) } }))
   return makeSection('coupons', 'Купоны', 'Скоро закончатся', 'ticket', 'coupons', items, 'Срочно использовать ничего не нужно')
 }
 

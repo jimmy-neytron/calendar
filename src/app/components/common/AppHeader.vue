@@ -14,6 +14,11 @@
     </button>
 
     <div class="app-header__actions">
+      <button class="app-header__search" type="button" title="Поиск по всему (/)" aria-label="Открыть глобальный поиск" @click="$emit('search')">
+        <UiIcon name="search" />
+        <span>Поиск</span>
+        <kbd>/</kbd>
+      </button>
       <RouterLink
         class="app-header__today"
         :class="{ 'app-header__today--active': route.name === 'today' }"
@@ -65,7 +70,7 @@ defineProps({
   viewMode: { type: String, default: 'month' },
 })
 
-defineEmits(['today', 'toggle-calendar-view'])
+defineEmits(['today', 'toggle-calendar-view', 'search'])
 
 const route = useRoute()
 const now = new Date()
@@ -157,6 +162,8 @@ const requestLabel = computed(() => networkActivityStore.activeRequests.value > 
   gap: 6px;
 }
 
+.app-header__search{display:flex;min-height:36px;align-items:center;gap:6px;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:0 9px;color:var(--text-secondary);background:var(--control-bg);font-size:10px;font-weight:750}.app-header__search:hover{border-color:var(--accent-border);color:var(--accent);background:var(--control-bg-hover)}.app-header__search kbd{border:1px solid var(--border-color);border-radius:5px;padding:1px 5px;color:var(--text-muted);background:var(--card-soft);font:inherit;font-size:8px}
+
 .app-header__today {
   display: flex;
   min-height: 36px;
@@ -181,10 +188,13 @@ const requestLabel = computed(() => networkActivityStore.activeRequests.value > 
 }
 
 @media (max-width: 1040px) {
+  .app-header__search span,
+  .app-header__search kbd,
   .app-header__today span {
     display: none;
   }
 
+  .app-header__search,
   .app-header__today {
     width: 38px;
     justify-content: center;

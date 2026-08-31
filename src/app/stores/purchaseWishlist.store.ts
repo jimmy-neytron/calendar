@@ -45,6 +45,10 @@ async function remove(id: string) {
   return repository.deleteAndWait(id)
 }
 
+async function restore(item: PurchaseItem) {
+  return repository.createAndWait(item)
+}
+
 function loadWorkspace(workspaceId: string) {
   return repository.loadWorkspace(workspaceId)
 }
@@ -106,5 +110,6 @@ export const purchaseWishlistStore = {
   create,
   update,
   remove,
+  restore,
   loadWorkspace,
 }

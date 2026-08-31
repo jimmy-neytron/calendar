@@ -187,6 +187,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MediaShelf from '../../components/movies/MediaShelf.vue'
 import MovieGrid from '../../components/movies/MovieGrid.vue'
 import MovieDetailsDrawer from '../../components/movies/MovieDetailsDrawer.vue'
@@ -221,6 +222,7 @@ const SectionHeading = defineComponent({
 })
 
 const { notify } = useNotification()
+const route = useRoute()
 const activeTab = ref<MoviesTab>('all')
 const searchQuery = ref('')
 const submittedQuery = ref('')
@@ -249,6 +251,7 @@ const planReminder = ref('1h')
 const planning = ref(false)
 const isDetailsOpen = ref(false)
 const selectedMovie = ref<MovieMedia | null>(null)
+const handledMovieKey = ref('')
 const movieDetails = ref<MovieDetails | null>(null)
 const detailsLoading = ref(false)
 const detailsError = ref('')
@@ -310,6 +313,16 @@ watch(errorMessage, (message) => {
 onMounted(async () => {
   await Promise.all([loadCatalog(), loadGenres()])
 })
+
+watch([watchlist, () => route.query.movie], ([items, movieKey]) => {
+  if (typeof movieKey !== 'string' || handledMovieKey.value === movieKey) return
+  const [mediaType, rawId] = movieKey.split(':')
+  const movie = items.find((item) => item.mediaType === mediaType && item.id === Number(rawId))
+  if (!movie) return
+  handledMovieKey.value = movieKey
+  activeTab.value = 'watchlist'
+  void openMovieDetails(movie)
+}, { immediate: true })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
 async function loadCatalog(): Promise<void> {

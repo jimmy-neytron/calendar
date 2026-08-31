@@ -151,7 +151,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import CollectionPagination from '../../components/collections/CollectionPagination.vue'
 import CollectionViewControls from '../../components/collections/CollectionViewControls.vue'
 import UiButton from '../../components/ui/UiButton.vue'
@@ -167,6 +168,7 @@ import { usePaginatedView } from '../../composables/collections/usePaginatedView
 import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const { notify } = useNotification()
+const route = useRoute()
 const birthdays = birthdayStore.birthdays
 const upcoming = birthdayStore.upcomingBirthdays
 const nextBirthday = computed(() => birthdays.value[0] || null)
@@ -182,6 +184,7 @@ const giftBirthday = ref(null)
 const giftTitle = ref('')
 const isEditOpen = ref(false)
 const editingId = ref('')
+const handledBirthdayId = ref('')
 const editForm = reactive({ name: '', birthDate: '', reminderDays: 7, note: '' })
 const {
   viewMode, pageSize, page, pageCount, pagedItems: pagedBirthdays,
@@ -231,6 +234,12 @@ function openEdit(birthday) {
   })
   isEditOpen.value = true
 }
+
+watch([birthdays, () => route.query.birthday], ([items, birthdayId]) => {
+  if (typeof birthdayId !== 'string' || handledBirthdayId.value === birthdayId) return
+  const birthday = items.find((item) => item.id === birthdayId)
+  if (birthday) { handledBirthdayId.value = birthdayId; openEdit(birthday) }
+}, { immediate: true })
 
 async function saveEdit() {
   const result = await birthdayStore.updateBirthday(editingId.value, editForm)

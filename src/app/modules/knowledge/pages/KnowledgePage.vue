@@ -26,6 +26,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import KnowledgeNoteList from '../components/KnowledgeNoteList.vue'
 import KnowledgeOverview from '../components/KnowledgeOverview.vue'
 import KnowledgeReader from '../components/KnowledgeReader.vue'
@@ -43,6 +44,7 @@ const KnowledgeEditorModal = defineAsyncComponent(() => import('../components/Kn
 const KnowledgeGraph = defineAsyncComponent(() => import('../components/KnowledgeGraph.vue'))
 
 const { notify } = useNotification()
+const route = useRoute()
 const notes = knowledgeStore.notes
 const view = ref('overview')
 const activeNoteId = ref('')
@@ -51,6 +53,7 @@ const isEditorOpen = ref(false)
 const editingNote = ref(null)
 const isDeleteOpen = ref(false)
 const deletingNote = ref(null)
+const handledKnowledgeNoteId = ref('')
 const { search, activeSection, activeFilter, sections, allTags, filteredNotes, completedIds, completedCount, learningProgress, toggleCompleted, getRelatedNotes } = useKnowledgeBase(notes)
 const activeNote = computed(() => filteredNotes.value.find((note) => note.id === activeNoteId.value) || filteredNotes.value[0] || null)
 const relatedNotes = computed(() => getRelatedNotes(activeNote.value))
@@ -71,6 +74,13 @@ const libraryFilters = computed(() => [
   { value: 'completed', label: 'Освоено', count: filterCounts.value.completed },
 ])
 watch(filteredNotes, (items) => { if (!items.some((note) => note.id === activeNoteId.value)) activeNoteId.value = items[0]?.id || '' }, { immediate: true })
+watch([notes, () => route.query.note], ([items, noteId]) => {
+  if (typeof noteId !== 'string' || handledKnowledgeNoteId.value === noteId || !items.some((note) => note.id === noteId)) return
+  handledKnowledgeNoteId.value = noteId
+  openLibrary()
+  search.value = ''
+  activeNoteId.value = noteId
+}, { immediate: true })
 function openCreate() { editingNote.value = null; isEditorOpen.value = true }
 function openEdit(note) { if (note) { editingNote.value = note; isEditorOpen.value = true } }
 function openLibrary() { view.value = 'library'; activeFilter.value = 'all'; activeSection.value = 'all' }

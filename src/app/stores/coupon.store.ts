@@ -29,6 +29,7 @@ async function update(id: string, payload: Partial<CouponPayload>) {
 }
 
 function remove(id: string) { return repository.deleteAndWait(id) }
+function restore(coupon: Coupon) { return repository.createAndWait(coupon) }
 function loadWorkspace(workspaceId: string) { return repository.loadWorkspace(workspaceId) }
 function expirySortValue(value: string) { return value ? new Date(`${value}T23:59:59`).getTime() : Number.MAX_SAFE_INTEGER }
 
@@ -58,4 +59,4 @@ function normalizeDiscountType(value: unknown): CouponDiscountType { return ['pe
 function normalizeCodeType(value: unknown): CouponCodeType { return ['qr', 'barcode', 'promo', 'none'].includes(String(value)) ? String(value) as CouponCodeType : 'promo' }
 function normalizeBarcodeFormat(value: unknown): CouponBarcodeFormat { return ['code128', 'ean13', 'ean8', 'upca'].includes(String(value)) ? String(value) as CouponBarcodeFormat : 'code128' }
 
-export const couponStore = { items, create, update, remove, loadWorkspace }
+export const couponStore = { items, create, update, remove, restore, loadWorkspace }

@@ -10,12 +10,13 @@
     </header>
 
     <div v-if="items.length" class="today-card__items">
-      <div v-for="item in items" :key="item.id" class="today-card__item">
-        <span :class="{ 'today-card__dot--done': item.done }" />
-        <div>
+      <div v-for="item in items" :key="item.id" class="today-card__item" :class="{ 'today-card__item--done': item.done }">
+        <button v-if="item.action" type="button" class="today-card__check" :class="{ done: item.done }" :aria-label="item.done ? `Снять выполнение: ${item.label}` : `Отметить выполненным: ${item.label}`" @click="$emit('item-action', item)"><UiIcon name="check" /></button>
+        <span v-else :class="{ 'today-card__dot--done': item.done }" />
+        <button type="button" class="today-card__copy" @click="$emit('open-item', item)">
           <b>{{ item.label }}</b>
           <small v-if="item.meta">{{ item.meta }}</small>
-        </div>
+        </button>
       </div>
     </div>
     <p v-else class="today-card__empty">{{ emptyLabel }}</p>
@@ -40,6 +41,7 @@ defineProps<{
   emptyLabel: string
   items: TodayCardItem[]
 }>()
+defineEmits<{ 'item-action': [item: TodayCardItem]; 'open-item': [item: TodayCardItem] }>()
 </script>
 
 <style scoped>
@@ -117,6 +119,8 @@ defineProps<{
   border-radius: 50%;
   background: var(--accent);
 }
+
+.today-card__check{display:grid;place-items:center;width:18px;height:18px;border:1px solid var(--border-strong);border-radius:6px;color:transparent;background:var(--control-bg);font-size:11px}.today-card__check.done{border-color:var(--success);color:#fff;background:var(--success)}.today-card__copy{min-width:0;border:0;padding:0;color:inherit;background:transparent;text-align:left}.today-card__item--done .today-card__copy b{text-decoration:line-through;opacity:.7}
 
 .today-card__item > .today-card__dot--done {
   background: var(--success);

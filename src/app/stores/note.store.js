@@ -63,6 +63,11 @@ async function deleteNote(id) {
   return { ok: true }
 }
 
+async function restoreNote(note) {
+  if (!note?.id) return { ok: false, message: 'Не удалось восстановить заметку' }
+  return repository.createAndWait(note)
+}
+
 function normalizeNote(data) {
   const title = String(data.title || '').trim()
   const content = String(data.content || '').trim()
@@ -87,5 +92,6 @@ export const noteStore = {
   updateNote,
   togglePinned,
   deleteNote,
+  restoreNote,
   loadWorkspace: (workspaceId) => repository.loadWorkspace(workspaceId),
 }
