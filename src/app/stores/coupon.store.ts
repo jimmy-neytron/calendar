@@ -37,6 +37,7 @@ function toDatabaseRow(item: Coupon) {
     id: item.id, workspace_id: item.workspaceId, title: item.title, merchant: item.merchant, description: item.description,
     discount_type: item.discountType, discount_value: item.discountValue, discount_label: item.discountLabel,
     code_type: item.codeType, code_value: item.codeValue, barcode_format: item.barcodeFormat,
+    secondary_code_value: item.secondaryCodeValue || '', secondary_barcode_format: item.secondaryBarcodeFormat || 'code128',
     expires_on: item.expiresOn || null, terms: item.terms, color: item.color, is_used: item.isUsed,
     created_at: item.createdAt, updated_at: item.updatedAt,
   }
@@ -47,6 +48,7 @@ function fromDatabaseRow(row: Record<string, unknown>): Coupon {
     id: String(row.id || ''), workspaceId: String(row.workspace_id || ''), title: String(row.title || ''), merchant: String(row.merchant || ''), description: String(row.description || ''),
     discountType: normalizeDiscountType(row.discount_type), discountValue: Math.max(0, Number(row.discount_value || 0)), discountLabel: String(row.discount_label || ''),
     codeType: normalizeCodeType(row.code_type), codeValue: String(row.code_value || ''), barcodeFormat: normalizeBarcodeFormat(row.barcode_format),
+    secondaryCodeValue: String(row.secondary_code_value || ''), secondaryBarcodeFormat: normalizeBarcodeFormat(row.secondary_barcode_format),
     expiresOn: String(row.expires_on || ''), terms: String(row.terms || ''), color: String(row.color || '#7c8cf8'), isUsed: Boolean(row.is_used),
     createdAt: String(row.created_at || new Date().toISOString()), updatedAt: String(row.updated_at || new Date().toISOString()),
   }

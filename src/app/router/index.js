@@ -11,6 +11,7 @@ import { navigationStore } from '../stores/navigation.store.js'
 
 const LoginPage = () => import('../pages/auth/LoginPage.vue')
 const IndexPage = () => import('../pages/index/IndexPage.vue')
+const TodayPage = () => import('../modules/today/pages/TodayPage.vue')
 const SettingsPage = () => import('../pages/settings/SettingsPage.vue')
 const IntegrationsPage = () => import('../modules/integrations/pages/IntegrationsPage.vue')
 const BudgetPage = () => import('../pages/budget/BudgetPage.vue')
@@ -39,6 +40,7 @@ const NotFoundPage = () => import('../pages/not-found/NotFoundPage.vue')
 export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'Вход', public: true } },
   { path: '/', name: 'calendar', component: IndexPage, meta: { title: 'Календарь' } },
+  { path: '/today', name: 'today', component: TodayPage, meta: { title: 'Сегодня' } },
   ...adminRoutes,
   { path: '/display', name: 'day-display', component: DayDisplayPage, meta: { title: 'Экран дня', standalone: true } },
   { path: '/budget', name: 'budget', component: BudgetPage, meta: { title: 'Бюджет', requiresBudget: true } },
@@ -62,11 +64,11 @@ export const routes = [
   { path: '/activity', name: 'activity', component: ActivityPage, meta: { title: 'Активность', requiresActivityLog: true, requiresSubscriptionFeature: 'activity' } },
   { path: '/ideas', name: 'ideas', component: IdeasPage, meta: { title: 'Идеи' } },
   { path: '/notes', name: 'notes', component: NotesPage, meta: { title: 'Заметки' } },
-  { path: '/knowledge', name: 'knowledge', component: KnowledgePage, meta: { title: 'Знания' } },
+  { path: '/knowledge', name: 'knowledge', component: KnowledgePage, meta: { title: 'Знания', requiresSubscriptionFeature: 'knowledge' } },
   { path: '/challenges', name: 'challenges', component: ChallengesPage, meta: { title: 'Челленджи' } },
-  { path: '/investments', name: 'investments', component: InvestmentsPage, meta: { title: 'Инвестиции' } },
-  { path: '/coupons', name: 'coupons', component: CouponsPage, meta: { title: 'Купоны' } },
-  { path: '/meals', name: 'meals', component: MealsPage, meta: { title: 'Питание' } },
+  { path: '/investments', name: 'investments', component: InvestmentsPage, meta: { title: 'Инвестиции', requiresSubscriptionFeature: 'investments' } },
+  { path: '/coupons', name: 'coupons', component: CouponsPage, meta: { title: 'Купоны', requiresSubscriptionFeature: 'coupons' } },
+  { path: '/meals', name: 'meals', component: MealsPage, meta: { title: 'Питание', requiresSubscriptionFeature: 'meals' } },
   { path: '/birthdays', name: 'birthdays', component: BirthdaysPage, meta: { title: 'Дни рождения' } },
   { path: '/family-tree', name: 'family-tree', component: FamilyTreePage, meta: { title: 'Семейное дерево', requiresExtraSections: true, requiresSubscriptionFeature: 'extraSections' } },
   { path: '/movies', name: 'movies', component: MoviesPage, meta: { title: 'Фильмы и сериалы', requiresExtraSections: true, requiresSubscriptionFeature: 'movies' } },

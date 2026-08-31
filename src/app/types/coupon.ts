@@ -14,6 +14,8 @@ export interface Coupon {
   codeType: CouponCodeType
   codeValue: string
   barcodeFormat: CouponBarcodeFormat
+  secondaryCodeValue: string
+  secondaryBarcodeFormat: CouponBarcodeFormat
   expiresOn: string
   terms: string
   color: string

@@ -24,7 +24,15 @@ describe('subscription tiers', () => {
     expect(isSubscriptionFeatureEnabled('free', 'integrations')).toBe(false)
     expect(isSubscriptionFeatureEnabled('free', 'extraSections')).toBe(false)
     expect(isSubscriptionFeatureEnabled('free', 'purchases')).toBe(false)
+    expect(isSubscriptionFeatureEnabled('free', 'knowledge')).toBe(false)
+    expect(isSubscriptionFeatureEnabled('free', 'meals')).toBe(false)
+    expect(isSubscriptionFeatureEnabled('free', 'investments')).toBe(false)
+    expect(isSubscriptionFeatureEnabled('free', 'coupons')).toBe(false)
     expect(isSubscriptionFeatureEnabled('pro', 'purchases')).toBe(true)
+    expect(isSubscriptionFeatureEnabled('pro', 'knowledge')).toBe(true)
+    expect(isSubscriptionFeatureEnabled('pro', 'meals')).toBe(true)
+    expect(isSubscriptionFeatureEnabled('pro', 'investments')).toBe(true)
+    expect(isSubscriptionFeatureEnabled('pro', 'coupons')).toBe(true)
   })
 
   it('maps legacy Plus users to Pro', () => {

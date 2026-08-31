@@ -12,6 +12,17 @@ describe('resolveWorkspaceDataSections', () => {
     expect(resolveWorkspaceDataSections('time-project')).toEqual(['time-tracking'])
   })
 
+  it('запрашивает домены, которые могут отображаться на странице сегодня', () => {
+    expect(resolveWorkspaceDataSections('today')).toEqual([
+      'birthdays',
+      'budget',
+      'challenges',
+      'coupons',
+      'sport',
+      'time-tracking',
+    ])
+  })
+
   it('ограничивает детальную аналитику выбранным доменом', () => {
     expect(resolveWorkspaceDataSections('analytics-sport', 'sport')).toEqual(['sport'])
     expect(resolveWorkspaceDataSections('analytics-calendar', 'calendar')).toEqual([])

@@ -22,9 +22,18 @@
         <div class="code-types">
           <button v-for="item in codeTypes" :key="item.value" type="button" :class="{ active: form.codeType === item.value }" @click="form.codeType = item.value"><UiIcon :name="item.icon" /><span>{{ item.label }}</span></button>
         </div>
-        <div v-if="form.codeType !== 'none'" class="coupon-form__grid" :class="{ 'coupon-form__grid--code': form.codeType === 'barcode' }">
+        <div v-if="form.codeType === 'barcode'" class="coupon-form__barcodes">
+          <div class="coupon-form__grid coupon-form__grid--code">
+            <UiInput v-model="form.codeValue" label="Верхний штрихкод" placeholder="Введите или распознайте значение" required />
+            <div class="select-field"><span>Формат</span><UiSelect v-model="form.barcodeFormat" aria-label="Формат верхнего штрихкода"><option value="code128">Code 128</option><option value="ean13">EAN-13</option><option value="ean8">EAN-8</option><option value="upca">UPC-A</option></UiSelect></div>
+          </div>
+          <div class="coupon-form__grid coupon-form__grid--code">
+            <UiInput v-model="form.secondaryCodeValue" label="Нижний штрихкод" placeholder="Необязательно" />
+            <div class="select-field"><span>Формат</span><UiSelect v-model="form.secondaryBarcodeFormat" aria-label="Формат нижнего штрихкода"><option value="code128">Code 128</option><option value="ean13">EAN-13</option><option value="ean8">EAN-8</option><option value="upca">UPC-A</option></UiSelect></div>
+          </div>
+        </div>
+        <div v-else-if="form.codeType !== 'none'" class="coupon-form__grid">
           <UiInput v-model="form.codeValue" :label="form.codeType === 'promo' ? 'Промокод' : 'Содержимое кода'" placeholder="Введите или отсканируйте значение" required />
-          <label v-if="form.codeType === 'barcode'" class="select-field"><span>Формат штрихкода</span><select v-model="form.barcodeFormat"><option value="code128">Code 128</option><option value="ean13">EAN-13</option><option value="ean8">EAN-8</option><option value="upca">UPC-A</option></select></label>
         </div>
         <p v-if="scanMessage" class="scan-message" :class="{ error: scanError }">{{ scanMessage }}</p>
       </section>
@@ -49,6 +58,7 @@ import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
+import UiSelect from '../../../components/ui/UiSelect.vue'
 import type { Coupon, CouponBarcodeFormat, CouponCodeType, CouponDiscountType, CouponPayload } from '../../../types/coupon'
 import { decodeCouponCodeImage } from '../services/couponCodeImage.service'
 import CouponMerchantInput from './CouponMerchantInput.vue'
@@ -69,18 +79,20 @@ const form = reactive<CouponPayload>(emptyForm())
 
 watch(() => [props.modelValue, props.coupon] as const, ([open, coupon]) => {
   if (!open) return
-  Object.assign(form, coupon ? { title: coupon.title, merchant: coupon.merchant, description: coupon.description, discountType: coupon.discountType, discountValue: coupon.discountValue, discountLabel: coupon.discountLabel, codeType: coupon.codeType, codeValue: coupon.codeValue, barcodeFormat: coupon.barcodeFormat, expiresOn: coupon.expiresOn, terms: coupon.terms, color: coupon.color, isUsed: coupon.isUsed } : emptyForm())
+  Object.assign(form, coupon ? { title: coupon.title, merchant: coupon.merchant, description: coupon.description, discountType: coupon.discountType, discountValue: coupon.discountValue, discountLabel: coupon.discountLabel, codeType: coupon.codeType, codeValue: coupon.codeValue, barcodeFormat: coupon.barcodeFormat, secondaryCodeValue: coupon.secondaryCodeValue || '', secondaryBarcodeFormat: coupon.secondaryBarcodeFormat || 'code128', expiresOn: coupon.expiresOn, terms: coupon.terms, color: coupon.color, isUsed: coupon.isUsed } : emptyForm())
   error.value = ''; scanMessage.value = ''; scanError.value = false; isQrScannerOpen.value = false
 }, { immediate: true })
 
-function emptyForm(): CouponPayload { return { title: '', merchant: '', description: '', discountType: 'percent', discountValue: 10, discountLabel: '', codeType: 'qr', codeValue: '', barcodeFormat: 'code128', expiresOn: '', terms: '', color: '#7c8cf8', isUsed: false } }
+function emptyForm(): CouponPayload { return { title: '', merchant: '', description: '', discountType: 'percent', discountValue: 10, discountLabel: '', codeType: 'qr', codeValue: '', barcodeFormat: 'code128', secondaryCodeValue: '', secondaryBarcodeFormat: 'code128', expiresOn: '', terms: '', color: '#7c8cf8', isUsed: false } }
 function submit() {
   error.value = ''
   if (!form.title.trim()) return void (error.value = 'Укажи название купона')
   if (form.codeType !== 'none' && !form.codeValue.trim()) return void (error.value = 'Введи значение кода или считай его с фотографии')
   const barcodeError = form.codeType === 'barcode' ? validateBarcode(form.codeValue, form.barcodeFormat) : ''
   if (barcodeError) return void (error.value = barcodeError)
-  emit('save', { ...form, title: form.title.trim(), merchant: form.merchant.trim(), codeValue: form.codeValue.trim(), discountValue: Math.max(0, Number(form.discountValue) || 0) })
+  const secondaryBarcodeError = form.codeType === 'barcode' && form.secondaryCodeValue.trim() ? validateBarcode(form.secondaryCodeValue, form.secondaryBarcodeFormat) : ''
+  if (secondaryBarcodeError) return void (error.value = `Нижний штрихкод: ${secondaryBarcodeError}`)
+  emit('save', { ...form, title: form.title.trim(), merchant: form.merchant.trim(), codeValue: form.codeValue.trim(), secondaryCodeValue: form.codeType === 'barcode' ? form.secondaryCodeValue.trim() : '', discountValue: Math.max(0, Number(form.discountValue) || 0) })
 }
 function validateBarcode(value: string, format: CouponBarcodeFormat) {
   const digits = value.trim()
@@ -97,10 +109,21 @@ async function scanImage(event: Event) {
   scanMessage.value = 'Распознаю код…'; scanError.value = false
   try {
     const result = await decodeCouponCodeImage(file)
-    form.codeValue = result.value
-    form.codeType = result.codeType
-    form.barcodeFormat = result.barcodeFormat
-    scanMessage.value = result.codeType === 'qr' ? 'QR-код распознан и добавлен' : 'Штрихкод распознан и добавлен'
+    const barcodes = result.codes.filter((code) => code.codeType === 'barcode')
+    const qrCode = result.codes.find((code) => code.codeType === 'qr')
+    if (barcodes.length) {
+      form.codeType = 'barcode'
+      form.codeValue = barcodes[0].value
+      form.barcodeFormat = barcodes[0].barcodeFormat
+      form.secondaryCodeValue = barcodes[1]?.value || ''
+      form.secondaryBarcodeFormat = barcodes[1]?.barcodeFormat || 'code128'
+      scanMessage.value = barcodes.length > 1 ? 'Распознаны верхний и нижний штрихкоды' : 'Штрихкод распознан и добавлен'
+    } else if (qrCode) {
+      form.codeType = 'qr'
+      form.codeValue = qrCode.value
+      form.secondaryCodeValue = ''
+      scanMessage.value = 'QR-код распознан и добавлен'
+    }
   } catch (reason) {
     scanMessage.value = reason instanceof Error ? reason.message : 'Не удалось распознать код на фото'
     scanError.value = true
@@ -110,6 +133,6 @@ function applyScannedQr(value: string) { form.codeType = 'qr'; form.codeValue = 
 </script>
 
 <style scoped>
-.coupon-form { display: grid; gap: 16px; }.coupon-form__grid { display: grid; gap: 10px; }.coupon-form__grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }.coupon-form__grid--code { grid-template-columns: minmax(0, 1fr) 180px; }.coupon-form__section { display: grid; gap: 9px; }.coupon-form__section > label, .coupon-form__section-title > label, .select-field > span, .color-field > span { color: var(--text-secondary); font-size: 11px; font-weight: 700; }.coupon-form__section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.coupon-form__section-title > div { display: flex; align-items: center; gap: 10px; }.choice-row, .code-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }.choice-row button, .code-types button { min-height: 36px; border: 1px solid var(--border-color); border-radius: 9px; color: var(--text-secondary); background: var(--control-bg); font-size: 9px; }.choice-row button.active, .code-types button.active { border-color: var(--border-strong); color: var(--text-primary); background: var(--control-bg-hover); }.code-types { grid-template-columns: repeat(4, 1fr); }.code-types button { display: flex; align-items: center; justify-content: center; gap: 6px; }.scan-button { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 0; color: var(--text-muted); background: transparent; font-size: 9px; }.scan-button--camera { color: var(--text-secondary); font-weight: 700; }.scan-message { margin: 0; color: var(--success); font-size: 9px; }.scan-message.error, .coupon-form__error { color: var(--danger); }.select-field, .color-field { display: grid; gap: 5px; }.select-field select { min-height: 36px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0 10px; color: var(--text-primary); background: var(--field-bg); outline: none; }.color-field > div { min-height: 36px; display: flex; align-items: center; gap: 7px; }.color-field button { width: 20px; height: 20px; border: 2px solid transparent; border-radius: 50%; }.color-field button.active { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--panel-bg) inset; }.coupon-form__details { display: grid; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 11px; }.coupon-form__details summary { color: var(--text-secondary); font-size: 10px; font-weight: 700; cursor: pointer; }.coupon-form__details[open] summary { margin-bottom: 2px; }.coupon-form__error { margin: 0; font-size: 10px; }.coupon-form footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 13px; }
+.coupon-form { display: grid; gap: 16px; }.coupon-form__grid { display: grid; gap: 10px; }.coupon-form__grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }.coupon-form__grid--code { grid-template-columns: minmax(0, 1fr) 180px; }.coupon-form__barcodes { display: grid; gap: 10px; }.coupon-form__section { display: grid; gap: 9px; }.coupon-form__section > label, .coupon-form__section-title > label, .select-field > span, .color-field > span { color: var(--text-secondary); font-size: 11px; font-weight: 700; }.coupon-form__section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.coupon-form__section-title > div { display: flex; align-items: center; gap: 10px; }.choice-row, .code-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }.choice-row button, .code-types button { min-height: 36px; border: 1px solid var(--border-color); border-radius: 9px; color: var(--text-secondary); background: var(--control-bg); font-size: 9px; }.choice-row button.active, .code-types button.active { border-color: var(--border-strong); color: var(--text-primary); background: var(--control-bg-hover); }.code-types { grid-template-columns: repeat(4, 1fr); }.code-types button { display: flex; align-items: center; justify-content: center; gap: 6px; }.scan-button { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 0; color: var(--text-muted); background: transparent; font-size: 9px; }.scan-button--camera { color: var(--text-secondary); font-weight: 700; }.scan-message { margin: 0; color: var(--success); font-size: 9px; }.scan-message.error, .coupon-form__error { color: var(--danger); }.select-field, .color-field { display: grid; gap: 5px; }.select-field :deep(.ui-select__trigger) { min-height: 36px; border-radius: var(--radius-md); }.color-field > div { min-height: 36px; display: flex; align-items: center; gap: 7px; }.color-field button { width: 20px; height: 20px; border: 2px solid transparent; border-radius: 50%; }.color-field button.active { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--panel-bg) inset; }.coupon-form__details { display: grid; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 11px; }.coupon-form__details summary { color: var(--text-secondary); font-size: 10px; font-weight: 700; cursor: pointer; }.coupon-form__details[open] summary { margin-bottom: 2px; }.coupon-form__error { margin: 0; font-size: 10px; }.coupon-form footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 13px; }
 @media (max-width: 600px) { .coupon-form__grid--two, .coupon-form__grid--code { grid-template-columns: 1fr; }.coupon-form__section-title { align-items: flex-start; flex-direction: column; }.code-types { grid-template-columns: repeat(2, 1fr); } }
 </style>

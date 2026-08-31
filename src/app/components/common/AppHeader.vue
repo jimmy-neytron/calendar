@@ -14,6 +14,15 @@
     </button>
 
     <div class="app-header__actions">
+      <RouterLink
+        class="app-header__today"
+        :class="{ 'app-header__today--active': route.name === 'today' }"
+        :to="{ name: 'today' }"
+        title="Открыть сводку на сегодня"
+      >
+        <UiIcon name="home" />
+        <span>Сегодня</span>
+      </RouterLink>
       <Transition name="network-indicator">
         <div v-if="networkActivityStore.visible.value" class="app-header__network" role="status" aria-live="polite">
           <span class="app-header__network-spinner">
@@ -171,17 +180,42 @@ const requestLabel = computed(() => networkActivityStore.activeRequests.value > 
   transition: border-color .18s var(--ease-out), background .18s var(--ease-out);
 }
 
+.app-header__today {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 750;
+  transition: border-color .18s var(--ease-out), color .18s var(--ease-out), background .18s var(--ease-out);
+}
+
+.app-header__today:hover,
+.app-header__today--active {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--control-bg));
+}
+
 .app-header__display:hover {
   border-color: var(--accent-border);
   background: var(--control-bg-hover);
 }
 
 @media (max-width: 1040px) {
-  .app-header__display span {
+  .app-header__display span,
+  .app-header__today span {
     display: none;
   }
 
-  .app-header__display {
+  .app-header__display,
+  .app-header__today {
     width: 38px;
     justify-content: center;
     padding: 0;

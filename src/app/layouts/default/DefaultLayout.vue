@@ -133,6 +133,7 @@ const smartSuggestion = computed(() => parseSmartEvent(paletteQuery.value, {
   calendars: calendarCollectionStore.activeCollections.value,
 }))
 const commands = computed(() => [
+  { id: 'today-overview', label: 'Открыть Сегодня', description: 'Ежедневная сводка по доступным разделам', icon: 'home', action: () => router.push({ name: 'today' }) },
   { id: 'new-event', label: 'Новое событие', description: 'Открыть быстрое создание', icon: '＋', shortcut: 'N', action: openEventDrawer },
   { id: 'today', label: 'Перейти к сегодня', description: 'Вернуть календарь к текущей дате', icon: '◎', shortcut: 'T', action: goCalendarToday },
   { id: 'month', label: 'Режим месяца', description: 'Показать сетку месяца', icon: '▦', shortcut: 'M', action: () => setCalendarMode('month') },
@@ -141,11 +142,11 @@ const commands = computed(() => [
   ...(readSubscriptionFeature('analytics') ? [{ id: 'analytics', label: 'Открыть аналитику', description: 'Нагрузка и категории', icon: '▥', action: () => router.push({ name: 'analytics' }) }] : []),
   { id: 'ideas', label: 'Открыть идеи', description: 'Копилка планов на свободное время', icon: '✦', action: () => router.push({ name: 'ideas' }) },
   { id: 'notes', label: 'Открыть заметки', description: 'Поиск по быстрым записям', icon: 'notes', action: () => router.push({ name: 'notes' }) },
-  { id: 'knowledge', label: 'Открыть знания', description: 'Учёба, работа и связанные материалы', icon: 'book', action: () => router.push({ name: 'knowledge' }) },
+  ...(readSubscriptionFeature('knowledge') ? [{ id: 'knowledge', label: 'Открыть знания', description: 'Учёба, работа и связанные материалы', icon: 'book', action: () => router.push({ name: 'knowledge' }) }] : []),
   { id: 'challenges', label: 'Открыть цели', description: 'Цели, серии и личные рекорды', icon: 'trophy', action: () => router.push({ name: 'challenges' }) },
-  { id: 'investments', label: 'Открыть инвестиции', description: 'Портфель, источники и курсы', icon: 'chart', action: () => router.push({ name: 'investments' }) },
-  { id: 'coupons', label: 'Открыть купоны', description: 'Скидки, QR-коды и промокоды', icon: 'ticket', action: () => router.push({ name: 'coupons' }) },
-  { id: 'meals', label: 'Открыть питание', description: 'Меню недели и свои блюда', icon: 'utensils', action: () => router.push({ name: 'meals' }) },
+  ...(readSubscriptionFeature('investments') ? [{ id: 'investments', label: 'Открыть инвестиции', description: 'Портфель, источники и курсы', icon: 'chart', action: () => router.push({ name: 'investments' }) }] : []),
+  ...(readSubscriptionFeature('coupons') ? [{ id: 'coupons', label: 'Открыть купоны', description: 'Скидки, QR-коды и промокоды', icon: 'ticket', action: () => router.push({ name: 'coupons' }) }] : []),
+  ...(readSubscriptionFeature('meals') ? [{ id: 'meals', label: 'Открыть питание', description: 'Меню недели и свои блюда', icon: 'utensils', action: () => router.push({ name: 'meals' }) }] : []),
   ...(budgetEnabled.value ? [{ id: 'budget', label: 'Открыть бюджет', description: 'Доход и план расходов', icon: '₽', action: () => router.push({ name: 'budget' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('timeTracking') ? [{ id: 'time-tracking', label: 'Открыть учёт времени', description: 'Проекты и часы', icon: '◷', action: () => router.push({ name: 'time-tracking' }) }] : []),
   ...(extraSectionsEnabled.value && readSubscriptionFeature('movies') ? [{ id: 'movies', label: 'Открыть фильмы', description: 'Поиск и список «Хочу посмотреть»', icon: '▶', action: () => router.push({ name: 'movies' }) }] : []),

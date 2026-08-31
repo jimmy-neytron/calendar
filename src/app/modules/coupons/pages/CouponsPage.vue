@@ -75,7 +75,7 @@ const filters = computed(() => [
 const visibleCoupons = computed(() => {
   const query = search.value.trim().toLocaleLowerCase('ru-RU')
   return coupons.value.filter((coupon) => (filter.value === 'all' || couponStatus(coupon) === filter.value)
-    && (!query || [coupon.title, coupon.merchant, coupon.description, coupon.codeValue].join(' ').toLocaleLowerCase('ru-RU').includes(query)))
+    && (!query || [coupon.title, coupon.merchant, coupon.description, coupon.codeValue, coupon.secondaryCodeValue].join(' ').toLocaleLowerCase('ru-RU').includes(query)))
 })
 
 function openEditor(coupon: Coupon | null = null) { editingCoupon.value = coupon; isEditorOpen.value = true }

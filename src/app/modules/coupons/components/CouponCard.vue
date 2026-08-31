@@ -37,7 +37,9 @@ const emit = defineEmits<{ open: []; edit: []; delete: [] }>()
 const merchantInitial = computed(() => (props.coupon.merchant || props.coupon.title || 'К').trim().charAt(0).toLocaleUpperCase('ru-RU'))
 const statusLabel = computed(() => ({ active: 'Активен', expiring: 'Скоро истечёт', used: 'Использован', expired: 'Истёк' })[props.status])
 const codeIcon = computed(() => ({ qr: 'grid', barcode: 'barcode', promo: 'copy', none: 'notes' })[props.coupon.codeType])
-const codeTypeLabel = computed(() => ({ qr: 'QR-код', barcode: 'Штрихкод', promo: 'Промокод', none: 'Без кода' })[props.coupon.codeType])
+const codeTypeLabel = computed(() => props.coupon.codeType === 'barcode' && props.coupon.secondaryCodeValue
+  ? '2 штрихкода'
+  : ({ qr: 'QR-код', barcode: 'Штрихкод', promo: 'Промокод', none: 'Без кода' })[props.coupon.codeType])
 const maskedCode = computed(() => props.coupon.codeValue.length <= 16 ? props.coupon.codeValue : `${props.coupon.codeValue.slice(0, 7)}…${props.coupon.codeValue.slice(-5)}`)
 const discountText = computed(() => {
   if (props.coupon.discountLabel) return props.coupon.discountLabel

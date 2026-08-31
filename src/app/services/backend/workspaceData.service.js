@@ -6,6 +6,7 @@ import { loadWorkspaceFeatures } from '../../composables/preferences/useBudgetSe
 import { queryClient } from '../../query/queryClient.js'
 import { queryKeys } from '../../query/queryKeys.js'
 import { resolveWorkspaceDataSections, WORKSPACE_DATA_SECTIONS } from './workspaceDataRoutes.js'
+import { isWorkspaceDataSectionEnabled } from '../../config/featureFlags.js'
 
 const sectionLoaders = {
   [WORKSPACE_DATA_SECTIONS.ACTIVITY]: async (workspaceId) => {
@@ -90,6 +91,7 @@ export async function loadWorkspaceData(workspaceId, {
   }
 
   const sections = resolveWorkspaceDataSections(routeName, analyticsSection)
+    .filter(isWorkspaceDataSectionEnabled)
 
   try {
     const results = await Promise.all([

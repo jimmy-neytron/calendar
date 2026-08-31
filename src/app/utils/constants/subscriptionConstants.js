@@ -32,6 +32,10 @@ export const SUBSCRIPTION_FEATURES = {
         sport: false,
         movies: false,
         purchases: false,
+        knowledge: false,
+        meals: false,
+        investments: false,
+        coupons: false,
     },
     pro: {
         calendar: true,
@@ -47,6 +51,10 @@ export const SUBSCRIPTION_FEATURES = {
         sport: true,
         movies: true,
         purchases: true,
+        knowledge: true,
+        meals: true,
+        investments: true,
+        coupons: true,
     },
 }
 

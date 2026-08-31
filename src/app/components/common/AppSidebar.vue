@@ -78,23 +78,17 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { workspaceStore } from '../../stores/workspace.store.js'
-import { useActivityLogSettings } from '../../composables/preferences/useActivityLogSettings.js'
-import { useBudgetSettings } from '../../composables/preferences/useBudgetSettings.js'
-import { useExtraSectionsSettings } from '../../composables/preferences/useExtraSectionsSettings.js'
-import { readSubscriptionFeature } from '../../composables/preferences/useSubscriptionSettings.js'
-import { authStore } from '../../stores/auth.store.js'
 import { useAdminLeadNotifications } from '../../modules/admin/composables/useAdminLeadNotifications.js'
 import { useSidebarPreferences } from '../../composables/preferences/useSidebarPreferences'
-import { SIDEBAR_GROUPS, type SidebarGroup, type SidebarSection } from '../../navigation/sidebarSections'
+import { useAvailableSections } from '../../composables/navigation/useAvailableSections'
+import type { SidebarGroup, SidebarSection } from '../../navigation/sidebarSections'
 import AllSectionsModal from './AllSectionsModal.vue'
 import SidebarCustomizeModal from './SidebarCustomizeModal.vue'
 import UiIcon from '../ui/UiIcon.vue'
 
 const route = useRoute()
 const activeWorkspace = workspaceStore.activeWorkspace
-const { isEnabled: activityLogEnabled } = useActivityLogSettings()
-const { isEnabled: budgetEnabled } = useBudgetSettings()
-const { isEnabled: extraSectionsEnabled } = useExtraSectionsSettings()
+const { availableGroups } = useAvailableSections()
 const { unreadLeadCount } = useAdminLeadNotifications()
 const {
   preferences: sidebarPreferences,
@@ -115,16 +109,6 @@ const currentSidebarName = computed(() => {
   return routeName
 })
 
-function isAvailable(item: SidebarSection) {
-  return (
-    (item.name !== 'activity' || activityLogEnabled.value)
-    && (item.name !== 'budget' || budgetEnabled.value)
-    && (!item.extra || extraSectionsEnabled.value)
-    && (!item.feature || readSubscriptionFeature(item.feature))
-    && (item.name !== 'admin-overview' || authStore.isAdmin.value)
-  )
-}
-
 function withBadge(item: SidebarSection) {
   return {
     ...item,
@@ -139,10 +123,6 @@ function orderGroups(groups: SidebarGroup[]) {
     items: [...group.items].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name)),
   }))
 }
-
-const availableGroups = computed<SidebarGroup[]>(() => SIDEBAR_GROUPS
-  .map((group) => ({ ...group, items: group.items.filter(isAvailable) }))
-  .filter((group) => group.items.length))
 
 const orderedAvailableGroups = computed(() => orderGroups(availableGroups.value))
 const visibleGroups = computed(() => orderGroups(availableGroups.value)

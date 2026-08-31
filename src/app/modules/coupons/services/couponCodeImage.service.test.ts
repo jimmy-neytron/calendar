@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapDetectedCouponCode } from './couponCodeImage.service'
+import { mapDetectedCouponCode, normalizeDetectedCodes } from './couponCodeImage.service'
 
 describe('mapDetectedCouponCode', () => {
   it('maps a QR code to the QR coupon type', () => {
@@ -24,5 +24,23 @@ describe('mapDetectedCouponCode', () => {
       codeType: 'barcode',
       barcodeFormat: 'code128',
     })
+  })
+})
+
+describe('normalizeDetectedCodes', () => {
+  it('orders two barcodes from top to bottom and removes duplicates', () => {
+    expect(normalizeDetectedCodes([
+      { rawValue: 'BOTTOM', format: 'code_128', boundingBox: { y: 420 } },
+      { rawValue: 'TOP', format: 'code_128', boundingBox: { y: 110 } },
+      { rawValue: 'TOP', format: 'code_128', boundingBox: { y: 112 } },
+    ]).map((code) => code.value)).toEqual(['TOP', 'BOTTOM'])
+  })
+
+  it('treats a one-character recognition error as the same barcode', () => {
+    expect(normalizeDetectedCodes([
+      { rawValue: 'N780171102436001012', format: 'code_128', imageY: 110 },
+      { rawValue: '780171102436001012', format: 'code_128', imageY: 112 },
+      { rawValue: '000790191224169591', format: 'code_128', imageY: 420 },
+    ]).map((code) => code.value)).toEqual(['780171102436001012', '000790191224169591'])
   })
 })
