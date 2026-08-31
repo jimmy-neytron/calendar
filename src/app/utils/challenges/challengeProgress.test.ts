@@ -18,6 +18,17 @@ describe('challenge progress', () => {
       goalType: 'best', progressDirection: 'decrease', startValue: 90, targetValue: 80, targetDays: 60,
       dailyValues: { '2026-08-01': 90, '2026-08-10': 87, '2026-08-20': 88 },
     })
-    expect(progress).toMatchObject({ current: 87, target: 80, percent: 30, remaining: 7, record: 87, recordDate: '2026-08-10' })
+    expect(progress).toMatchObject({ current: 88, target: 80, percent: 20, remaining: 8, record: 87, recordDate: '2026-08-10' })
+  })
+
+  it('adds the configured starting measurement to a decrease chart', () => {
+    const points = buildChallengeChart({
+      goalType: 'best', progressDirection: 'decrease', startDate: '2026-08-01', startValue: 85, targetDays: 60,
+      dailyValues: { '2026-08-10': 84.5 },
+    })
+    expect(points.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: '2026-08-01', value: 85 },
+      { key: '2026-08-10', value: 84.5 },
+    ])
   })
 })

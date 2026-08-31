@@ -43,6 +43,7 @@
 
         <details class="quick-goal__details">
           <summary>Дополнительные настройки</summary>
+          <UiInput v-model="form.startDate" type="date" label="Дата начала" required />
           <UiInput v-model="form.description" type="textarea" label="Описание или правило" placeholder="Необязательно" />
         </details>
       </template>
@@ -70,7 +71,7 @@ const templates: Template[] = [
   { id: 'regular', title: 'Несколько раз в неделю', description: 'Например, 12 тренировок за четыре недели', icon: 'calendar', goalType: 'consistency', progressDirection: 'increase', targetDays: 28, targetValue: 12, startValue: 0, unit: 'дней', color: '#38bdf8' },
   { id: 'total', title: 'Набрать количество', description: 'Суммировать повторения, километры или минуты', icon: 'plus', goalType: 'total', progressDirection: 'increase', targetDays: 30, targetValue: 300, startValue: 0, unit: 'повторений', color: '#34d399' },
   { id: 'best', title: 'Повысить результат', description: 'Вес на штанге, повторения или дистанция', icon: 'trophy', goalType: 'best', progressDirection: 'increase', targetDays: 30, targetValue: 60, startValue: 0, unit: 'кг', color: '#f59e0b' },
-  { id: 'reduce', title: 'Снизить показатель', description: 'Вес тела, время или другой результат, где меньше — лучше', icon: 'target', goalType: 'best', progressDirection: 'decrease', targetDays: 60, targetValue: 75, startValue: 85, unit: 'кг', color: '#60a5fa' },
+  { id: 'reduce', title: 'Снизить показатель', description: 'Вес тела, время или другой показатель с регулярными измерениями', icon: 'target', goalType: 'best', progressDirection: 'decrease', targetDays: 60, targetValue: 75, startValue: 85, unit: 'кг', color: '#60a5fa' },
 ]
 const props = defineProps<{ modelValue: boolean; challenge?: Record<string, unknown> | null }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; save: [value: Record<string, unknown>] }>()
@@ -120,6 +121,8 @@ function setDirection(direction: 'increase' | 'decrease') {
 function durationLabel(days: number) { return days < 30 ? `${days} дн.` : days === 30 ? 'Месяц' : days === 60 ? '2 месяца' : '3 месяца' }
 function submit() {
   if (!form.title.trim()) { error.value = 'Укажи короткое название цели'; return }
+  if (!form.startDate) { error.value = 'Укажи дату начала'; return }
+  if (Number(form.targetValue) <= 0) { error.value = 'Целевое значение должно быть больше нуля'; return }
   if (form.progressDirection === 'decrease' && Number(form.startValue) <= Number(form.targetValue)) { error.value = 'Текущее значение должно быть больше цели'; return }
   emit('save', { id: props.challenge?.id || '', ...form, activity: form.activity || form.title })
 }

@@ -3,6 +3,7 @@ export type ChallengeProgressDirection = 'increase' | 'decrease'
 
 export interface ProgressChallenge {
   id?: string
+  startDate?: string
   goalType?: ChallengeGoalType
   targetDays: number
   targetValue?: number
@@ -32,11 +33,12 @@ export function getChallengeProgress(challenge: ProgressChallenge | null | undef
     const value = Number(rawValue)
     return !best || (decreases ? value < best[1] : value > best[1]) ? [date, value] : best
   }, null)
+  const latestEntry = values.at(-1)
   const start = Number(challenge.startValue) || Number(values[0]?.[1]) || target
   const current = type === 'total'
     ? values.reduce((sum, [, value]) => sum + Number(value), 0)
     : type === 'best'
-      ? (recordEntry?.[1] ?? (decreases ? start : 0))
+      ? (decreases ? Number(latestEntry?.[1] ?? start) : (recordEntry?.[1] ?? 0))
       : new Set(challenge.completedDates || []).size
   const percent = decreases
     ? Math.min(100, Math.max(0, Math.round((start - current) / Math.max(.0001, start - target) * 100)))
@@ -68,10 +70,12 @@ export function getChallengeStreak(completedDates: string[], todayKey: string) {
 export function buildChallengeChart(challenge: ProgressChallenge) {
   const values = challenge.dailyValues || {}
   const completed = new Set(challenge.completedDates || [])
-  const dates = [...new Set([...Object.keys(values), ...completed])].sort()
+  const isDecreaseMeasurement = challenge.goalType === 'best' && challenge.progressDirection === 'decrease'
+  const hasStartMeasurement = isDecreaseMeasurement && challenge.startDate && Number(challenge.startValue) > 0
+  const dates = [...new Set([...Object.keys(values), ...completed, ...(hasStartMeasurement ? [challenge.startDate as string] : [])])].sort()
   let cumulative = 0
   return dates.map((date) => {
-    const daily = Number(values[date] || 0)
+    const daily = Number(values[date] || (hasStartMeasurement && date === challenge.startDate ? challenge.startValue : 0))
     if ((challenge.goalType || 'consistency') === 'total') cumulative += daily
     return {
       key: date,

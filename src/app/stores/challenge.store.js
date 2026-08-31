@@ -48,6 +48,9 @@ function updateChallenge(id, data) {
 function toggleDate(id, date = DateHelper.toKey(new Date())) {
   const target = findOwn(id)
   if (!target) return { ok: false, message: 'Челлендж не найден' }
+  if ((target.goalType || 'consistency') !== 'consistency') return { ok: false, message: 'Для числовой цели укажи фактический результат' }
+  const dateError = validateResultDate(target, date)
+  if (dateError) return { ok: false, message: dateError }
   const completedDates = new Set(target.completedDates || [])
   const completed = !completedDates.has(date)
   completed ? completedDates.add(date) : completedDates.delete(date)
@@ -62,6 +65,8 @@ function toggleDate(id, date = DateHelper.toKey(new Date())) {
 function recordResult(id, date, rawValue) {
   const target = findOwn(id)
   if (!target) return { ok: false, message: 'Цель не найдена' }
+  const dateError = validateResultDate(target, date)
+  if (dateError) return { ok: false, message: dateError }
   const value = Math.max(0, Number(rawValue) || 0)
   if (!value) return { ok: false, message: 'Укажи результат больше нуля' }
   const dailyValues = { ...(target.dailyValues || {}), [date]: value }
@@ -70,6 +75,19 @@ function recordResult(id, date, rawValue) {
   repository.update(id, challenge)
   addActivity('challenge:record', `записал(а) результат для цели «${target.title}»`, { challengeId: id, date, value, unit: target.unit })
   return { ok: true, challenge, progress: getChallengeProgress(challenge) }
+}
+
+function removeResult(id, date) {
+  const target = findOwn(id)
+  if (!target) return { ok: false, message: 'Цель не найдена' }
+  const dailyValues = { ...(target.dailyValues || {}) }
+  if (!Object.hasOwn(dailyValues, date)) return { ok: false, message: 'На эту дату результата нет' }
+  delete dailyValues[date]
+  const completedDates = (target.completedDates || []).filter((item) => item !== date)
+  const challenge = { ...target, dailyValues, completedDates, updatedAt: new Date().toISOString() }
+  repository.update(id, challenge)
+  addActivity('challenge:remove-record', `удалил(а) результат для цели «${target.title}»`, { challengeId: id, date })
+  return { ok: true, challenge }
 }
 
 function toggleActive(id) {
@@ -119,8 +137,16 @@ function findOwn(id) {
   return item?.userId === authStore.currentUserId.value ? item : null
 }
 
+function validateResultDate(challenge, date) {
+  const today = DateHelper.toKey(new Date())
+  const end = DateHelper.toKey(DateHelper.addDays(DateHelper.parseKey(challenge.startDate), challenge.targetDays - 1))
+  if (date > today) return 'Нельзя отмечать будущую дату'
+  if (date < challenge.startDate || date > end) return 'Дата находится вне срока цели'
+  return ''
+}
+
 async function loadWorkspace(workspaceId) {
   return repository.loadWorkspace(workspaceId)
 }
 
-export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, recordResult, toggleActive, deleteChallenge, getStreak, getProgress: getChallengeProgress, loadWorkspace }
+export const challengeStore = { challenges, addChallenge, updateChallenge, toggleDate, recordResult, removeResult, toggleActive, deleteChallenge, getStreak, getProgress: getChallengeProgress, loadWorkspace }

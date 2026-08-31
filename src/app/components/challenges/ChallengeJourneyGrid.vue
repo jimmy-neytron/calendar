@@ -61,6 +61,8 @@ const props = defineProps({
   startDate: { type: String, required: true },
   targetDays: { type: Number, required: true },
   completedDates: { type: Array, default: () => [] },
+  dailyValues: { type: Object, default: () => ({}) },
+  unit: { type: String, default: '' },
   todayKey: { type: String, required: true },
   color: { type: String, default: 'var(--accent)' },
 })
@@ -86,7 +88,10 @@ const gridDays = computed(() => {
     const inRange = key >= props.startDate && key <= DateHelper.toKey(challengeEnd.value)
     const done = inRange && completedSet.value.has(key)
     const future = key > props.todayKey
-    const state = done ? 'выполнено' : future ? 'впереди' : inRange ? 'не выполнено' : ''
+    const recordedValue = Number(props.dailyValues[key])
+    const state = done
+      ? Number.isFinite(recordedValue) && recordedValue > 0 ? `${recordedValue} ${props.unit}`.trim() : 'выполнено'
+      : future ? 'впереди' : inRange ? 'не выполнено' : ''
 
     return {
       key,
