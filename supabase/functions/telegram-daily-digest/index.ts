@@ -60,6 +60,25 @@ type DigestCoupon = {
   expires_on: string | null
 }
 
+type DigestShoppingIngredient = {
+  name: string
+  amount: number
+  unit: 'g' | 'ml' | 'piece'
+}
+
+type DigestMealSlot = {
+  recipeId?: string
+  servings?: number
+  recipeServings?: number
+  ingredients?: unknown
+}
+
+type DigestMealRecipe = {
+  id: string
+  servings: number
+  ingredients: unknown
+}
+
 type DigestRequest = {
   source?: string
   targetUserId?: string
@@ -142,13 +161,14 @@ Deno.serve(async (request) => {
     if (!force && connection.last_digest_sent_on === today) continue
 
     const workspaceIds = await loadWorkspaceIds(connection.user_id)
-    const [events, exercises, coupons] = await Promise.all([
+    const [events, exercises, coupons, shoppingIngredients] = await Promise.all([
       connection.include_calendar ? loadEvents(connection.user_id, workspaceIds, today) : Promise.resolve([]),
       connection.include_sport ? loadSportExercises(connection.user_id, weekday) : Promise.resolve([]),
       loadDigestCoupons(workspaceIds, today),
+      loadTodayShoppingIngredients(workspaceIds, today),
     ])
 
-    const message = buildDigestMessage(today, events, exercises, coupons)
+    const message = buildDigestMessage(today, events, exercises, coupons, shoppingIngredients)
     const telegramResponse = await sendMessage(connection.telegram_chat_id, message)
 
     if (telegramResponse.ok) {
@@ -258,6 +278,115 @@ async function loadDigestCoupons(workspaceIds: string[], today: string) {
   return selectDigestCoupons(coupons)
 }
 
+async function loadTodayShoppingIngredients(workspaceIds: string[], today: string) {
+  if (!workspaceIds.length) return []
+
+  const { data: weekRows, error } = await supabase
+    .from('meal_weeks')
+    .select('plan')
+    .in('workspace_id', workspaceIds)
+    .eq('week_start', getMondayDateKey(today))
+
+  if (error) {
+    console.error('Failed to load meal weeks for digest:', error.message)
+    return []
+  }
+
+  const plans = (weekRows || []).map((row) => (
+    row.plan && typeof row.plan === 'object' && !Array.isArray(row.plan)
+      ? row.plan as Record<string, unknown>
+      : {}
+  ))
+  const slots = plans.flatMap((plan) => {
+    const day = plan[today] as Record<string, DigestMealSlot> | undefined
+    return day && typeof day === 'object' ? Object.values(day).filter(Boolean) : []
+  })
+  const manualItems = plans.flatMap((plan) => normalizeManualDigestItems(plan.__shoppingItems, today))
+  if (!slots.length && !manualItems.length) return []
+
+  const entries: Array<{ ingredient: DigestShoppingIngredient; multiplier: number }> = manualItems
+    .map((ingredient) => ({ ingredient, multiplier: 1 }))
+  const unresolvedSlots: DigestMealSlot[] = []
+  slots.forEach((slot) => {
+    const ingredients = normalizeDigestIngredients(slot.ingredients)
+    if (!ingredients.length) {
+      unresolvedSlots.push(slot)
+      return
+    }
+    const multiplier = Math.max(0, Number(slot.servings) || 0) / Math.max(1, Number(slot.recipeServings) || 1)
+    ingredients.forEach((ingredient) => entries.push({ ingredient, multiplier }))
+  })
+
+  const recipeIds = [...new Set(unresolvedSlots.map((slot) => slot.recipeId).filter(Boolean))] as string[]
+  if (recipeIds.length) {
+    const { data: recipeRows, error: recipeError } = await supabase
+      .from('meal_recipes')
+      .select('id,servings,ingredients')
+      .in('workspace_id', workspaceIds)
+      .in('id', recipeIds)
+
+    if (recipeError) {
+      console.error('Failed to load meal recipes for digest:', recipeError.message)
+    } else {
+      const recipes = new Map(((recipeRows || []) as DigestMealRecipe[]).map((recipe) => [recipe.id, recipe]))
+      unresolvedSlots.forEach((slot) => {
+        const recipe = slot.recipeId ? recipes.get(slot.recipeId) : undefined
+        if (!recipe) return
+        const multiplier = Math.max(0, Number(slot.servings) || 0) / Math.max(1, Number(recipe.servings) || 1)
+        normalizeDigestIngredients(recipe.ingredients)
+          .forEach((ingredient) => entries.push({ ingredient, multiplier }))
+      })
+    }
+  }
+
+  const merged = new Map<string, DigestShoppingIngredient>()
+  entries.forEach(({ ingredient, multiplier }) => {
+    const key = `${normalizeDigestName(ingredient.name)}:${ingredient.unit}`
+    const current = merged.get(key) || { ...ingredient, amount: 0 }
+    current.amount += ingredient.amount * multiplier
+    merged.set(key, current)
+  })
+  return [...merged.values()]
+    .map((ingredient) => ({ ...ingredient, amount: Math.round(ingredient.amount * 100) / 100 }))
+    .filter((ingredient) => ingredient.amount > 0)
+    .sort((left, right) => left.name.localeCompare(right.name, 'ru'))
+    .slice(0, 30)
+}
+
+function normalizeDigestIngredients(value: unknown): DigestShoppingIngredient[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const source = item as Record<string, unknown>
+    const name = String(source.name || '').trim()
+    const amount = Math.max(0, Number(source.amount) || 0)
+    const unit = ['g', 'ml', 'piece'].includes(String(source.unit))
+      ? String(source.unit) as DigestShoppingIngredient['unit']
+      : 'g'
+    return name && amount ? [{ name, amount, unit }] : []
+  })
+}
+
+function normalizeManualDigestItems(value: unknown, date: string) {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const source = item as Record<string, unknown>
+    return String(source.date || '') === date ? normalizeDigestIngredients([source]) : []
+  })
+}
+
+function normalizeDigestName(value: string) {
+  return value.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е').trim()
+}
+
+function getMondayDateKey(date: string) {
+  const current = new Date(`${date}T12:00:00+03:00`)
+  const weekday = current.getUTCDay() || 7
+  current.setUTCDate(current.getUTCDate() - weekday + 1)
+  return current.toISOString().slice(0, 10)
+}
+
 function selectDigestCoupons(coupons: DigestCoupon[]) {
   const selected: DigestCoupon[] = []
   const preferredCodeTypes: DigestCoupon['code_type'][] = ['promo', 'qr', 'barcode']
@@ -279,7 +408,13 @@ function expirySortValue(value: string | null) {
   return value ? new Date(`${value}T23:59:59+03:00`).getTime() : Number.MAX_SAFE_INTEGER
 }
 
-function buildDigestMessage(today: string, events: CalendarEvent[], exercises: SportExercise[], coupons: DigestCoupon[]) {
+function buildDigestMessage(
+  today: string,
+  events: CalendarEvent[],
+  exercises: SportExercise[],
+  coupons: DigestCoupon[],
+  shoppingIngredients: DigestShoppingIngredient[],
+) {
   const lines = [
     '<b>☀️ Доброе утро!</b>',
     `<i>${formatRussianDate(today)} · ваш план на день</i>`,
@@ -297,6 +432,13 @@ function buildDigestMessage(today: string, events: CalendarEvent[], exercises: S
     lines.push(`<blockquote>${eventLines.join('\n')}</blockquote>`)
   } else {
     lines.push('<i>Можно оставить время для себя</i>')
+  }
+
+  if (shoppingIngredients.length) {
+    lines.push('', `<b>🛒 Купить сегодня</b> · ${formatRussianCount(shoppingIngredients.length, ['продукт', 'продукта', 'продуктов'])}`)
+    lines.push(`<blockquote>${shoppingIngredients.map((ingredient) => (
+      `${escapeTelegramHtml(ingredient.name)} — <b>${escapeTelegramHtml(formatShoppingAmount(ingredient))}</b>`
+    )).join('\n')}</blockquote>`)
   }
 
   const totalDuration = exercises.reduce((sum, exercise) => sum + Math.max(0, Number(exercise.duration_minutes) || 0), 0)
@@ -379,6 +521,14 @@ function buildDigestMessage(today: string, events: CalendarEvent[], exercises: S
   lines.push('', '━━━━━━━━━━━━━━', '<i>Хорошего и продуктивного дня ✨</i>')
 
   return truncateTelegramHtml(lines)
+}
+
+function formatShoppingAmount(ingredient: DigestShoppingIngredient) {
+  const amount = Number.isInteger(ingredient.amount)
+    ? String(ingredient.amount)
+    : ingredient.amount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })
+  const unit = ingredient.unit === 'piece' ? 'шт.' : ingredient.unit === 'ml' ? 'мл' : 'г'
+  return `${amount} ${unit}`
 }
 
 function formatRussianCount(value: number, forms: [string, string, string]) {

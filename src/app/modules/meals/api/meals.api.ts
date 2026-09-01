@@ -1,5 +1,17 @@
 import { requireAuthenticatedSupabase } from '../../../api/supabase/client.js'
-import type { MealRecipe, MealWeek } from '../types/meals.types'
+import type { MealProduct, MealRecipe, MealWeek } from '../types/meals.types'
+
+const PRODUCT_COLUMNS = [
+  'id',
+  'workspace_id',
+  'name',
+  'brand',
+  'default_unit',
+  'nutrition_per_100g',
+  'archived_at',
+  'created_at',
+  'updated_at',
+].join(',')
 
 const RECIPE_COLUMNS = [
   'id',
@@ -35,6 +47,29 @@ export async function listMealRecipes(workspaceId: string): Promise<MealRecipe[]
     .order('title')
   if (error) throw error
   return (data || []).map(fromRecipeRow)
+}
+
+export async function listMealProducts(workspaceId: string): Promise<MealProduct[]> {
+  const client = await requireAuthenticatedSupabase()
+  const { data, error } = await client
+    .from('meal_products')
+    .select(PRODUCT_COLUMNS)
+    .eq('workspace_id', workspaceId)
+    .is('archived_at', null)
+    .order('name')
+  if (error) throw error
+  return (data || []).map(fromProductRow)
+}
+
+export async function upsertMealProduct(product: MealProduct): Promise<MealProduct> {
+  const client = await requireAuthenticatedSupabase()
+  const { data, error } = await client
+    .from('meal_products')
+    .upsert(toProductRow(product), { onConflict: 'id' })
+    .select(PRODUCT_COLUMNS)
+    .single()
+  if (error) throw error
+  return fromProductRow(data)
 }
 
 export async function upsertMealRecipe(recipe: MealRecipe): Promise<MealRecipe> {
@@ -97,6 +132,35 @@ function toRecipeRow(recipe: MealRecipe) {
   }
 }
 
+function toProductRow(product: MealProduct) {
+  return {
+    id: product.id,
+    workspace_id: product.workspaceId,
+    name: product.name,
+    brand: product.brand,
+    default_unit: product.defaultUnit,
+    nutrition_per_100g: product.nutritionPer100g,
+    archived_at: product.archivedAt,
+    created_at: product.createdAt,
+    updated_at: product.updatedAt,
+  }
+}
+
+function fromProductRow(row: Record<string, unknown>): MealProduct {
+  const unit = String(row.default_unit || 'g')
+  return {
+    id: String(row.id || ''),
+    workspaceId: String(row.workspace_id || ''),
+    name: String(row.name || ''),
+    brand: String(row.brand || ''),
+    defaultUnit: ['g', 'ml', 'piece'].includes(unit) ? unit as MealProduct['defaultUnit'] : 'g',
+    nutritionPer100g: normalizeNutrition(row.nutrition_per_100g),
+    archivedAt: row.archived_at ? String(row.archived_at) : null,
+    createdAt: String(row.created_at || new Date().toISOString()),
+    updatedAt: String(row.updated_at || new Date().toISOString()),
+  }
+}
+
 function fromRecipeRow(row: Record<string, unknown>): MealRecipe {
   return {
     id: String(row.id || ''),
@@ -119,7 +183,7 @@ function toWeekRow(week: MealWeek) {
     id: week.id,
     workspace_id: week.workspaceId,
     week_start: week.weekStart,
-    plan: week.plan,
+    plan: { ...week.plan, __shoppingItems: week.shoppingItems },
     calorie_target: week.calorieTarget,
     created_at: week.createdAt,
     updated_at: week.updatedAt,
@@ -127,14 +191,21 @@ function toWeekRow(week: MealWeek) {
 }
 
 function fromWeekRow(row: Record<string, unknown>): MealWeek {
-  const plan = row.plan && typeof row.plan === 'object' && !Array.isArray(row.plan)
-    ? row.plan as MealWeek['plan']
+  const rawPlan = row.plan && typeof row.plan === 'object' && !Array.isArray(row.plan)
+    ? row.plan as Record<string, unknown>
     : {}
+  const shoppingItems = Array.isArray(rawPlan.__shoppingItems)
+    ? rawPlan.__shoppingItems as MealWeek['shoppingItems']
+    : []
+  const plan = Object.fromEntries(
+    Object.entries(rawPlan).filter(([date]) => date !== '__shoppingItems'),
+  ) as MealWeek['plan']
   return {
     id: String(row.id || ''),
     workspaceId: String(row.workspace_id || ''),
     weekStart: String(row.week_start || '').slice(0, 10),
     plan,
+    shoppingItems,
     calorieTarget: row.calorie_target == null ? null : Math.max(0, Number(row.calorie_target)),
     createdAt: String(row.created_at || new Date().toISOString()),
     updatedAt: String(row.updated_at || new Date().toISOString()),

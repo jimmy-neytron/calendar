@@ -2,8 +2,16 @@ import type {
   MealIngredient,
   MealNutrition,
   MealRecipe,
+  MealShoppingItem,
   MealSlot,
 } from '../types/meals.types'
+
+export interface ShoppingIngredient {
+  key: string
+  name: string
+  amount: number
+  unit: MealIngredient['unit']
+}
 
 export function parseMealDecimal(value: unknown): number | null {
   const normalized = String(value ?? '').trim().replace(',', '.')
@@ -51,8 +59,8 @@ export function sumNutrition(values: MealNutrition[]): MealNutrition {
 
 export function mergeShoppingIngredients(
   slots: Array<{ recipe: MealRecipe; servings: number }>,
-): Array<{ key: string; name: string; amount: number; unit: MealIngredient['unit'] }> {
-  const merged = new Map<string, { key: string; name: string; amount: number; unit: MealIngredient['unit'] }>()
+): ShoppingIngredient[] {
+  const merged = new Map<string, ShoppingIngredient>()
 
   slots.forEach(({ recipe, servings }) => {
     const multiplier = Math.max(0, servings) / Math.max(1, recipe.servings)
@@ -66,6 +74,23 @@ export function mergeShoppingIngredients(
 
   return [...merged.values()]
     .map((item) => ({ ...item, amount: roundAmount(item.amount) }))
+    .sort((first, second) => first.name.localeCompare(second.name, 'ru'))
+}
+
+export function mergeManualShoppingItems(
+  ingredients: ShoppingIngredient[],
+  manualItems: MealShoppingItem[],
+): ShoppingIngredient[] {
+  const merged = new Map(ingredients.map((ingredient) => [ingredient.key, { ...ingredient }]))
+  manualItems.forEach((item) => {
+    const key = `${normalizeName(item.name)}:${item.unit}`
+    const current = merged.get(key) || { key, name: item.name, amount: 0, unit: item.unit }
+    current.amount += Math.max(0, Number(item.amount) || 0)
+    merged.set(key, current)
+  })
+  return [...merged.values()]
+    .map((item) => ({ ...item, amount: roundAmount(item.amount) }))
+    .filter((item) => item.amount > 0)
     .sort((first, second) => first.name.localeCompare(second.name, 'ru'))
 }
 

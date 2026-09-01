@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 import { describe, expect, it } from 'vitest'
-import { cloneMealIngredients, cloneMealWeek } from './mealPlan.service'
-import type { MealIngredient, MealWeek } from '../types/meals.types'
+import { addMealSlotSnapshots, cloneMealIngredients, cloneMealWeek } from './mealPlan.service'
+import type { MealIngredient, MealRecipe, MealWeek } from '../types/meals.types'
 
 describe('план питания', () => {
   it('безопасно копирует реактивную неделю и отделяет черновик от store', () => {
@@ -12,6 +12,7 @@ describe('план питания', () => {
       plan: {
         '2026-08-17': { breakfast: { recipeId: 'recipe-1', servings: 1 } },
       },
+      shoppingItems: [],
       calorieTarget: null,
       createdAt: '2026-08-17T00:00:00.000Z',
       updatedAt: '2026-08-17T00:00:00.000Z',
@@ -40,5 +41,34 @@ describe('план питания', () => {
 
     expect(source[0].amount).toBe(100)
     expect(draft[0].amount).toBe(200)
+  })
+
+  it('сохраняет снимок ингредиентов для Telegram и списка покупок', () => {
+    const week = {
+      plan: { '2026-09-02': { dinner: { recipeId: 'recipe-1', servings: 2 } } },
+    } as MealWeek
+    const recipe = {
+      id: 'recipe-1',
+      title: 'Паста',
+      servings: 4,
+      ingredients: [{
+        id: 'tomato',
+        name: 'Помидор',
+        amount: 100,
+        unit: 'g',
+        nutritionPer100g: null,
+        source: 'manual',
+        sourceId: 'tomato',
+      }],
+    } as MealRecipe
+
+    const result = addMealSlotSnapshots(week, new Map([[recipe.id, recipe]]))
+
+    expect(result.plan['2026-09-02'].dinner).toMatchObject({
+      recipeTitle: 'Паста',
+      recipeServings: recipe.servings,
+      ingredients: [{ name: 'Помидор', amount: 100 }],
+    })
+    expect(week.plan['2026-09-02'].dinner?.ingredients).toBeUndefined()
   })
 })

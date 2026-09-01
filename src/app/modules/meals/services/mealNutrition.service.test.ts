@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculateRecipeNutrition,
+  mergeManualShoppingItems,
   mergeShoppingIngredients,
   parseMealDecimal,
   sumNutrition,
@@ -73,6 +74,16 @@ describe('расчёты питания', () => {
       name: 'Куриная грудка',
       amount: 300,
       unit: 'g',
+    }])
+  })
+
+  it('объединяет ручной продукт с продуктами из меню', () => {
+    expect(mergeManualShoppingItems([{
+      key: 'молоко:ml', name: 'Молоко', amount: 500, unit: 'ml',
+    }], [{
+      id: 'manual-1', name: 'молоко', amount: 250, unit: 'ml', date: '2026-09-02',
+    }])).toEqual([{
+      key: 'молоко:ml', name: 'Молоко', amount: 750, unit: 'ml',
     }])
   })
 })

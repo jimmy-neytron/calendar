@@ -28,42 +28,21 @@
             <span>Цель на день</span>
             <div><input v-model="calorieTargetInput" type="text" inputmode="decimal" placeholder="Не задана"><b>ккал</b></div>
           </label>
-          <p>Цель и пищевая ценность необязательны. Блюда без данных всё равно остаются в плане.</p>
+          <div class="week-toolbar__summary">
+            <div><strong>{{ plannedSlots.length }}</strong><span>блюд в плане</span></div>
+            <p>Нажми на ячейку, чтобы выбрать или заменить блюдо.</p>
+          </div>
           <UiButton variant="secondary" icon="copy" @click="copyPreviousWeek">Повторить прошлую неделю</UiButton>
           <UiButton icon="check" :loading="mealPlanStore.saving.value" :disabled="!isDirty" @click="savePlan">
             {{ isDirty ? 'Сохранить неделю' : 'Сохранено' }}
           </UiButton>
         </div>
 
-        <div class="week-grid">
-          <article v-for="day in days" :key="day.key" class="day-card panel" :class="{ today: day.isToday }">
-            <header>
-              <div><span>{{ day.weekday }}</span><strong>{{ day.dayLabel }}</strong></div>
-              <div class="day-nutrition">
-                <b>{{ caloriesText(day.key) }}</b>
-                <small v-if="dailyStats(day.key).missing">{{ dailyStats(day.key).missing }} без данных</small>
-                <small v-else-if="draftWeek.calorieTarget">из {{ Math.round(draftWeek.calorieTarget) }} ккал</small>
-              </div>
-            </header>
-
-            <div class="meal-slots">
-              <div v-for="mealType in mealTypes" :key="mealType.id" class="meal-slot">
-                <span>{{ mealType.label }}</span>
-                <button
-                  v-if="slotRecipe(day.key, mealType.id)"
-                  class="meal-slot__filled"
-                  type="button"
-                  @click="openPicker(day.key, mealType.id)"
-                >
-                  <b>{{ slotRecipe(day.key, mealType.id)?.title }}</b>
-                  <small>{{ recipeNutritionLabel(slotRecipe(day.key, mealType.id)) }}</small>
-                  <i @click.stop="removeSlot(day.key, mealType.id)">×</i>
-                </button>
-                <button v-else class="meal-slot__empty" type="button" @click="openPicker(day.key, mealType.id)">＋ Добавить</button>
-              </div>
-            </div>
-          </article>
-        </div>
+        <MealWeekBoard
+          :days="weekDaysView"
+          @select="openPicker"
+          @remove="removeSlot"
+        />
       </section>
 
       <section v-else-if="activeTab === 'recipes'" class="recipes-view">
@@ -102,24 +81,46 @@
       </section>
 
       <section v-else class="shopping-view">
-        <header><div><h2>Продукты на неделю</h2><p>Список автоматически собирается из ингредиентов выбранных блюд.</p></div></header>
-        <div v-if="shoppingIngredients.length" class="shopping-list panel">
-          <article v-for="ingredient in shoppingIngredients" :key="ingredient.key">
-            <span>{{ ingredient.name }}</span>
-            <strong>{{ formatIngredientAmount(ingredient.amount, ingredient.unit) }}</strong>
-          </article>
-        </div>
-        <div v-else class="empty-recipes panel">
+        <header>
+          <div><h2>Список покупок</h2><p>Здесь только продукты на сегодня и оставшиеся дни недели. План на сегодня попадёт в Telegram-сводку.</p></div>
+          <UiButton v-if="canAddShoppingItem" icon="plus" @click="shoppingItemEditorOpen = true">Добавить продукт</UiButton>
+        </header>
+        <section v-if="todayShoppingIngredients.length" class="shopping-group">
+          <div class="shopping-group__title"><span>Купить сегодня</span><strong>{{ todayShoppingIngredients.length }}</strong></div>
+          <div class="shopping-list shopping-list--today panel">
+            <article v-for="ingredient in todayShoppingIngredients" :key="ingredient.key">
+              <span>{{ ingredient.name }}</span>
+              <strong>{{ formatIngredientAmount(ingredient.amount, ingredient.unit) }}</strong>
+            </article>
+          </div>
+        </section>
+        <section v-if="shoppingIngredients.length" class="shopping-group">
+          <div class="shopping-group__title"><span>До конца недели</span><strong>{{ shoppingIngredients.length }}</strong></div>
+          <div class="shopping-list panel">
+            <article v-for="ingredient in shoppingIngredients" :key="ingredient.key">
+              <span>{{ ingredient.name }}</span>
+              <strong>{{ formatIngredientAmount(ingredient.amount, ingredient.unit) }}</strong>
+            </article>
+          </div>
+        </section>
+        <div v-if="!todayShoppingIngredients.length && !shoppingIngredients.length" class="empty-recipes panel">
           <UiIcon name="shopping" />
           <h3>Список пока пуст</h3>
-          <p>Добавь блюда с ингредиентами в недельное меню.</p>
+          <p>Добавь продукт вручную или запланируй блюда на оставшиеся дни.</p>
         </div>
+        <section v-if="remainingManualShoppingItems.length" class="manual-shopping panel">
+          <header><div><strong>Добавлено вручную</strong><span>Можно удалить ошибочную позицию</span></div></header>
+          <article v-for="item in remainingManualShoppingItems" :key="item.id">
+            <div><strong>{{ item.name }}</strong><span>{{ formatShoppingDate(item.date) }} · {{ formatIngredientAmount(item.amount, item.unit) }}</span></div>
+            <UiIconButton icon="trash" label="Удалить продукт" variant="danger" @click="removeManualShoppingItem(item.id)" />
+          </article>
+        </section>
       </section>
     </template>
 
     <UiModal v-model="pickerOpen" :title="pickerTitle" eyebrow="Меню недели" width="640px">
       <div class="recipe-picker">
-        <UiInput v-model="recipeQuery" placeholder="Найти своё блюдо" />
+        <UiInput v-model="recipeQuery" autofocus placeholder="Найти своё блюдо" />
         <div v-if="filteredPickerRecipes.length" class="recipe-picker__list">
           <button v-for="recipe in filteredPickerRecipes" :key="recipe.id" type="button" @click="assignRecipe(recipe)">
             <span><b>{{ recipe.title }}</b><small>{{ mealTypeLabel(recipe.mealType) }} · {{ recipeNutritionLabel(recipe) }}</small></span>
@@ -136,7 +137,16 @@
       :recipe="editingRecipe"
       :copying="copyingPopularRecipe"
       :saving="mealPlanStore.saving.value"
+      :custom-foods="mealPlanStore.customFoods.value"
       @save="saveRecipe"
+      @save-product="saveMealProduct"
+    />
+    <MealShoppingItemModal
+      v-model="shoppingItemEditorOpen"
+      :default-date="shoppingDefaultDate"
+      :min-date="shoppingMinDate"
+      :max-date="shoppingMaxDate"
+      @add="addManualShoppingItem"
     />
   </section>
 </template>
@@ -152,11 +162,13 @@ import UiInput from '../../../components/ui/UiInput.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
 import UiPageHeader from '../../../components/ui/UiPageHeader.vue'
 import MealRecipeModal from '../components/MealRecipeModal.vue'
+import MealShoppingItemModal from '../components/MealShoppingItemModal.vue'
+import MealWeekBoard, { type MealWeekDayView } from '../components/MealWeekBoard.vue'
 import { getMealWeek } from '../api/meals.api'
 import { mealPlanStore } from '../stores/mealPlan.store'
-import { cloneMealWeek } from '../services/mealPlan.service'
-import { getSlotNutrition, mergeShoppingIngredients, parseMealDecimal, sumNutrition } from '../services/mealNutrition.service'
-import type { MealRecipe, MealType, MealWeek } from '../types/meals.types'
+import { addMealSlotSnapshots, cloneMealIngredients, cloneMealWeek } from '../services/mealPlan.service'
+import { getSlotNutrition, mergeManualShoppingItems, mergeShoppingIngredients, parseMealDecimal, sumNutrition } from '../services/mealNutrition.service'
+import type { MealProduct, MealProductDraft, MealRecipe, MealShoppingItem, MealType, MealWeek } from '../types/meals.types'
 
 const mealTypes: Array<{ id: MealType; label: string }> = [
   { id: 'breakfast', label: 'Завтрак' },
@@ -179,6 +191,7 @@ const recipeEditorOpen = ref(false)
 const editingRecipe = ref<MealRecipe | null>(null)
 const copyingPopularRecipe = ref(false)
 const createForPendingSlot = ref(false)
+const shoppingItemEditorOpen = ref(false)
 const { notify } = useNotification()
 
 const days = computed(() => Array.from({ length: 7 }, (_, index) => {
@@ -217,12 +230,56 @@ const plannedSlots = computed(() => {
   if (!draftWeek.value) return []
   return Object.values(draftWeek.value.plan).flatMap((day) => Object.values(day).filter(Boolean))
 })
-const plannedRecipes = computed(() => plannedSlots.value.flatMap((slot) => {
-  const recipe = mealPlanStore.recipeById.value.get(slot.recipeId)
-  return recipe ? [{ recipe, servings: slot.servings }] : []
-}))
-const shoppingIngredients = computed(() => mergeShoppingIngredients(plannedRecipes.value))
+const todayKey = computed(() => toDateKey(new Date()))
+const shoppingMaxDate = computed(() => addDays(selectedWeekStart.value, 6))
+const shoppingMinDate = computed(() => selectedWeekStart.value > todayKey.value ? selectedWeekStart.value : todayKey.value)
+const canAddShoppingItem = computed(() => shoppingMinDate.value <= shoppingMaxDate.value)
+const shoppingDefaultDate = computed(() => canAddShoppingItem.value ? shoppingMinDate.value : selectedWeekStart.value)
+const futureShoppingMinDate = computed(() => selectedWeekStart.value > todayKey.value
+  ? selectedWeekStart.value
+  : addDays(todayKey.value, 1))
+const remainingPlannedRecipes = computed(() => {
+  if (!draftWeek.value || !canAddShoppingItem.value) return []
+  return Object.entries(draftWeek.value.plan)
+    .filter(([date]) => date >= futureShoppingMinDate.value)
+    .flatMap(([, day]) => Object.values(day).flatMap((slot) => {
+      const recipe = mealPlanStore.recipeById.value.get(slot.recipeId)
+      return recipe ? [{ recipe, servings: slot.servings }] : []
+    }))
+})
+const remainingManualShoppingItems = computed(() => (draftWeek.value?.shoppingItems || [])
+  .filter((item) => item.date >= shoppingMinDate.value && item.date <= shoppingMaxDate.value)
+  .sort((first, second) => first.date.localeCompare(second.date) || first.name.localeCompare(second.name, 'ru')))
+const futureManualShoppingItems = computed(() => remainingManualShoppingItems.value
+  .filter((item) => item.date >= futureShoppingMinDate.value))
+const shoppingIngredients = computed(() => mergeManualShoppingItems(
+  mergeShoppingIngredients(remainingPlannedRecipes.value),
+  futureManualShoppingItems.value,
+))
+const todayPlannedRecipes = computed(() => {
+  return Object.values(draftWeek.value?.plan[todayKey.value] || {}).flatMap((slot) => {
+    const recipe = mealPlanStore.recipeById.value.get(slot.recipeId)
+    return recipe ? [{ recipe, servings: slot.servings }] : []
+  })
+})
+const todayShoppingIngredients = computed(() => mergeManualShoppingItems(
+  mergeShoppingIngredients(todayPlannedRecipes.value),
+  remainingManualShoppingItems.value.filter((item) => item.date === todayKey.value),
+))
 const pickerTitle = computed(() => `${mealTypeLabel(pickerMealType.value)} · ${formatPickerDate(pickerDate.value)}`)
+const weekDaysView = computed<MealWeekDayView[]>(() => days.value.map((day) => ({
+  ...day,
+  caloriesLabel: caloriesText(day.key),
+  missingCount: dailyStats(day.key).missing,
+  slots: mealTypes.map((mealType) => {
+    const recipe = slotRecipe(day.key, mealType.id)
+    return {
+      mealType: mealType.id,
+      label: mealType.label,
+      recipe: recipe ? { title: recipe.title, nutritionLabel: recipeNutritionLabel(recipe) } : null,
+    }
+  }),
+})))
 
 watch(calorieTargetInput, (value) => {
   if (!draftWeek.value) return
@@ -264,7 +321,13 @@ function openPicker(date: string, mealType: MealType) {
 function assignRecipe(recipe: MealRecipe) {
   if (!draftWeek.value || !pickerDate.value) return
   draftWeek.value.plan[pickerDate.value] ||= {}
-  draftWeek.value.plan[pickerDate.value][pickerMealType.value] = { recipeId: recipe.id, servings: 1 }
+  draftWeek.value.plan[pickerDate.value][pickerMealType.value] = {
+    recipeId: recipe.id,
+    servings: 1,
+    recipeTitle: recipe.title,
+    recipeServings: recipe.servings,
+    ingredients: cloneMealIngredients(recipe.ingredients),
+  }
   isDirty.value = true
   pickerOpen.value = false
 }
@@ -278,12 +341,28 @@ function removeSlot(date: string, mealType: MealType) {
 
 async function savePlan() {
   if (!draftWeek.value) return
-  const result = await mealPlanStore.saveWeek(cloneMealWeek(draftWeek.value))
+  const weekWithSnapshots = addMealSlotSnapshots(draftWeek.value, mealPlanStore.recipeById.value)
+  const result = await mealPlanStore.saveWeek(weekWithSnapshots)
   notify(result.ok ? 'Меню недели сохранено' : result.message, result.ok ? 'success' : 'danger')
   if (result.ok && mealPlanStore.week.value) {
     draftWeek.value = cloneMealWeek(mealPlanStore.week.value)
     isDirty.value = false
   }
+}
+
+async function addManualShoppingItem(item: MealShoppingItem) {
+  if (!draftWeek.value) return
+  draftWeek.value.shoppingItems.push(item)
+  isDirty.value = true
+  shoppingItemEditorOpen.value = false
+  await savePlan()
+}
+
+async function removeManualShoppingItem(id: string) {
+  if (!draftWeek.value) return
+  draftWeek.value.shoppingItems = draftWeek.value.shoppingItems.filter((item) => item.id !== id)
+  isDirty.value = true
+  await savePlan()
 }
 
 async function copyPreviousWeek() {
@@ -402,6 +481,30 @@ function formatIngredientAmount(amount: number, unit: string) {
   return `${Number.isInteger(amount) ? amount : amount.toFixed(1)} ${label}`
 }
 
+async function saveMealProduct(draft: MealProductDraft) {
+  const now = new Date().toISOString()
+  const product: MealProduct = {
+    ...draft,
+    workspaceId: workspaceStore.activeWorkspaceId.value,
+    archivedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const result = await mealPlanStore.saveProduct(product)
+  notify(
+    result.ok ? `Продукт «${product.name}» добавлен в общий справочник` : result.message,
+    result.ok ? 'success' : 'danger',
+  )
+}
+
+function formatShoppingDate(date: string) {
+  return date === todayKey.value
+    ? 'Сегодня'
+    : new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })
+      .format(parseDateKey(date))
+      .replace('.', '')
+}
+
 function getMondayKey(date: Date) {
   const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   const day = copy.getDay() || 7
@@ -430,9 +533,9 @@ function normalize(value: string) {
 </script>
 
 <style scoped>
-.meals-page{display:grid;gap:16px;width:min(100%,1320px);margin:0 auto;padding-bottom:24px}.week-label{min-width:180px;text-align:center;font-size:12px}.meals-tabs{display:flex;gap:5px;border-bottom:1px solid var(--border-color);padding:0 2px}.meals-tabs button{border:0;border-bottom:2px solid transparent;padding:10px 12px;color:var(--text-muted);background:transparent;font-size:11px;font-weight:750}.meals-tabs button.active{border-color:var(--accent);color:var(--text-primary)}.meals-tabs span{margin-left:4px;border-radius:99px;padding:2px 5px;background:var(--control-bg);font-size:8px}.meals-loading,.meals-error{min-height:280px;display:grid;place-items:center;padding:30px;color:var(--text-muted)}.meals-error{align-content:center;gap:8px}.meals-error strong{color:var(--danger)}.week-view,.recipes-view,.shopping-view{display:grid;gap:14px}.week-toolbar{display:grid;grid-template-columns:170px 1fr auto auto;align-items:end;gap:12px;padding:13px}.week-toolbar label{display:grid;gap:4px}.week-toolbar label>span{color:var(--text-muted);font-size:9px}.week-toolbar label>div{display:flex;align-items:center;border:1px solid var(--border-color);border-radius:10px;background:var(--field-bg)}.week-toolbar input{min-width:0;width:100%;height:34px;border:0;padding:0 10px;color:var(--text-primary);background:transparent;outline:0}.week-toolbar b{padding-right:8px;color:var(--text-muted);font-size:9px}.week-toolbar p{margin:0;color:var(--text-muted);font-size:10px;line-height:1.4}.week-grid{display:grid;grid-template-columns:repeat(7,minmax(260px,1fr));gap:8px;overflow-x:auto;padding-bottom:4px}.day-card{display:grid;align-content:start;gap:12px;min-height:360px;padding:11px}.day-card.today{border-color:color-mix(in srgb,var(--accent) 42%,var(--border-color));box-shadow:inset 0 2px 0 var(--accent)}.day-card>header{display:flex;justify-content:space-between;gap:7px;border-bottom:1px solid var(--border-color);padding-bottom:9px}.day-card>header span,.day-card>header strong{display:block}.day-card>header span{color:var(--text-muted);font-size:9px;text-transform:capitalize}.day-card>header strong{margin-top:2px;font-size:13px}.day-nutrition{text-align:right}.day-nutrition b,.day-nutrition small{display:block}.day-nutrition b{font-size:9px}.day-nutrition small{margin-top:2px;color:var(--text-muted);font-size:7px}.meal-slots{display:grid;gap:9px}.meal-slot{display:grid;gap:4px}.meal-slot>span{color:var(--text-muted);font-size:8px;font-weight:750;text-transform:uppercase}.meal-slot__empty,.meal-slot__filled{width:100%;min-height:48px;border:1px dashed var(--border-color);border-radius:10px;padding:7px;color:var(--text-muted);background:var(--control-bg);text-align:left;font-size:9px}.meal-slot__filled{position:relative;border-style:solid;color:var(--text-primary);background:color-mix(in srgb,var(--accent) 6%,var(--card-soft))}.meal-slot__filled b,.meal-slot__filled small{display:block;padding-right:13px}.meal-slot__filled b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.meal-slot__filled small{margin-top:3px;color:var(--text-muted);font-size:7px}.meal-slot__filled i{position:absolute;top:4px;right:6px;color:var(--text-muted);font-size:15px;font-style:normal}.recipes-view>header,.shopping-view>header{display:flex;align-items:center;justify-content:space-between;gap:15px}.recipes-view h2,.shopping-view h2{margin:0;font-size:20px}.recipes-view header p,.shopping-view header p{margin:3px 0 0;color:var(--text-muted);font-size:10px}.recipe-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.recipe-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:11px;padding:11px}.recipe-card__visual{display:grid;place-items:center;width:82px;height:82px;border-radius:13px;color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--control-bg)) center/cover}.recipe-card__copy{min-width:0}.recipe-card__copy>span{color:var(--accent);font-size:8px;font-weight:800;text-transform:uppercase}.recipe-card h3{overflow:hidden;margin:4px 0;text-overflow:ellipsis;white-space:nowrap;font-size:14px}.recipe-card p{margin:0;color:var(--text-muted);font-size:9px}.recipe-card__copy>div{display:flex;justify-content:space-between;gap:5px;margin-top:10px}.recipe-card__copy b,.recipe-card__copy small{font-size:8px}.recipe-card__copy small{color:var(--text-muted)}.recipe-card footer{grid-column:1/-1;display:flex;justify-content:flex-end;gap:6px;border-top:1px solid var(--border-color);padding-top:8px}.empty-recipes{display:grid;place-items:center;align-content:center;gap:8px;min-height:300px;padding:30px;text-align:center}.empty-recipes>svg{color:var(--accent);font-size:36px}.empty-recipes h3,.empty-recipes p{margin:0}.empty-recipes p{color:var(--text-muted);font-size:10px}.shopping-list{display:grid;padding:6px 14px}.shopping-list article{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--border-color);padding:11px 2px}.shopping-list article:last-child{border:0}.shopping-list span{font-size:11px}.shopping-list strong{font-size:11px}.recipe-picker{display:grid;gap:12px}.recipe-picker__list{display:grid;gap:6px;max-height:410px;overflow:auto}.recipe-picker__list button{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border-color);border-radius:12px;padding:10px;color:var(--text-primary);background:var(--card-soft);text-align:left}.recipe-picker__list b,.recipe-picker__list small{display:block}.recipe-picker__list b{font-size:11px}.recipe-picker__list small{margin-top:3px;color:var(--text-muted);font-size:8px}@media(max-width:1050px){.week-toolbar{grid-template-columns:160px 1fr}.week-toolbar :deep(.ui-button){width:100%}.recipe-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.week-label{min-width:0}.week-toolbar{grid-template-columns:1fr}.recipe-grid{grid-template-columns:1fr}.recipes-view>header,.shopping-view>header{align-items:stretch;flex-direction:column}.meals-tabs{overflow-x:auto}.meals-tabs button{white-space:nowrap}}
+.meals-page{display:grid;gap:16px;width:min(100%,1320px);margin:0 auto;padding-bottom:24px}.week-label{min-width:180px;text-align:center;font-size:12px}.meals-tabs{display:flex;gap:5px;border-bottom:1px solid var(--border-color);padding:0 2px}.meals-tabs button{border:0;border-bottom:2px solid transparent;padding:10px 12px;color:var(--text-muted);background:transparent;font-size:11px;font-weight:750}.meals-tabs button.active{border-color:var(--accent);color:var(--text-primary)}.meals-tabs span{margin-left:4px;border-radius:99px;padding:2px 5px;background:var(--control-bg);font-size:8px}.meals-loading,.meals-error{min-height:280px;display:grid;place-items:center;padding:30px;color:var(--text-muted)}.meals-error{align-content:center;gap:8px}.meals-error strong{color:var(--danger)}.week-view,.recipes-view,.shopping-view{display:grid;gap:14px}.week-toolbar{display:grid;grid-template-columns:170px 1fr auto auto;align-items:end;gap:12px;padding:13px}.week-toolbar label{display:grid;gap:4px}.week-toolbar label>span{color:var(--text-muted);font-size:9px}.week-toolbar label>div{display:flex;align-items:center;border:1px solid var(--border-color);border-radius:10px;background:var(--field-bg)}.week-toolbar input{min-width:0;width:100%;height:34px;border:0;padding:0 10px;color:var(--text-primary);background:transparent;outline:0}.week-toolbar b{padding-right:8px;color:var(--text-muted);font-size:9px}.week-toolbar p{margin:0;color:var(--text-muted);font-size:10px;line-height:1.4}.week-grid{display:grid;grid-template-columns:repeat(7,minmax(260px,1fr));gap:8px;overflow-x:auto;padding-bottom:4px}.day-card{display:grid;align-content:start;gap:12px;min-height:360px;padding:11px}.day-card.today{border-color:color-mix(in srgb,var(--accent) 42%,var(--border-color));box-shadow:inset 0 2px 0 var(--accent)}.day-card>header{display:flex;justify-content:space-between;gap:7px;border-bottom:1px solid var(--border-color);padding-bottom:9px}.day-card>header span,.day-card>header strong{display:block}.day-card>header span{color:var(--text-muted);font-size:9px;text-transform:capitalize}.day-card>header strong{margin-top:2px;font-size:13px}.day-nutrition{text-align:right}.day-nutrition b,.day-nutrition small{display:block}.day-nutrition b{font-size:9px}.day-nutrition small{margin-top:2px;color:var(--text-muted);font-size:7px}.meal-slots{display:grid;gap:9px}.meal-slot{display:grid;gap:4px}.meal-slot>span{color:var(--text-muted);font-size:8px;font-weight:750;text-transform:uppercase}.meal-slot__empty,.meal-slot__filled{width:100%;min-height:48px;border:1px dashed var(--border-color);border-radius:10px;padding:7px;color:var(--text-muted);background:var(--control-bg);text-align:left;font-size:9px}.meal-slot__filled{position:relative;border-style:solid;color:var(--text-primary);background:color-mix(in srgb,var(--accent) 6%,var(--card-soft))}.meal-slot__filled b,.meal-slot__filled small{display:block;padding-right:13px}.meal-slot__filled b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.meal-slot__filled small{margin-top:3px;color:var(--text-muted);font-size:7px}.meal-slot__filled i{position:absolute;top:4px;right:6px;color:var(--text-muted);font-size:15px;font-style:normal}.recipes-view>header,.shopping-view>header{display:flex;align-items:center;justify-content:space-between;gap:15px}.recipes-view h2,.shopping-view h2{margin:0;font-size:20px}.recipes-view header p,.shopping-view header p{margin:3px 0 0;color:var(--text-muted);font-size:10px}.recipe-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.recipe-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:11px;padding:11px}.recipe-card__visual{display:grid;place-items:center;width:82px;height:82px;border-radius:13px;color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--control-bg)) center/cover}.recipe-card__copy{min-width:0}.recipe-card__copy>span{color:var(--accent);font-size:8px;font-weight:800;text-transform:uppercase}.recipe-card h3{overflow:hidden;margin:4px 0;text-overflow:ellipsis;white-space:nowrap;font-size:14px}.recipe-card p{margin:0;color:var(--text-muted);font-size:9px}.recipe-card__copy>div{display:flex;justify-content:space-between;gap:5px;margin-top:10px}.recipe-card__copy b,.recipe-card__copy small{font-size:8px}.recipe-card__copy small{color:var(--text-muted)}.recipe-card footer{grid-column:1/-1;display:flex;justify-content:flex-end;gap:6px;border-top:1px solid var(--border-color);padding-top:8px}.empty-recipes{display:grid;place-items:center;align-content:center;gap:8px;min-height:300px;padding:30px;text-align:center}.empty-recipes>svg{color:var(--accent);font-size:36px}.empty-recipes h3,.empty-recipes p{margin:0}.empty-recipes p{color:var(--text-muted);font-size:10px}.shopping-group{display:grid;gap:7px}.shopping-group__title{display:flex;align-items:center;gap:7px;padding:0 3px;color:var(--text-secondary);font-size:11px;font-weight:800}.shopping-group__title strong{display:grid;place-items:center;min-width:20px;height:20px;border-radius:99px;color:var(--accent);background:var(--accent-soft);font-size:9px}.shopping-list{display:grid;padding:6px 14px}.shopping-list--today{border-color:var(--accent-border);background:linear-gradient(120deg,var(--accent-soft),var(--card-solid))}.shopping-list article{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--border-color);padding:11px 2px}.shopping-list article:last-child{border:0}.shopping-list span{font-size:11px}.shopping-list strong{font-size:11px}.recipe-picker{display:grid;gap:12px}.recipe-picker__list{display:grid;gap:6px;max-height:410px;overflow:auto}.recipe-picker__list button{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border-color);border-radius:12px;padding:10px;color:var(--text-primary);background:var(--card-soft);text-align:left}.recipe-picker__list b,.recipe-picker__list small{display:block}.recipe-picker__list b{font-size:11px}.recipe-picker__list small{margin-top:3px;color:var(--text-muted);font-size:8px}@media(max-width:1050px){.week-toolbar{grid-template-columns:160px 1fr}.week-toolbar :deep(.ui-button){width:100%}.recipe-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.week-label{min-width:0}.week-toolbar{grid-template-columns:1fr}.recipe-grid{grid-template-columns:1fr}.recipes-view>header,.shopping-view>header{align-items:stretch;flex-direction:column}.meals-tabs{overflow-x:auto}.meals-tabs button{white-space:nowrap}}
 </style>
 
 <style scoped>
-.recipe-library-actions{display:flex;align-items:center;gap:8px}.recipe-library-actions :deep(.ui-input){min-width:220px}@media(max-width:680px){.recipe-library-actions{align-items:stretch;flex-direction:column}.recipe-library-actions :deep(.ui-input){min-width:0}}
+.recipe-library-actions{display:flex;align-items:center;gap:8px}.recipe-library-actions :deep(.ui-input){min-width:220px}.week-toolbar__summary{display:flex;align-items:center;gap:14px;min-width:0}.week-toolbar__summary>div{display:flex;align-items:baseline;gap:5px;white-space:nowrap}.week-toolbar__summary strong{color:var(--accent);font-size:19px}.week-toolbar__summary span{color:var(--text-secondary);font-size:9px;font-weight:700}.week-toolbar__summary p{margin:0;color:var(--text-muted);font-size:9px}.manual-shopping{display:grid;padding:6px 14px}.manual-shopping>header{padding:8px 2px}.manual-shopping>header strong,.manual-shopping>header span,.manual-shopping article strong,.manual-shopping article span{display:block}.manual-shopping>header strong{font-size:11px}.manual-shopping>header span,.manual-shopping article span{margin-top:2px;color:var(--text-muted);font-size:9px}.manual-shopping article{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border-color);padding:9px 2px}.manual-shopping article strong{font-size:11px}@media(max-width:1050px){.week-toolbar__summary{align-items:flex-start;flex-direction:column;gap:3px}}@media(max-width:680px){.recipe-library-actions{align-items:stretch;flex-direction:column}.recipe-library-actions :deep(.ui-input){min-width:0}.week-toolbar__summary{padding:2px 0}}
 </style>

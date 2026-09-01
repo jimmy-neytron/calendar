@@ -4,11 +4,13 @@
       <div v-if="modelValue" class="ui-modal" :class="[overlayClass, { 'ui-modal--fullscreen': fullscreen }]" @mousedown.self="handleOverlayClick">
         <transition name="modal" appear>
           <section
+            ref="dialog"
             class="ui-modal__dialog"
             :class="dialogClass"
             :style="{ '--ui-modal-width': width }"
             role="dialog"
             aria-modal="true"
+            tabindex="-1"
           >
             <header class="ui-modal__header">
               <div>
@@ -29,7 +31,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiIconButton from './UiIconButton.vue'
 
 const props = defineProps({
@@ -46,6 +48,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+const dialog = ref(null)
+let previouslyFocused = null
 
 const close = () => {
   emit('update:modelValue', false)
@@ -57,8 +61,44 @@ const handleOverlayClick = () => {
 }
 
 const handleKeydown = (event) => {
-  if (event.key === 'Escape' && props.modelValue && props.closeOnEscape) close()
+  if (!props.modelValue) return
+  if (event.key === 'Escape' && props.closeOnEscape) {
+    close()
+    return
+  }
+  if (event.key !== 'Tab' || !dialog.value) return
+
+  const focusable = [...dialog.value.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+  )].filter((element) => element.offsetParent !== null)
+  if (!focusable.length) {
+    event.preventDefault()
+    dialog.value.focus()
+    return
+  }
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
+
+watch(() => props.modelValue, async (opened) => {
+  if (opened) {
+    previouslyFocused = document.activeElement
+    await nextTick()
+    const preferred = dialog.value?.querySelector('[autofocus]')
+    const fallback = dialog.value?.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])')
+    ;(preferred || fallback || dialog.value)?.focus()
+    return
+  }
+  if (previouslyFocused?.isConnected) previouslyFocused.focus()
+  previouslyFocused = null
+})
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))

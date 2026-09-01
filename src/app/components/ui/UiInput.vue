@@ -4,10 +4,12 @@
 
     <textarea
       v-if="type === 'textarea'"
+      ref="control"
       class="ui-input__control ui-input__control--textarea"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
+      :autofocus="autofocus"
       rows="4"
       @input="$emit('update:modelValue', $event.target.value)"
       @focus="$emit('focus', $event)"
@@ -17,11 +19,13 @@
 
     <input
       v-else
+      ref="control"
       class="ui-input__control"
       :value="modelValue"
       :type="type"
       :placeholder="placeholder"
       :disabled="disabled"
+      :autofocus="autofocus"
       :min="min"
       :max="max"
       :step="step"
@@ -39,6 +43,10 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
+const control = ref(null)
+
 defineProps({
   modelValue: { type: [String, Number], default: '' },
   type: { type: String, default: 'text' },
@@ -47,6 +55,7 @@ defineProps({
   error: { type: String, default: '' },
   required: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  autofocus: { type: Boolean, default: false },
   min: { type: [String, Number], default: undefined },
   max: { type: [String, Number], default: undefined },
   step: { type: [String, Number], default: undefined },
@@ -54,6 +63,11 @@ defineProps({
 })
 
 defineEmits(['update:modelValue', 'focus', 'blur', 'keydown'])
+
+defineExpose({
+  focus: () => control.value?.focus(),
+  select: () => control.value?.select(),
+})
 </script>
 
 <style scoped>
