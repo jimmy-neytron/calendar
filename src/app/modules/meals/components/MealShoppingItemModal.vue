@@ -7,6 +7,7 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form class="shopping-item-form" @submit.prevent="submit">
+      <p class="shopping-item-form__hint">Продукт попадёт в закупку выбранного дня и общий список недели.</p>
       <UiInput
         v-model="form.name"
         autofocus
@@ -28,8 +29,8 @@
       <UiInput v-model="form.date" type="date" label="Когда купить" :min="minDate" :max="maxDate" required />
       <p v-if="error" class="shopping-item-form__error">{{ error }}</p>
       <footer>
-        <UiButton type="button" variant="secondary" @click="emit('update:modelValue', false)">Отмена</UiButton>
-        <UiButton type="submit" icon="plus">Добавить</UiButton>
+        <UiButton type="button" variant="secondary" :disabled="saving" @click="emit('update:modelValue', false)">Отмена</UiButton>
+        <UiButton type="submit" icon="plus" :loading="saving">Добавить в список</UiButton>
       </footer>
     </form>
   </UiModal>
@@ -49,6 +50,7 @@ const props = defineProps<{
   defaultDate: string
   minDate: string
   maxDate: string
+  saving?: boolean
 }>()
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -64,14 +66,15 @@ watch(() => props.modelValue, (opened) => {
 })
 
 function submit() {
+  if (props.saving) return
   const name = form.name.trim()
   const amount = parseMealDecimal(form.amount)
   if (!name) {
     error.value = 'Укажи название продукта'
     return
   }
-  if (amount == null || amount <= 0) {
-    error.value = 'Количество должно быть больше нуля'
+  if (amount == null || amount < 0.01) {
+    error.value = 'Количество должно быть не меньше 0,01'
     return
   }
   if (!form.date || form.date < props.minDate || form.date > props.maxDate) {
@@ -89,5 +92,6 @@ function submit() {
 </script>
 
 <style scoped>
+.shopping-item-form__hint{margin:0;padding:12px;border-radius:10px;color:var(--text-secondary);background:var(--control-bg);font-size:12px;line-height:1.6}
 .shopping-item-form{display:grid;gap:14px}.shopping-item-form__amount{display:grid;grid-template-columns:1fr 130px;gap:10px}.shopping-item-form__amount label{display:grid;gap:5px}.shopping-item-form__amount label>span{color:var(--text-secondary);font-size:11px;font-weight:700}.shopping-item-form__amount :deep(.ui-select__trigger){width:100%;height:36px}.shopping-item-form__error{margin:0;color:var(--danger);font-size:10px}.shopping-item-form>footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border-color);padding-top:12px}@media(max-width:480px){.shopping-item-form__amount{grid-template-columns:1fr}}
 </style>

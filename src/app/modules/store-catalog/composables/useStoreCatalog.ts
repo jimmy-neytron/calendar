@@ -3,6 +3,10 @@ import { workspaceStore } from '../../../stores/workspace.store.js'
 import { mealPlanStore } from '../../meals/stores/mealPlan.store'
 import {
   createStoreSource,
+  updateStoreSource,
+  deleteStoreSource,
+  deleteStoreProducts,
+  clearStoreSourceProducts,
   listIngredientLinks,
   listStoreProducts,
   listStoreSources,
@@ -81,7 +85,8 @@ export function useStoreCatalog() {
 
   async function addSource(draft: StoreSourceDraft) {
     const workspaceId = workspaceStore.activeWorkspaceId.value
-    if (!workspaceId) return
+    if (!workspaceId) throw new Error('Выберите рабочее пространство перед добавлением источника.')
+    if (saving.value || syncingSourceId.value) throw new Error('Дождитесь завершения текущей операции.')
     saving.value = true
     try {
       sources.value = [...sources.value, await createStoreSource(workspaceId, draft)]
@@ -89,12 +94,90 @@ export function useStoreCatalog() {
   }
 
   async function toggleSource(sourceId: string, enabled: boolean) {
-    await setStoreSourceEnabled(sourceId, enabled)
-    sources.value = sources.value.map((source) => source.id === sourceId ? { ...source, enabled } : source)
+    requireSourceMutation(sourceId)
+    saving.value = true
+    try {
+      await setStoreSourceEnabled(sourceId, enabled)
+      sources.value = sources.value.map((source) => source.id === sourceId ? { ...source, enabled } : source)
+    } finally { saving.value = false }
+  }
+
+  function requireSourceMutation(sourceId: string) {
+    const workspaceId = workspaceStore.activeWorkspaceId.value
+    const source = sources.value.find(item => item.id === sourceId)
+    if (!workspaceId || !source || source.workspaceId !== workspaceId) throw new Error('Источник не найден. Обновите список.')
+    if (saving.value || syncingSourceId.value || source.status === 'syncing') throw new Error('Дождитесь завершения текущей операции.')
+    return { workspaceId, source }
+  }
+
+  function invalidateSourceProducts(sourceId: string, detach = false) {
+    storedProducts.value = storedProducts.value.map(product => ({
+      ...product,
+      ...(product.priceSourceId === sourceId ? {
+        priceVerified: false, currentPrice: null, oldPrice: null, unitPrice: null,
+        priceSourceId: detach ? '' : product.priceSourceId,
+      } : {}),
+      sourceIds: detach ? product.sourceIds.filter(id => id !== sourceId) : product.sourceIds,
+    }))
+  }
+
+  async function editSource(sourceId: string, draft: StoreSourceDraft) {
+    const { workspaceId, source } = requireSourceMutation(sourceId)
+    saving.value = true
+    try {
+      const updated = await updateStoreSource(workspaceId, sourceId, draft)
+      if (source.url !== updated.url || source.storeCode !== updated.storeCode) invalidateSourceProducts(sourceId)
+      sources.value = sources.value.map(item => item.id === sourceId ? updated : item)
+    } finally { saving.value = false }
+  }
+
+  function removeStoredProducts(productIds: string[]) {
+    const removed = new Set(productIds)
+    storedProducts.value = storedProducts.value.filter(item => !removed.has(item.id))
+    links.value = links.value.filter(item => !removed.has(item.productId))
+  }
+
+  async function removeSource(sourceId: string, deleteProducts = true) {
+    const { workspaceId } = requireSourceMutation(sourceId)
+    saving.value = true
+    try {
+      const deletedProductIds = await deleteStoreSource(workspaceId, sourceId, deleteProducts)
+      removeStoredProducts(deletedProductIds)
+      invalidateSourceProducts(sourceId, true)
+      sources.value = sources.value.filter(item => item.id !== sourceId)
+    } finally { saving.value = false }
+  }
+
+  async function clearSourceProducts(sourceId: string) {
+    const { workspaceId } = requireSourceMutation(sourceId)
+    saving.value = true
+    try {
+      const result = await clearStoreSourceProducts(workspaceId, sourceId)
+      removeStoredProducts(result.deletedProductIds)
+      invalidateSourceProducts(sourceId, true)
+      sources.value = sources.value.map(item => item.id === sourceId ? result.source : item)
+    } finally { saving.value = false }
+  }
+
+  async function removeProducts(productIds: string[]) {
+    const workspaceId = workspaceStore.activeWorkspaceId.value
+    if (!workspaceId || !productIds.length || productIds.some(id => !storedProducts.value.some(product => product.id === id && product.workspaceId === workspaceId))) {
+      throw new Error('Товары не найдены. Обновите каталог.')
+    }
+    if (saving.value || syncingSourceId.value || sources.value.some(source => source.status === 'syncing')) {
+      throw new Error('Дождитесь завершения текущей операции.')
+    }
+    saving.value = true
+    try {
+      const result = await deleteStoreProducts(workspaceId, productIds)
+      removeStoredProducts(result.deletedProductIds)
+      const updatedSources = new Map(result.sources.map(source => [source.id, source]))
+      sources.value = sources.value.map(source => updatedSources.get(source.id) || source)
+    } finally { saving.value = false }
   }
 
   async function syncSource(sourceId: string) {
-    if (syncingSourceId.value) throw new Error('Дождитесь завершения текущей синхронизации.')
+    if (saving.value || syncingSourceId.value) throw new Error('Дождитесь завершения текущей операции.')
     syncingSourceId.value = sourceId
     try {
       await syncStoreSource(sourceId)
@@ -128,7 +211,7 @@ export function useStoreCatalog() {
     } finally { saving.value = false }
   }
 
-  return { sources, products, links, selectedDate, loading, saving, error, syncingSourceId, requirements, purchases, confirmedTotal, unresolvedCount, load, loadCatalog, changeDate, addSource, toggleSource, syncSource, linkProduct, setPackage }
+  return { sources, products, links, selectedDate, loading, saving, error, syncingSourceId, requirements, purchases, confirmedTotal, unresolvedCount, load, loadCatalog, changeDate, addSource, editSource, removeSource, clearSourceProducts, removeProducts, toggleSource, syncSource, linkProduct, setPackage }
 }
 
 function getMondayDateKey(date: string) {

@@ -31,10 +31,12 @@ export function parseCatalogContext(source: { url: string; store_code: string })
   if (!/^\d{4,12}$/.test(storeCode)) throw new Error('Укажите корректный shopCode магазина.')
   if (queryCode && queryCode !== storeCode) throw new Error('Код магазина в ссылке отличается от указанного кода. Исправьте источник.')
   const storeType = url.searchParams.get('shopType') || ''
-  // These shopType values refer to delivery; offline contexts must be explicit.
-  const catalogType = url.searchParams.get('catalogType') || '2'
-  if (!['express', 'dostavka'].includes(storeType) || !['2', '3'].includes(catalogType)) {
-    throw new Error('Поддерживаются ссылки с shopType=express или dostavka и catalogType=2 (доставка) либо 3 (самовывоз).')
+  // Physical-store links omit catalogType. Never turn them into delivery.
+  const catalogType = url.searchParams.get('catalogType') || (storeType === '1' ? '1' : '2')
+  const inStore = storeType === '1' && catalogType === '1'
+  const online = ['express', 'dostavka'].includes(storeType) && ['2', '3'].includes(catalogType)
+  if (!inStore && !online) {
+    throw new Error('Для цен в магазине нужна ссылка с shopType=1 (catalogType=1 или без него). Для доставки и самовывоза — shopType=express/dostavka и catalogType=2/3. Не меняйте режим вручную: скопируйте ссылку выбранного магазина.')
   }
   return { storeCode, storeType, catalogType, categoryId }
 }
@@ -47,8 +49,11 @@ export function parseMagnitCatalogPage(payload: unknown, context: CatalogContext
   }
   const products = root.items.map((value): CatalogProduct => {
     const item = record(value)
+    // The physical-store API calls shopType=1 "core_mm" in each item.
+    // This alias is valid only for catalogType=1; delivery is not a fallback.
+    const expectedService = context.storeType === '1' && context.catalogType === '1' ? 'core_mm' : context.storeType
     if (String(item.storeCode ?? '') !== context.storeCode
-      || item.service !== context.storeType || String(item.catalogType) !== context.catalogType) {
+      || item.service !== expectedService || String(item.catalogType) !== context.catalogType) {
       throw new Error('Магнит вернул товар другого магазина или типа каталога. Цены не обновлены.')
     }
     const code = typeof item.id === 'string' ? item.id : ''

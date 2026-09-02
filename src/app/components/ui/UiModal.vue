@@ -10,6 +10,7 @@
             :style="{ '--ui-modal-width': width }"
             role="dialog"
             aria-modal="true"
+            :aria-label="title"
             tabindex="-1"
           >
             <header class="ui-modal__header">
@@ -88,6 +89,7 @@ const handleKeydown = (event) => {
 }
 
 watch(() => props.modelValue, async (opened) => {
+  if (typeof document === 'undefined') return
   if (opened) {
     previouslyFocused = document.activeElement
     await nextTick()
@@ -98,10 +100,13 @@ watch(() => props.modelValue, async (opened) => {
   }
   if (previouslyFocused?.isConnected) previouslyFocused.focus()
   previouslyFocused = null
-})
+}, { immediate: true })
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  if (previouslyFocused?.isConnected) previouslyFocused.focus()
+})
 </script>
 
 <style scoped>

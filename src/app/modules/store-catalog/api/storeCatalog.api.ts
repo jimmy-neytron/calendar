@@ -1,6 +1,6 @@
 import { requireAuthenticatedSupabase, requireSupabase } from '../../../api/supabase/client.js'
 import { isStorePriceCurrent } from '../../../../../supabase/functions/_shared/storePrice'
-import { parseCatalogContext } from '../../../../../supabase/functions/store-catalog-sync/catalogParser'
+import { normalizeStoreSourceDraft } from '../services/storeSourceDraft'
 import type {
   IngredientProductLink,
   StoreCatalogSource,
@@ -42,21 +42,19 @@ export async function listIngredientLinks(workspaceId: string): Promise<Ingredie
 }
 
 export async function createStoreSource(workspaceId: string, draft: StoreSourceDraft): Promise<StoreCatalogSource> {
-  const storeCode = draft.storeCode.trim() || getStoreCodeFromUrl(draft.url)
-  if (!storeCode) throw new Error('В ссылке отсутствует параметр shopCode. Укажите код магазина вручную.')
-  parseCatalogContext({ url: draft.url.trim(), store_code: storeCode })
+  const { name, url, storeCode } = normalizeStoreSourceDraft(draft)
   const { data, error } = await requireSupabase()
     .from('store_catalog_sources')
     .insert({
       workspace_id: workspaceId,
       store: 'magnit',
       store_code: storeCode,
-      url: draft.url.trim(),
-      name: draft.name.trim(),
+      url,
+      name,
     })
     .select('*')
     .single()
-  if (error) throw error
+  if (error) throw new Error(error.code === '23505' ? 'Источник с такой ссылкой уже добавлен в это пространство.' : error.message)
   return mapSource(data)
 }
 
@@ -66,6 +64,61 @@ export async function setStoreSourceEnabled(sourceId: string, enabled: boolean):
     .update({ enabled })
     .eq('id', sourceId)
   if (error) throw error
+}
+
+export async function updateStoreSource(workspaceId: string, sourceId: string, draft: StoreSourceDraft): Promise<StoreCatalogSource> {
+  const normalized = normalizeStoreSourceDraft(draft)
+  const result = await manageStoreSource(workspaceId, sourceId, 'update', normalized)
+  return mapSource(result.source)
+}
+
+export async function deleteStoreSource(workspaceId: string, sourceId: string, deleteProducts = true): Promise<string[]> {
+  if (!workspaceId || !sourceId) throw new Error('Не выбран источник или рабочее пространство.')
+  const { data, error } = await requireSupabase().rpc('delete_store_catalog_source', {
+    p_workspace_id: workspaceId, p_source_id: sourceId, p_delete_products: deleteProducts,
+  })
+  if (error) {
+    if (error.code === 'PGRST202' || error.code === '42883') {
+      throw new Error('Удаление источника с товарами ещё не установлено в базе. Примените миграцию 20260903000000_store_catalog_source_delete_products.sql.')
+    }
+    throw new Error(error.message || 'Не удалось удалить источник.')
+  }
+  return (data as { deleted_product_ids: string[] }).deleted_product_ids
+}
+
+export async function clearStoreSourceProducts(workspaceId: string, sourceId: string) {
+  const result = await manageStoreSource(workspaceId, sourceId, 'clear_products')
+  return { source: mapSource(result.source), deletedProductIds: result.deleted_product_ids || [] }
+}
+
+export async function deleteStoreProducts(workspaceId: string, productIds: string[]) {
+  if (!workspaceId || !productIds.length || productIds.some(id => !id)) throw new Error('Выберите товары и рабочее пространство.')
+  const { data, error } = await requireSupabase().rpc('delete_store_catalog_products', {
+    p_workspace_id: workspaceId, p_product_ids: [...new Set(productIds)],
+  })
+  if (error) {
+    if (error.code === 'PGRST202' || error.code === '42883') {
+      throw new Error('Удаление товаров ещё не установлено в базе. Примените миграцию 20260903010000_store_catalog_delete_products.sql.')
+    }
+    throw new Error(error.message || 'Не удалось удалить товары.')
+  }
+  const result = data as { deleted_product_ids: string[]; sources: Record<string, unknown>[] }
+  return { deletedProductIds: result.deleted_product_ids, sources: result.sources.map(mapSource) }
+}
+
+async function manageStoreSource(workspaceId: string, sourceId: string, action: 'update' | 'delete' | 'clear_products', draft?: StoreSourceDraft) {
+  if (!workspaceId || !sourceId) throw new Error('Не выбран источник или рабочее пространство.')
+  const { data, error } = await requireSupabase().rpc('manage_store_catalog_source', {
+    p_workspace_id: workspaceId, p_source_id: sourceId, p_action: action,
+    p_name: draft?.name ?? null, p_url: draft?.url ?? null, p_store_code: draft?.storeCode ?? null,
+  })
+  if (error) {
+    if (error.code === 'PGRST202' || error.code === '42883') {
+      throw new Error('Управление источниками ещё не установлено в базе. Примените миграцию store_catalog_source_management.')
+    }
+    throw new Error(error.message || 'Не удалось изменить источник.')
+  }
+  return data as { source: Record<string, unknown>; deleted_product_ids?: string[] }
 }
 
 export async function syncStoreSource(sourceId: string): Promise<void> {
@@ -155,11 +208,6 @@ function mapLink(row: Record<string, unknown>): IngredientProductLink {
     ingredientUnit: String(row.ingredient_unit) as StorePackageUnit, productId: String(row.product_id),
     packageAmountOverride: row.package_amount_override == null ? null : Number(row.package_amount_override),
   }
-}
-
-function getStoreCodeFromUrl(value: string) {
-  try { return new URL(value).searchParams.get('shopCode')?.trim() || '' }
-  catch { return '' }
 }
 
 async function mapFunctionError(reason: unknown) {

@@ -45,6 +45,7 @@ describe('project selects in nutrition purchases', () => {
   it('searches compatible products by name and code and emits the chosen product ID', async () => {
     const { host, onLink } = mountPurchases()
     expect(host.querySelector('select')).toBeNull()
+    host.querySelector<HTMLButtonElement>('.ingredient-purchase__summary')!.click(); await settle()
     const trigger = host.querySelector<HTMLButtonElement>('[role="combobox"]')!
     trigger.click()
     await settle()
@@ -67,6 +68,7 @@ describe('project selects in nutrition purchases', () => {
 
   it('supports keyboard selection after searching', async () => {
     const { host, onLink } = mountPurchases()
+    host.querySelector<HTMLButtonElement>('.ingredient-purchase__summary')!.click(); await settle()
     host.querySelector<HTMLButtonElement>('[role="combobox"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await settle()
     const input = await search('сельдь')
@@ -79,6 +81,7 @@ describe('project selects in nutrition purchases', () => {
     const onLink = vi.fn(), onSetPackage = vi.fn()
     const host = document.createElement('div'); document.body.append(host)
     app = createApp(StorePurchasesToday, { purchases: [{ ...purchase, product: fish, packageAmount: 300 }], products: [fish], total: 0, unresolvedCount: 1, onLink, 'onSet-package': onSetPackage }); app.mount(host)
+    host.querySelector<HTMLButtonElement>('.ingredient-purchase__summary')!.click(); await settle()
     ;[...host.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.includes('Уточнить фасовку'))!.click(); await settle()
     const input = host.querySelector<HTMLInputElement>('input[type="number"]')!
     input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -96,16 +99,15 @@ describe('project selects in nutrition purchases', () => {
     app = createApp(StoreProductCatalog, { products: [fish], sources: [], requirements: [], 'onSet-package': onSetPackage })
     app.mount(host)
     expect(host.querySelectorAll('[role="combobox"]')).toHaveLength(2)
-    const editButton = [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Фасовка'))!
-    editButton.click()
+    host.querySelector<HTMLButtonElement>('.product-row')!.click()
     await settle()
-    expect(host.querySelector('select')).toBeNull()
-    host.querySelector<HTMLButtonElement>('[aria-label="Единица фасовки"]')!.click()
+    expect(document.querySelector('select')).toBeNull()
+    document.querySelector<HTMLButtonElement>('[aria-label="Единица фасовки"]')!.click()
     await settle()
     const unit = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find(option => option.textContent?.trim() === 'мл')!
     unit.click()
     await settle()
-    host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    document.querySelector('.product-details__package')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await settle()
     expect(onSetPackage).toHaveBeenCalledExactlyOnceWith('fish', 300, 'ml')
   })

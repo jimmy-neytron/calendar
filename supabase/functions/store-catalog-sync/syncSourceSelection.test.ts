@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectSyncSource } from './syncSourceSelection'
+import { guardSyncClaim, selectSyncSource } from './syncSourceSelection'
 
 const now = '2026-09-02T12:00:00Z'
 const rows = [
@@ -51,5 +51,24 @@ describe('manual versus scheduled source selection', () => {
   })
   it('does not substitute another source when a manually selected ID is missing', () => {
     expect(selectSyncSource(new Query(), 'deleted', false, now).query.result).toEqual([])
+  })
+})
+
+describe('atomic sync claim', () => {
+  class ClaimQuery {
+    rows = [{ id: 's1', updated_at: 'v2', status: 'idle' }]
+    eq(column: string, value: string): this { this.rows = this.rows.filter(row => row[column as keyof typeof row] === value); return this }
+    neq(column: string, value: string): this { this.rows = this.rows.filter(row => row[column as keyof typeof row] !== value); return this }
+  }
+  it('rejects a source changed or cleared after selection', () => {
+    expect(guardSyncClaim(new ClaimQuery(), { id: 's1', updated_at: 'v1' }).rows).toEqual([])
+  })
+  it('rejects an already running or deleted source', () => {
+    const query = new ClaimQuery(); query.rows[0].status = 'syncing'
+    expect(guardSyncClaim(query, { id: 's1', updated_at: 'v2' }).rows).toEqual([])
+    expect(guardSyncClaim(new ClaimQuery(), { id: 'deleted', updated_at: 'v2' }).rows).toEqual([])
+  })
+  it('accepts an unchanged idle source', () => {
+    expect(guardSyncClaim(new ClaimQuery(), { id: 's1', updated_at: 'v2' }).rows).toHaveLength(1)
   })
 })

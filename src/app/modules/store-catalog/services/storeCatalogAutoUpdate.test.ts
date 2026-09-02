@@ -17,6 +17,13 @@ const product: StoreProduct = {
 }
 
 describe('price validity is independent of auto updates', () => {
+  it('does not reuse delivery prices after switching to shelf prices', () => {
+    const offline = { ...source, url: source.url.replace('shopType=express', 'shopType=1') }
+    expect(getCurrentStoreProducts([product], [offline], now)[0]).toMatchObject({ currentPrice: null, priceVerified: false })
+    const shelfProduct = { ...product, priceStoreType: '1', priceCatalogType: '1' }
+    expect(getCurrentStoreProducts([shelfProduct], [offline], now)[0]).toEqual(shelfProduct)
+    expect(getCurrentStoreProducts([shelfProduct], [source], now)[0]).toMatchObject({ currentPrice: null, priceVerified: false })
+  })
   it.each([true, false])('retains a verified price when auto=%s', enabled => {
     expect(getCurrentStoreProducts([product], [{ ...source, enabled }], now)[0]).toEqual(product)
   })

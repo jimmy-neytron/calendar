@@ -23,7 +23,9 @@ Old imported values/history and ingredient links are retained, but legacy prices
 
 HTML/JSON-LD can silently return the default store 992301 even with another shopCode in the URL. Prices now come exclusively from `POST https://magnit.ru/webgate/v2/goods/search`, with explicit storeCode, storeType, catalogType and category. Every item's returned context must match. API integer prices are kopecks (all values are divided by 100 exactly once).
 
-Supported URL contexts: shopType=express/dostavka, catalogType=2 (delivery, default for those shop types) or 3 (pickup). Offline catalogs are not silently substituted. Use the same mode when comparing prices in Magnit.
+Supported URL contexts: shopType=1 with catalogType=1 (physical store; omitted catalogType defaults to 1), or shopType=express/dostavka with catalogType=2 (delivery, default for those shop types) or 3 (pickup). The offline API responds with service=core_mm, which is accepted only for shopType=1/catalogType=1 and the exact requested storeCode. Store type stays "1" in requests, saved provenance and product URLs. No fallback or conversion between offline and online catalogues is allowed. Use the same mode when comparing prices in Magnit; published store prices are estimates, not a guarantee of the shelf/checkout price.
+
+Public API smoke check on 2026-09-03: the user's category 63905, shop 780171, storeType=1/catalogType=1 returned all 105 products over three pages. Each product's storeCode, service and catalogType passed validation. No application data was written. This is a live smoke check, not a fixed assertion about future product counts or prices.
 
 Pages use the website's page size of 36. Fetching stops only at hasMore=false; repetition, API errors, more than 50 pages or a 90-second budget abort before saving. Large sections should be split into subcategories. Saving uses one service-role-only SQL transaction. Missing items lose price confirmation; products/history/ingredient links are never deleted by sync.
 

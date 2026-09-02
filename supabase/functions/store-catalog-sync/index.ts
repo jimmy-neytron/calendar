@@ -2,9 +2,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseCatalogContext } from './catalogParser.ts'
 import { fetchMagnitCatalog } from './magnitCatalogClient.ts'
 import { extractPackage } from '../_shared/storePackage.ts'
-import { selectSyncSource } from './syncSourceSelection.ts'
+import { guardSyncClaim, selectSyncSource } from './syncSourceSelection.ts'
 
-type Source = { id: string; workspace_id: string; store: string; store_code: string; url: string }
+type Source = { id: string; workspace_id: string; store: string; store_code: string; url: string; updated_at: string }
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
@@ -27,7 +27,7 @@ Deno.serve(async (request) => {
   if (!isCron && !(await isAdminRequest(request))) return json({ ok: false, error: 'Forbidden' }, 403)
 
   const { query, isManual } = selectSyncSource(
-    admin.from('store_catalog_sources').select('id,workspace_id,store,store_code,url'),
+    admin.from('store_catalog_sources').select('id,workspace_id,store,store_code,url,updated_at'),
     sourceId, isCron, new Date().toISOString(),
   )
   const { data, error } = await query.maybeSingle()
@@ -37,7 +37,11 @@ Deno.serve(async (request) => {
     ? json({ ok: false, error: 'Источник не найден' }, 404)
     : json({ ok: true, skipped: true, reason: 'No source is due' })
 
-  await admin.from('store_catalog_sources').update({ status: 'syncing', last_error: '', updated_at: new Date().toISOString() }).eq('id', source.id)
+  const { data: claimed, error: claimError } = await guardSyncClaim(
+    admin.from('store_catalog_sources').update({ status: 'syncing', last_error: '', updated_at: new Date().toISOString() }), source,
+  ).select('id').maybeSingle()
+  if (claimError) return json({ ok: false, error: claimError.message }, 500)
+  if (!claimed) return json({ ok: false, error: 'Источник изменился или уже обновляется. Обновите список и повторите запуск.' }, 409)
   try {
     const context = parseCatalogContext(source)
     const { data: sources, error: sourcesError } = await admin.from('store_catalog_sources')

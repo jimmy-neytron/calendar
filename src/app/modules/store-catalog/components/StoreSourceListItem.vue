@@ -1,0 +1,36 @@
+<template>
+  <article class="source-item" :class="{ 'source-item--error': source.status === 'error' }">
+    <div class="source-item__main">
+      <header class="source-identity"><span class="source-brand" aria-hidden="true">М</span><div><div class="source-identity__title"><h3>{{ source.name }}</h3><span class="source-status" :class="`source-status--${source.status}`"><i />{{ syncing ? 'Обновляется' : statusLabel }}</span></div><a :href="source.url" target="_blank" rel="noopener noreferrer">Магнит · {{ source.storeCode }} <span>↗</span></a><small>{{ context ? describeStoreSourceContext(context) : 'Проверьте ссылку на каталог' }}</small></div></header>
+      <div class="source-metric"><small>Товаров</small><strong>{{ source.productCount }}</strong></div>
+      <div class="source-updated"><small>Последнее обновление</small><span>{{ formatDate(source.lastSyncedAt) }}</span></div>
+      <UiButton class="source-refresh" size="sm" variant="secondary" icon="refresh" :disabled="busy" :loading="syncing" @click="$emit('sync')">Обновить сейчас</UiButton>
+    </div>
+    <p v-if="source.lastError" class="source-error"><UiIcon name="warning" /><span>{{ source.lastError }}</span></p>
+    <div class="source-item__bottom"><div class="source-auto"><UiToggle :model-value="source.enabled" :disabled="busy" :label="source.enabled ? 'Выключить автообновление' : 'Включить автообновление'" @update:model-value="$emit('toggle', $event)" /><span>{{ source.enabled ? 'Автообновление включено' : 'Авто выключено' }}</span></div><span class="source-next">{{ source.enabled ? `Следующий запуск: ${formatDate(source.nextSyncAt)}` : 'Обновляй вручную в удобное время' }}</span><UiButton size="sm" variant="ghost" icon="edit" :disabled="busy" @click="$emit('edit')">Редактировать</UiButton></div>
+    <details class="source-management"><summary><UiIcon name="settings" />Управление источником<UiIcon name="down" /></summary><div><p>Очистка удалит товары категории. При удалении источника можно выбрать, сохранять ли его товары.</p><div><UiButton size="sm" variant="secondary" :disabled="busy" @click="$emit('clear')">Очистить товары категории</UiButton><UiButton class="source-remove" size="sm" variant="ghost" icon="trash" :disabled="busy" @click="$emit('remove')">Удалить источник</UiButton></div></div></details>
+  </article>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import UiButton from '../../../components/ui/UiButton.vue'
+import UiIcon from '../../../components/ui/UiIcon.vue'
+import UiToggle from '../../../components/ui/UiToggle.vue'
+import { inspectStoreSourceContext, describeStoreSourceContext } from '../services/storeSourceDraft'
+import type { StoreCatalogSource } from '../types/storeCatalog.types'
+const props = defineProps<{ source: StoreCatalogSource; busy: boolean; syncing: boolean }>()
+defineEmits<{ toggle: [enabled: boolean]; sync: []; edit: []; clear: []; remove: [] }>()
+const context = computed(() => inspectStoreSourceContext(props.source.url, props.source.storeCode))
+const statusLabel = computed(() => ({ idle: 'Не загружен', syncing: 'Обновляется', success: 'Обновлён', error: 'Ошибка загрузки' }[props.source.status]))
+function formatDate(value: string | null) {
+  if (!value) return 'Ещё не запускалась'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Не назначено' : new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(date)
+}
+</script>
+
+<style scoped>
+.source-item{min-width:0;overflow:hidden;border:1px solid var(--border-color);border-radius:14px;background:var(--card-solid)}.source-item--error{border-color:color-mix(in srgb,var(--danger) 35%,var(--border-color))}.source-item__main{display:grid;grid-template-columns:minmax(190px,1fr) 70px 160px auto;align-items:center;gap:22px;padding:22px}.source-identity{display:flex;align-items:center;gap:14px;min-width:0}.source-brand{display:grid;place-items:center;flex-shrink:0;width:42px;height:46px;border:1px solid var(--border-color);border-radius:12px;background:var(--control-bg);color:var(--danger);font-size:23px;font-weight:850}.source-identity>div{min-width:0}.source-identity__title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.source-identity h3{margin:0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}.source-status{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);white-space:nowrap}.source-status i{width:5px;height:5px;border-radius:50%;background:currentColor}.source-status--success{color:var(--success)}.source-status--error{color:var(--danger)}.source-status--syncing{color:var(--info)}.source-identity a{display:inline-block;margin-top:6px;font-size:11px;color:var(--text-secondary);text-decoration:none}.source-identity a:hover{text-decoration:underline}.source-identity a>span{color:var(--text-muted)}.source-identity small{display:block;margin-top:4px;color:var(--text-muted);font-size:10px}.source-metric,.source-updated{display:grid;gap:7px}.source-metric>small,.source-updated>small{font-size:10px;color:var(--text-muted)}.source-metric strong{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}.source-updated>span{font-size:11px;color:var(--text-secondary)}.source-item__bottom{display:flex;align-items:center;gap:14px;border-top:1px solid var(--border-color);padding:10px 22px;background:color-mix(in srgb,var(--control-bg) 30%,transparent)}.source-auto{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-secondary)}.source-next{flex:1;font-size:10px;color:var(--text-muted)}.source-management{border-top:1px solid var(--border-color)}.source-management summary{display:flex;align-items:center;gap:7px;width:fit-content;min-height:36px;margin-left:auto;padding:8px 22px;cursor:pointer;list-style:none;color:var(--text-muted);font-size:10px}.source-management summary::-webkit-details-marker{display:none}.source-management summary>svg{font-size:13px}.source-management[open] summary>svg:last-child{transform:rotate(180deg)}.source-management>div{padding:0 22px 16px}.source-management p{margin:0 0 12px;font-size:11px;color:var(--text-muted);line-height:1.6}.source-management>div>div{display:flex;flex-wrap:wrap;gap:8px}.source-remove{color:var(--danger)}.source-error{display:flex;gap:8px;margin:0 22px 18px;padding:12px;border-radius:10px;background:color-mix(in srgb,var(--danger) 7%,transparent);color:var(--danger);font-size:12px;line-height:1.6;overflow-wrap:anywhere}.source-error svg{flex-shrink:0}.source-management summary:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+@media(max-width:950px){.source-item__main{grid-template-columns:minmax(0,1fr) auto;gap:18px}.source-identity{grid-column:1/-1}.source-updated{grid-column:2;grid-row:2;text-align:right}.source-refresh{grid-column:1/-1;justify-self:start}.source-item__bottom{flex-wrap:wrap}.source-next{flex-basis:100%;order:3}.source-item__bottom>.ui-button{margin-left:auto}}@media(max-width:500px){.source-item__main{padding:16px;gap:14px}.source-item__bottom{padding:10px 16px}.source-identity__title{gap:4px 10px}.source-identity{gap:11px}.source-management summary{padding-right:16px}.source-management>div{padding:0 16px 16px}.source-error{margin:0 16px 16px}}
+</style>
