@@ -1,0 +1,169 @@
+import { requireAuthenticatedSupabase, requireSupabase } from '../../../api/supabase/client.js'
+import { isStorePriceCurrent } from '../../../../../supabase/functions/_shared/storePrice'
+import { parseCatalogContext } from '../../../../../supabase/functions/store-catalog-sync/catalogParser'
+import type {
+  IngredientProductLink,
+  StoreCatalogSource,
+  StorePackageUnit,
+  StoreProduct,
+  StoreSourceDraft,
+} from '../types/storeCatalog.types'
+
+export async function listStoreSources(workspaceId: string): Promise<StoreCatalogSource[]> {
+  const { data, error } = await requireSupabase()
+    .from('store_catalog_sources')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('name')
+  if (error) throw error
+  return (data || []).map(mapSource)
+}
+
+export async function listStoreProducts(workspaceId: string): Promise<StoreProduct[]> {
+  const products: StoreProduct[] = []
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await requireSupabase()
+      .from('store_products').select('*,store_source_products(source_id)')
+      .eq('workspace_id', workspaceId).order('id').range(offset, offset + 499)
+    if (error) throw error
+    products.push(...(data || []).map(mapProduct))
+    if (!data || data.length < 500) break
+  }
+  return products.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+}
+
+export async function listIngredientLinks(workspaceId: string): Promise<IngredientProductLink[]> {
+  const { data, error } = await requireSupabase()
+    .from('meal_ingredient_product_links')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+  if (error) throw error
+  return (data || []).map(mapLink)
+}
+
+export async function createStoreSource(workspaceId: string, draft: StoreSourceDraft): Promise<StoreCatalogSource> {
+  const storeCode = draft.storeCode.trim() || getStoreCodeFromUrl(draft.url)
+  if (!storeCode) throw new Error('В ссылке отсутствует параметр shopCode. Укажите код магазина вручную.')
+  parseCatalogContext({ url: draft.url.trim(), store_code: storeCode })
+  const { data, error } = await requireSupabase()
+    .from('store_catalog_sources')
+    .insert({
+      workspace_id: workspaceId,
+      store: 'magnit',
+      store_code: storeCode,
+      url: draft.url.trim(),
+      name: draft.name.trim(),
+    })
+    .select('*')
+    .single()
+  if (error) throw error
+  return mapSource(data)
+}
+
+export async function setStoreSourceEnabled(sourceId: string, enabled: boolean): Promise<void> {
+  const { error } = await requireSupabase()
+    .from('store_catalog_sources')
+    .update({ enabled })
+    .eq('id', sourceId)
+  if (error) throw error
+}
+
+export async function syncStoreSource(sourceId: string): Promise<void> {
+  const client = await requireAuthenticatedSupabase()
+  const { error } = await client.functions.invoke('store-catalog-sync', { body: { sourceId } })
+  if (error) throw await mapFunctionError(error)
+}
+
+export async function saveIngredientLink(
+  workspaceId: string,
+  ingredientName: string,
+  ingredientUnit: StorePackageUnit,
+  productId: string,
+  normalizedIngredientName: string,
+): Promise<IngredientProductLink> {
+  const { data, error } = await requireSupabase()
+    .from('meal_ingredient_product_links')
+    .upsert({
+      workspace_id: workspaceId,
+      ingredient_name: ingredientName,
+      normalized_ingredient_name: normalizedIngredientName,
+      ingredient_unit: ingredientUnit,
+      product_id: productId,
+    }, { onConflict: 'workspace_id,normalized_ingredient_name,ingredient_unit' })
+    .select('*')
+    .single()
+  if (error) throw error
+  return mapLink(data)
+}
+
+export async function removeIngredientLink(workspaceId: string, normalizedName: string, unit: StorePackageUnit): Promise<void> {
+  const { error } = await requireSupabase().from('meal_ingredient_product_links').delete()
+    .eq('workspace_id', workspaceId).eq('normalized_ingredient_name', normalizedName).eq('ingredient_unit', unit)
+  if (error) throw error
+}
+
+export async function updateProductPackage(productId: string, amount: number, unit: StorePackageUnit): Promise<void> {
+  const { error } = await requireSupabase()
+    .from('store_products')
+    .update({ package_amount: amount, package_unit: unit, package_is_manual: true })
+    .eq('id', productId)
+  if (error) throw error
+}
+
+function mapSource(row: Record<string, unknown>): StoreCatalogSource {
+  return {
+    id: String(row.id), workspaceId: String(row.workspace_id), store: String(row.store || 'magnit'),
+    storeCode: String(row.store_code || ''), url: String(row.url || ''), name: String(row.name || ''),
+    enabled: row.enabled !== false, lastSyncedAt: row.last_synced_at ? String(row.last_synced_at) : null,
+    nextSyncAt: String(row.next_sync_at || ''), status: String(row.status || 'idle') as StoreCatalogSource['status'],
+    lastError: String(row.last_error || ''), productCount: Number(row.product_count || 0),
+  }
+}
+
+function mapProduct(row: Record<string, unknown>): StoreProduct {
+  const relations = Array.isArray(row.store_source_products) ? row.store_source_products as Array<Record<string, unknown>> : []
+  const current = isStorePriceCurrent(row.current_price, row.price_verified, row.price_updated_at)
+  return {
+    id: String(row.id), workspaceId: String(row.workspace_id), store: String(row.store || 'magnit'),
+    productCode: String(row.product_code || ''), name: String(row.name || ''), normalizedName: String(row.normalized_name || ''),
+    imageUrl: String(row.image_url || ''), productUrl: String(row.product_url || ''),
+    packageAmount: row.package_amount == null ? null : Number(row.package_amount),
+    packageUnit: row.package_unit ? String(row.package_unit) as StorePackageUnit : null,
+    currentPrice: current ? Number(row.current_price) : null,
+    oldPrice: current && row.old_price != null ? Number(row.old_price) : null,
+    priceUpdatedAt: row.price_updated_at ? String(row.price_updated_at) : null,
+    priceVerified: current,
+    priceSourceId: String(row.price_source_id || ''),
+    priceStoreCode: String(row.price_store_code || ''),
+    priceStoreType: String(row.price_store_type || ''),
+    priceCatalogType: String(row.price_catalog_type || ''),
+    sourceIds: relations.map((relation) => String(relation.source_id)),
+  }
+}
+
+function mapLink(row: Record<string, unknown>): IngredientProductLink {
+  return {
+    id: String(row.id), workspaceId: String(row.workspace_id), ingredientName: String(row.ingredient_name || ''),
+    normalizedIngredientName: String(row.normalized_ingredient_name || ''),
+    ingredientUnit: String(row.ingredient_unit) as StorePackageUnit, productId: String(row.product_id),
+    packageAmountOverride: row.package_amount_override == null ? null : Number(row.package_amount_override),
+  }
+}
+
+function getStoreCodeFromUrl(value: string) {
+  try { return new URL(value).searchParams.get('shopCode')?.trim() || '' }
+  catch { return '' }
+}
+
+async function mapFunctionError(reason: unknown) {
+  const fallback = reason instanceof Error ? reason.message : 'Не удалось вызвать функцию синхронизации'
+  const context = reason && typeof reason === 'object' ? (reason as { context?: unknown }).context : null
+  if (!(context instanceof Response)) return new Error(fallback)
+  try {
+    const payload = await context.clone().json() as { error?: string; message?: string }
+    return new Error(payload.error || payload.message || fallback)
+  } catch {
+    try { return new Error((await context.clone().text()).trim() || fallback) }
+    catch { return new Error(fallback) }
+  }
+}

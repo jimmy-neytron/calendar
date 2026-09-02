@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isStorePriceCurrent } from '../_shared/storePrice.ts'
 import { code128, ean13, ean8, qrcode, upca } from 'npm:@bwip-js/node@4.11.4'
 
 type TelegramConnection = {
@@ -64,6 +65,13 @@ type DigestShoppingIngredient = {
   name: string
   amount: number
   unit: 'g' | 'ml' | 'piece'
+}
+
+type DigestPurchaseSummary = {
+  lines: Array<{ name: string; packages: number; packagePrice: number; total: number }>
+  total: number
+  unresolvedCount: number
+  ingredients: DigestShoppingIngredient[]
 }
 
 type DigestMealSlot = {
@@ -167,8 +175,9 @@ Deno.serve(async (request) => {
       loadDigestCoupons(workspaceIds, today),
       loadTodayShoppingIngredients(workspaceIds, today),
     ])
+    const purchaseSummary = await priceShoppingIngredients(workspaceIds, shoppingIngredients)
 
-    const message = buildDigestMessage(today, events, exercises, coupons, shoppingIngredients)
+    const message = buildDigestMessage(today, events, exercises, coupons, purchaseSummary)
     const telegramResponse = await sendMessage(connection.telegram_chat_id, message)
 
     if (telegramResponse.ok) {
@@ -353,6 +362,64 @@ async function loadTodayShoppingIngredients(workspaceIds: string[], today: strin
     .slice(0, 30)
 }
 
+async function priceShoppingIngredients(
+  workspaceIds: string[],
+  ingredients: DigestShoppingIngredient[],
+): Promise<DigestPurchaseSummary> {
+  const empty = { lines: [], total: 0, unresolvedCount: ingredients.length, ingredients }
+  if (!workspaceIds.length || !ingredients.length) return empty
+
+  const { data: linkRows, error: linkError } = await supabase
+    .from('meal_ingredient_product_links')
+    .select('workspace_id,normalized_ingredient_name,ingredient_unit,product_id,package_amount_override')
+    .in('workspace_id', workspaceIds)
+  if (linkError) {
+    console.error('Failed to load ingredient product links:', linkError.message)
+    return empty
+  }
+
+  const links = (linkRows || []) as Array<{
+    normalized_ingredient_name: string
+    ingredient_unit: DigestShoppingIngredient['unit']
+    product_id: string
+    package_amount_override: number | null
+  }>
+  const productIds = [...new Set(links.map((link) => link.product_id))]
+  if (!productIds.length) return empty
+  const { data: productRows, error: productError } = await supabase
+    .from('store_products')
+    .select('id,name,package_amount,package_unit,current_price,price_verified,price_updated_at')
+    .in('id', productIds)
+  if (productError) {
+    console.error('Failed to load store products:', productError.message)
+    return empty
+  }
+
+  const products = new Map((productRows || []).map((product) => [String(product.id), product]))
+  const linkByIngredient = new Map(links.map((link) => [`${link.normalized_ingredient_name}:${link.ingredient_unit}`, link]))
+  const lines: DigestPurchaseSummary['lines'] = []
+  let unresolvedCount = 0
+  ingredients.forEach((ingredient) => {
+    const link = linkByIngredient.get(`${normalizeDigestName(ingredient.name)}:${ingredient.unit}`)
+    const product = link ? products.get(link.product_id) : null
+    const packageAmount = Number(link?.package_amount_override || product?.package_amount || 0)
+    const packagePrice = Number(product?.current_price)
+    if (!product || product.package_unit !== ingredient.unit || !Number.isFinite(packageAmount) || packageAmount <= 0
+      || !isStorePriceCurrent(product.current_price, product.price_verified, product.price_updated_at)) {
+      unresolvedCount += 1
+      return
+    }
+    const packages = Math.ceil(ingredient.amount / packageAmount)
+    lines.push({ name: ingredient.name, packages, packagePrice, total: Math.round(packages * packagePrice * 100) / 100 })
+  })
+  return {
+    lines,
+    total: Math.round(lines.reduce((sum, line) => sum + line.total, 0) * 100) / 100,
+    unresolvedCount,
+    ingredients,
+  }
+}
+
 function normalizeDigestIngredients(value: unknown): DigestShoppingIngredient[] {
   if (!Array.isArray(value)) return []
   return value.flatMap((item) => {
@@ -413,7 +480,7 @@ function buildDigestMessage(
   events: CalendarEvent[],
   exercises: SportExercise[],
   coupons: DigestCoupon[],
-  shoppingIngredients: DigestShoppingIngredient[],
+  purchaseSummary: DigestPurchaseSummary,
 ) {
   const lines = [
     '<b>☀️ Доброе утро!</b>',
@@ -434,11 +501,14 @@ function buildDigestMessage(
     lines.push('<i>Можно оставить время для себя</i>')
   }
 
-  if (shoppingIngredients.length) {
-    lines.push('', `<b>🛒 Купить сегодня</b> · ${formatRussianCount(shoppingIngredients.length, ['продукт', 'продукта', 'продуктов'])}`)
-    lines.push(`<blockquote>${shoppingIngredients.map((ingredient) => (
-      `${escapeTelegramHtml(ingredient.name)} — <b>${escapeTelegramHtml(formatShoppingAmount(ingredient))}</b>`
-    )).join('\n')}</blockquote>`)
+  if (purchaseSummary.ingredients.length) {
+    lines.push('', `<b>🛒 Купить сегодня</b> · ${formatRussianCount(purchaseSummary.ingredients.length, ['продукт', 'продукта', 'продуктов'])}`)
+    const purchaseLines = purchaseSummary.lines.map((line) => (
+      `${escapeTelegramHtml(line.name)} — <b>${line.packages} уп. × ${formatMoney(line.packagePrice)} = ${formatMoney(line.total)}</b>`
+    ))
+    if (purchaseLines.length) purchaseLines.push('', `<b>Ориентировочно: ${formatMoney(purchaseSummary.total)}</b>`)
+    if (purchaseSummary.unresolvedCount) purchaseLines.push(`Не связано с каталогом: <b>${purchaseSummary.unresolvedCount}</b>`)
+    lines.push(`<blockquote>${purchaseLines.join('\n')}</blockquote>`)
   }
 
   const totalDuration = exercises.reduce((sum, exercise) => sum + Math.max(0, Number(exercise.duration_minutes) || 0), 0)
@@ -523,12 +593,8 @@ function buildDigestMessage(
   return truncateTelegramHtml(lines)
 }
 
-function formatShoppingAmount(ingredient: DigestShoppingIngredient) {
-  const amount = Number.isInteger(ingredient.amount)
-    ? String(ingredient.amount)
-    : ingredient.amount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })
-  const unit = ingredient.unit === 'piece' ? 'шт.' : ingredient.unit === 'ml' ? 'мл' : 'г'
-  return `${amount} ${unit}`
+function formatMoney(value: number) {
+  return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)} ₽`
 }
 
 function formatRussianCount(value: number, forms: [string, string, string]) {

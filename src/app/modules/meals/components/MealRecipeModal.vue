@@ -20,14 +20,13 @@
           </UiSelect>
         </label>
         <UiInput v-model="form.servings" label="Порций в рецепте" type="number" min="1" max="100" />
-        <UiInput v-model="form.imageUrl" label="Ссылка на фото" placeholder="Необязательно" />
       </section>
 
       <section class="recipe-section">
         <header>
           <div>
             <h3>Ингредиенты</h3>
-            <p>Новый продукт сохраняется в общем справочнике пространства. Если данные заполнены, калории посчитаются автоматически.</p>
+            <p>Укажите количество на весь рецепт. Товары магазина выбираются в составе сохранённого блюда.</p>
           </div>
         </header>
 
@@ -54,7 +53,7 @@
           @add="addManualProduct"
         />
         <p v-if="externalError" class="recipe-error">{{ externalError }}</p>
-        <p class="off-attribution">
+        <p v-if="foodQuery.trim().length >= 2" class="off-attribution">
           Поиск выполняется напрямую с устройства.
           <a href="https://world.openfoodfacts.org/" target="_blank" rel="noreferrer">Данные Open Food Facts</a>
         </p>
@@ -89,7 +88,8 @@
         </div>
       </section>
 
-      <section class="recipe-section">
+      <details class="recipe-section recipe-optional">
+        <summary>Калории и БЖУ <span>необязательно</span></summary>
         <header>
           <div>
             <h3>На одну порцию</h3>
@@ -110,9 +110,13 @@
           <UiInput v-model="form.fat" label="Жиры" type="text" inputmode="decimal" placeholder="г" />
           <UiInput v-model="form.carbs" label="Углеводы" type="text" inputmode="decimal" placeholder="г" />
         </div>
-      </section>
+      </details>
 
-      <UiInput v-model="form.instructions" type="textarea" label="Как приготовить" placeholder="Необязательно" />
+      <details class="recipe-section recipe-optional">
+        <summary>Приготовление и фото <span>необязательно</span></summary>
+        <UiInput v-model="form.imageUrl" label="Ссылка на фото" placeholder="Необязательно" />
+        <UiInput v-model="form.instructions" type="textarea" label="Как приготовить" placeholder="Необязательно" />
+      </details>
       <p v-if="formError" class="recipe-error">{{ formError }}</p>
 
       <footer>
@@ -318,5 +322,9 @@ function sourceLabel(source: FoodReference['source']) {
 </script>
 
 <style scoped>
-.recipe-form{display:grid;gap:18px}.recipe-basics{display:grid;grid-template-columns:2fr 1fr .7fr;gap:10px}.recipe-basics>:last-child{grid-column:1/-1}.recipe-field{display:grid;gap:5px}.recipe-field>span{color:var(--text-secondary);font-size:11px;font-weight:700}.recipe-field :deep(.ui-select__trigger){width:100%;height:36px}.recipe-section{display:grid;gap:12px;border:1px solid var(--border-color);border-radius:16px;padding:14px;background:var(--card-soft)}.recipe-section>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.recipe-section h3{margin:0;font-size:15px}.recipe-section p{margin:3px 0 0;color:var(--text-muted);font-size:10px}.ingredient-search{display:grid;grid-template-columns:1fr auto;gap:8px}.manual-product-action{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border-color);padding-top:8px;color:var(--text-muted);font-size:10px}.off-attribution a{color:var(--accent);text-decoration:none}.food-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.food-results>button{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border-color);border-radius:11px;padding:9px;color:var(--text-primary);background:var(--control-bg);text-align:left}.food-results span,.food-results small{display:block;min-width:0}.food-results b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.food-results small{margin-top:2px;color:var(--text-muted);font-size:8px}.food-results strong{flex:none;color:var(--success);font-size:9px}.food-results>p{grid-column:1/-1}.ingredient-list{display:grid;gap:6px}.ingredient-list article{display:grid;grid-template-columns:minmax(150px,1fr) 90px 82px 34px;align-items:center;gap:7px;border-top:1px solid var(--border-color);padding-top:7px}.ingredient-list strong,.ingredient-list small{display:block}.ingredient-list strong{font-size:11px}.ingredient-list small{color:var(--text-muted);font-size:8px}.ingredient-list :deep(.ui-input__control),.ingredient-list :deep(.ui-select__trigger){height:34px}.nutrition-inputs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.recipe-error{margin:0;color:var(--danger);font-size:10px}.recipe-form>footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border-color);padding-top:12px}@media(max-width:700px){.recipe-basics,.nutrition-inputs{grid-template-columns:1fr 1fr}.recipe-basics>:last-child{grid-column:1/-1}.food-results{grid-template-columns:1fr}.ingredient-search{grid-template-columns:1fr}.ingredient-list article{grid-template-columns:1fr 80px 72px 34px}.ingredient-list article>div{grid-column:1/-1}}@media(max-width:460px){.recipe-basics,.nutrition-inputs{grid-template-columns:1fr}.recipe-basics>:last-child{grid-column:auto}.manual-product-action{align-items:flex-start;flex-direction:column}}
+.recipe-optional{display:block!important}.recipe-optional summary{cursor:pointer;font-size:13px;font-weight:750}.recipe-optional summary span{margin-left:8px;font-weight:400;color:var(--text-muted);font-size:11px}.recipe-optional[open]>summary{margin-bottom:18px}.recipe-optional>header{margin-bottom:12px}.recipe-optional :deep(.ui-input){margin-top:10px}
+</style>
+
+<style scoped>
+.recipe-form{display:grid;gap:18px}.recipe-basics{display:grid;grid-template-columns:2fr 1fr .7fr;gap:10px}.recipe-field{display:grid;gap:5px}.recipe-field>span{color:var(--text-secondary);font-size:11px;font-weight:700}.recipe-field :deep(.ui-select__trigger){width:100%;height:36px}.recipe-section{display:grid;gap:12px;border:1px solid var(--border-color);border-radius:16px;padding:14px;background:var(--card-soft)}.recipe-section>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.recipe-section h3{margin:0;font-size:15px}.recipe-section p{margin:3px 0 0;color:var(--text-muted);font-size:12px}.ingredient-search{display:grid;grid-template-columns:1fr auto;gap:8px}.manual-product-action{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border-color);padding-top:8px;color:var(--text-muted);font-size:10px}.off-attribution a{color:var(--accent);text-decoration:none}.food-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.food-results>button{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border-color);border-radius:11px;padding:9px;color:var(--text-primary);background:var(--control-bg);text-align:left}.food-results span,.food-results small{display:block;min-width:0}.food-results b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.food-results small{margin-top:2px;color:var(--text-muted);font-size:10px}.food-results strong{flex:none;color:var(--success);font-size:9px}.food-results>p{grid-column:1/-1}.ingredient-list{display:grid;gap:6px}.ingredient-list article{display:grid;grid-template-columns:minmax(150px,1fr) 90px 82px 34px;align-items:center;gap:7px;border-top:1px solid var(--border-color);padding-top:7px}.ingredient-list strong,.ingredient-list small{display:block}.ingredient-list strong{font-size:11px}.ingredient-list small{color:var(--text-muted);font-size:8px}.ingredient-list :deep(.ui-input__control),.ingredient-list :deep(.ui-select__trigger){height:34px}.nutrition-inputs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.recipe-error{margin:0;color:var(--danger);font-size:10px}.recipe-form>footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border-color);padding-top:12px}@media(max-width:700px){.recipe-basics,.nutrition-inputs{grid-template-columns:1fr 1fr}.recipe-basics>:last-child{grid-column:1/-1}.food-results{grid-template-columns:1fr}.ingredient-search{grid-template-columns:1fr}.ingredient-list article{grid-template-columns:1fr 80px 72px 34px}.ingredient-list article>div{grid-column:1/-1}}@media(max-width:460px){.recipe-basics,.nutrition-inputs{grid-template-columns:1fr}.recipe-basics>:last-child{grid-column:auto}.manual-product-action{align-items:flex-start;flex-direction:column}}
 </style>

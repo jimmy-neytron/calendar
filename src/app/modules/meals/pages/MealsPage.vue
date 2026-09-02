@@ -45,40 +45,34 @@
         />
       </section>
 
-      <section v-else-if="activeTab === 'recipes'" class="recipes-view">
-        <header>
-          <div><h2>Справочник блюд</h2><p>Популярные блюда доступны сразу. Свои рецепты можно добавлять без обязательных калорий и БЖУ.</p></div>
-          <div class="recipe-library-actions">
-            <UiInput v-model="libraryQuery" placeholder="Найти блюдо" />
-            <UiButton icon="plus" @click="openRecipeEditor()">Новое блюдо</UiButton>
-          </div>
-        </header>
-        <div class="recipe-grid">
-          <article v-for="recipe in visibleLibraryRecipes" :key="recipe.id" class="recipe-card panel">
-            <div class="recipe-card__visual" :style="recipe.imageUrl ? { backgroundImage: `url(${recipe.imageUrl})` } : {}">
-              <UiIcon v-if="!recipe.imageUrl" name="utensils" />
-            </div>
-            <div class="recipe-card__copy">
-              <span>{{ isPopularRecipe(recipe) ? 'Популярное · ' : '' }}{{ mealTypeLabel(recipe.mealType) }}</span>
-              <h3>{{ recipe.title }}</h3>
-              <p>{{ recipe.ingredients.length ? `${recipe.ingredients.length} ингредиентов` : 'Состав не указан' }}</p>
-              <div><b>{{ recipeNutritionLabel(recipe) }}</b><small>{{ recipe.servings }} порц.</small></div>
-            </div>
-            <footer>
-              <UiButton v-if="isPopularRecipe(recipe)" variant="secondary" icon="plus" @click="copyPopularRecipe(recipe)">Сохранить себе</UiButton>
-              <template v-else>
-                <UiButton variant="secondary" icon="edit" @click="openRecipeEditor(recipe)">Изменить</UiButton>
-                <UiIconButton icon="trash" label="Удалить блюдо" variant="danger" @click="confirmRemoveRecipe(recipe)" />
-              </template>
-            </footer>
-          </article>
-        </div>
-        <div v-if="!visibleLibraryRecipes.length" class="empty-recipes panel">
-          <UiIcon name="search" />
-          <h3>Блюдо не найдено</h3>
-          <p>Измени запрос или создай собственный рецепт.</p>
-        </div>
-      </section>
+      <MealRecipeLibrary
+        v-else-if="activeTab === 'recipes'"
+        :recipes="mealPlanStore.availableRecipes.value"
+        :is-admin="authStore.isAdmin.value"
+        @create="openRecipeEditor()"
+        @edit="openRecipeEditor"
+        @copy="copyPopularRecipe"
+        @remove="confirmRemoveRecipe"
+        @shopping="activeTab = 'costs'"
+      />
+
+      <MealCostPlanner
+        v-else-if="activeTab === 'costs' && draftWeek"
+        :week="draftWeek"
+        :week-start="selectedWeekStart"
+        :week-label="weekLabel"
+        :days="days"
+      >
+        <template #extra>
+          <section class="manual-shopping panel">
+            <header class="manual-shopping__heading"><div><strong>Дополнительно к меню</strong><span>Покупки вручную тоже входят в расчёт выбранного дня.</span></div><UiButton v-if="canAddShoppingItem" variant="secondary" icon="plus" @click="shoppingItemEditorOpen = true">Добавить покупку</UiButton></header>
+            <article v-for="item in draftWeek.shoppingItems" :key="item.id">
+              <div><strong>{{ item.name }}</strong><span>{{ formatShoppingDate(item.date) }} · {{ formatIngredientAmount(item.amount, item.unit) }}</span></div>
+              <UiIconButton icon="trash" label="Удалить продукт" variant="danger" @click="removeManualShoppingItem(item.id)" />
+            </article>
+          </section>
+        </template>
+      </MealCostPlanner>
 
       <section v-else class="shopping-view">
         <header>
@@ -152,8 +146,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { workspaceStore } from '../../../stores/workspace.store.js'
+import { authStore } from '../../../stores/auth.store.js'
 import { useNotification } from '../../../composables/ui/useNotification.js'
 import UiButton from '../../../components/ui/UiButton.vue'
 import UiIcon from '../../../components/ui/UiIcon.vue'
@@ -161,6 +156,7 @@ import UiIconButton from '../../../components/ui/UiIconButton.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiModal from '../../../components/ui/UiModal.vue'
 import UiPageHeader from '../../../components/ui/UiPageHeader.vue'
+import MealRecipeLibrary from '../components/MealRecipeLibrary.vue'
 import MealRecipeModal from '../components/MealRecipeModal.vue'
 import MealShoppingItemModal from '../components/MealShoppingItemModal.vue'
 import MealWeekBoard, { type MealWeekDayView } from '../components/MealWeekBoard.vue'
@@ -176,7 +172,8 @@ const mealTypes: Array<{ id: MealType; label: string }> = [
   { id: 'dinner', label: 'Ужин' },
   { id: 'snack', label: 'Перекус' },
 ]
-const activeTab = ref<'week' | 'recipes' | 'shopping'>('week')
+const MealCostPlanner = defineAsyncComponent(() => import('../components/MealCostPlanner.vue'))
+const activeTab = ref<'week' | 'recipes' | 'shopping' | 'costs'>('week')
 const selectedWeekStart = ref(getMondayKey(new Date()))
 const draftWeek = ref<MealWeek | null>(null)
 const calorieTargetInput = ref('')
@@ -186,7 +183,6 @@ const pickerOpen = ref(false)
 const pickerDate = ref('')
 const pickerMealType = ref<MealType>('dinner')
 const recipeQuery = ref('')
-const libraryQuery = ref('')
 const recipeEditorOpen = ref(false)
 const editingRecipe = ref<MealRecipe | null>(null)
 const copyingPopularRecipe = ref(false)
@@ -214,17 +210,15 @@ const weekLabel = computed(() => {
 const tabs = computed(() => [
   { id: 'week' as const, label: 'Неделя', count: plannedSlots.value.length },
   { id: 'recipes' as const, label: 'Блюда', count: mealPlanStore.availableRecipes.value.length },
-  { id: 'shopping' as const, label: 'Продукты', count: shoppingIngredients.value.length },
+  authStore.isAdmin.value
+    ? { id: 'costs' as const, label: 'Закупка', count: shoppingIngredients.value.length + todayShoppingIngredients.value.length }
+    : { id: 'shopping' as const, label: 'Закупка', count: shoppingIngredients.value.length + todayShoppingIngredients.value.length },
 ])
 const filteredPickerRecipes = computed(() => {
   const query = normalize(recipeQuery.value)
   return mealPlanStore.availableRecipes.value
     .filter((recipe) => !query || normalize(recipe.title).includes(query))
     .sort((first, second) => Number(second.mealType === pickerMealType.value) - Number(first.mealType === pickerMealType.value))
-})
-const visibleLibraryRecipes = computed(() => {
-  const query = normalize(libraryQuery.value)
-  return mealPlanStore.availableRecipes.value.filter((recipe) => !query || normalize(recipe.title).includes(query))
 })
 const plannedSlots = computed(() => {
   if (!draftWeek.value) return []
@@ -430,10 +424,6 @@ async function saveRecipe(draft: Omit<MealRecipe, 'id' | 'workspaceId' | 'archiv
   if (createForPendingSlot.value) assignRecipe(result.recipe)
 }
 
-function isPopularRecipe(recipe: MealRecipe) {
-  return recipe.id.startsWith('popular:')
-}
-
 async function confirmRemoveRecipe(recipe: MealRecipe) {
   if (!window.confirm(`Убрать блюдо «${recipe.title}» из справочника? В сохранённых неделях оно останется.`)) return
   const result = await mealPlanStore.removeRecipe(recipe.id)
@@ -538,4 +528,7 @@ function normalize(value: string) {
 
 <style scoped>
 .recipe-library-actions{display:flex;align-items:center;gap:8px}.recipe-library-actions :deep(.ui-input){min-width:220px}.week-toolbar__summary{display:flex;align-items:center;gap:14px;min-width:0}.week-toolbar__summary>div{display:flex;align-items:baseline;gap:5px;white-space:nowrap}.week-toolbar__summary strong{color:var(--accent);font-size:19px}.week-toolbar__summary span{color:var(--text-secondary);font-size:9px;font-weight:700}.week-toolbar__summary p{margin:0;color:var(--text-muted);font-size:9px}.manual-shopping{display:grid;padding:6px 14px}.manual-shopping>header{padding:8px 2px}.manual-shopping>header strong,.manual-shopping>header span,.manual-shopping article strong,.manual-shopping article span{display:block}.manual-shopping>header strong{font-size:11px}.manual-shopping>header span,.manual-shopping article span{margin-top:2px;color:var(--text-muted);font-size:9px}.manual-shopping article{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border-color);padding:9px 2px}.manual-shopping article strong{font-size:11px}@media(max-width:1050px){.week-toolbar__summary{align-items:flex-start;flex-direction:column;gap:3px}}@media(max-width:680px){.recipe-library-actions{align-items:stretch;flex-direction:column}.recipe-library-actions :deep(.ui-input){min-width:0}.week-toolbar__summary{padding:2px 0}}
+</style>
+<style scoped>
+.manual-shopping__heading{display:flex;align-items:center;justify-content:space-between;gap:14px}.manual-shopping__heading>div{min-width:0}@media(max-width:650px){.manual-shopping__heading{align-items:stretch;flex-direction:column}}
 </style>
