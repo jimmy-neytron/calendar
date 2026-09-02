@@ -10,9 +10,10 @@
         <option v-for="product in compatibleProducts" :key="product.id" :value="product.id">{{ product.name }} · {{ product.productCode }}</option>
       </UiSelect>
       <div class="ingredient-purchase__meta">
-        <span v-if="item.packageAmount && item.product?.packageUnit">Упаковка {{ formatAmount(item.packageAmount, item.product.packageUnit) }} · {{ formatMoney(item.product.currentPrice) }}</span>
+        <span v-if="item.packageAmount && item.product?.packageUnit">{{ item.product.isWeighted ? 'Весовая порция' : 'Упаковка' }} {{ formatAmount(item.packageAmount, item.product.packageUnit) }} · {{ formatMoney(item.product.currentPrice) }}</span>
+        <span v-if="item.product?.isWeighted && item.product.unitPrice != null">{{ formatMoney(item.product.unitPrice) }} / кг · итог уточняется при взвешивании</span>
         <span v-if="!item.confirmed" class="ingredient-purchase__warning">{{ problem }}</span>
-        <button v-if="item.product" type="button" @click="packageOpen = !packageOpen">{{ packageOpen ? 'Скрыть' : 'Уточнить фасовку' }}</button>
+        <button v-if="item.product && !item.product.isWeighted" type="button" @click="packageOpen = !packageOpen">{{ packageOpen ? 'Скрыть' : 'Уточнить фасовку' }}</button>
         <a v-if="item.product?.productUrl" :href="item.product.productUrl" target="_blank" rel="noreferrer">В магазине ↗</a>
       </div>
       <form v-if="packageOpen && item.product" class="ingredient-purchase__package" @submit.prevent="savePackage">
@@ -23,7 +24,7 @@
     </div>
     <div class="ingredient-purchase__total">
       <strong>{{ formatMoney(item.lineTotal) }}</strong>
-      <span>{{ item.packages ? `${item.packages} упак.` : 'Не рассчитано' }}</span>
+      <span>{{ item.packages ? item.product?.isWeighted ? formatAmount(item.packages * (item.product.weightStep || 0), 'g') : `${item.packages} упак.` : 'Не рассчитано' }}</span>
     </div>
   </article>
 </template>
@@ -39,10 +40,17 @@ const packageOpen = ref(false)
 const packageInput = ref('')
 watch(() => props.item.product, product => { packageInput.value = product?.packageAmount ? String(product.packageAmount) : ''; packageOpen.value = false }, { immediate: true })
 const compatibleProducts = computed(() => props.products.filter(product => product.id === props.item.product?.id || !product.packageUnit || product.packageUnit === props.item.unit))
-const problem = computed(() => !props.item.product ? 'Выберите товар, чтобы получить цену' : !props.item.packageAmount || props.item.product.packageUnit !== props.item.unit ? 'Укажите фасовку в единицах ингредиента' : 'Нет актуальной цены — обновите источник')
+const problem = computed(() => {
+  const product = props.item.product
+  if (!product) return 'Выберите товар, чтобы получить цену'
+  if (product.isWeighted && (!props.item.packageAmount || !product.weightStep || !product.weightMinimum)) return 'Не получены параметры веса — обновите источник'
+  if (product.isWeighted && props.item.unit !== 'g') return 'Для весового товара укажите ингредиент в граммах'
+  if (!props.item.packageAmount || product.packageUnit !== props.item.unit) return 'Укажите фасовку в единицах ингредиента'
+  return 'Нет актуальной цены — обновите источник'
+})
 function savePackage() {
   const amount = Number(packageInput.value)
-  if (props.item.product && Number.isFinite(amount) && amount > 0) emit('set-package', props.item.product.id, amount, props.item.unit)
+  if (props.item.product && !props.item.product.isWeighted && Number.isFinite(amount) && amount > 0) emit('set-package', props.item.product.id, amount, props.item.unit)
 }
 const unitLabel = (unit: StorePackageUnit) => unit === 'piece' ? 'шт.' : unit === 'ml' ? 'мл' : 'г'
 const formatAmount = (amount: number, unit: StorePackageUnit) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(amount)} ${unitLabel(unit)}`

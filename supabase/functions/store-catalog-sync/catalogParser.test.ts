@@ -14,6 +14,24 @@ const product = {
 const page = (items: unknown[], offset = 0, hasMore = false) => ({ items, pagination: { offset, hasMore, nextOffset: null } })
 
 describe('Magnit store-scoped prices', () => {
+  it.each([
+    ['9072651210', 'Картофель', 10000, 2000, 5000, 100],
+    ['1445100062', 'Картофель фасованный', 12397, 2480, 4999, 123.97],
+    ['9072651204', 'Лук репчатый', 4830, 700, 6900, 48.3],
+  ])('imports shelf price and weight for %s without treating them as a kg price', (id, name, price, grams, unitPrice, expected) => {
+    const result = parseMagnitCatalogPage(page([{ ...product, id, name, price,
+      weighted: { isWeighted: true, shelfWeight: grams, step: grams, minStep: 1, unitLabel: '1кг', unitPrice },
+    }]), context).products[0]
+    expect(result).toMatchObject({ price: expected, isWeighted: true, shelfWeight: grams, weightStep: grams, weightMinimum: grams, unitPrice: unitPrice / 100 })
+  })
+  it.each([
+    { shelfWeight: null }, { step: 0 }, { minStep: null }, { unitLabel: '1шт' }, { unitPrice: null },
+  ])('does not guess missing weighted price units: %s', changes => {
+    const result = parseMagnitCatalogPage(page([{ ...product, weighted: {
+      isWeighted: true, shelfWeight: 2000, step: 2000, minStep: 1, unitLabel: '1кг', unitPrice: 5000, ...changes,
+    } }]), context).products[0]
+    expect(result.price).toBeNull()
+  })
   it.each([[11999, 119.99], [9999, 99.99], [6999, 69.99], [2600, 26], [10000, 100], [1200000, 12000]])(
     'converts %s kopecks to %s rubles without magnitude guessing', (minor, rubles) => {
       const [result] = parseMagnitCatalogPage(page([{ ...product, price: minor }]), context).products

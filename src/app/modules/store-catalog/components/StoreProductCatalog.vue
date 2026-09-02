@@ -1,7 +1,7 @@
 <template>
   <section class="catalog-panel panel">
     <header class="section-head"><div><small>Для ингредиентов ваших блюд</small><h2>Товары магазина</h2><p>Цена зависит от магазина и режима покупки. Снимки старше суток не участвуют в расчёте меню.</p></div><span>{{ filtered.length }} из {{ products.length }}</span></header>
-    <p v-if="products.some(product => !product.priceVerified)" class="price-notice">Есть товары без подтверждённой цены. Обновите источники: старый импорт, недоступные и весовые товары не включаются в итог.</p>
+    <p v-if="products.some(product => !product.priceVerified)" class="price-notice">Есть товары без подтверждённой цены. Обновите источники: устаревшие цены, недоступные товары и товары с неполными данными не включаются в итог.</p>
     <div class="catalog-toolbar">
       <label class="search"><UiIcon name="search"/><input v-model="query" type="search" placeholder="Название или код товара" /></label>
       <UiSelect v-model="sourceId" aria-label="Раздел каталога"><option value="">Все разделы</option><option v-for="source in sources" :key="source.id" :value="source.id">{{ source.name }}</option></UiSelect>
@@ -13,10 +13,10 @@
       <article v-for="product in paged" :key="product.id" class="product-card">
         <div class="product-image"><img v-if="product.imageUrl" :src="product.imageUrl" :alt="product.name" loading="lazy"/><UiIcon v-else name="shopping"/></div>
         <div class="product-copy"><small>{{ product.store }} · {{ product.priceStoreCode || 'Магазин не подтверждён' }} · {{ product.sourceIds.length }} разд.</small><h3>{{ product.name }}</h3><span>Код {{ product.productCode }}</span><p>{{ product.packageAmount ? formatAmount(product.packageAmount, product.packageUnit) : 'Уточните фасовку' }}</p><small v-if="product.priceStoreType">{{ product.priceCatalogType === '3' ? 'Самовывоз' : 'Доставка' }} · {{ product.priceStoreType }}</small></div>
-        <div class="product-price"><s v-if="hasDiscount(product)">{{ formatMoney(product.oldPrice) }}</s><strong>{{ formatMoney(product.currentPrice) }}</strong><small>{{ formatDate(product.priceUpdatedAt) }}</small><small v-if="!product.priceVerified">Не включена в расчёт</small></div>
+        <div class="product-price"><s v-if="hasDiscount(product)">{{ formatMoney(product.oldPrice) }}</s><strong>{{ formatMoney(product.currentPrice) }}</strong><small v-if="product.isWeighted && product.packageAmount">за {{ formatAmount(product.packageAmount, product.packageUnit) }}</small><small v-if="product.isWeighted && product.unitPrice != null">{{ formatMoney(product.unitPrice) }} / кг</small><small v-if="product.isWeighted">Весовой · итог после взвешивания</small><small>{{ formatDate(product.priceUpdatedAt) }}</small><small v-if="!product.priceVerified">Не включена в расчёт</small></div>
         <footer>
           <a v-if="product.priceStoreCode && product.productUrl" :href="product.productUrl" target="_blank" rel="noopener noreferrer">В Магните ↗</a>
-          <button type="button" @click="startPackageEdit(product)"><UiIcon name="ruler"/> Фасовка</button>
+          <button v-if="!product.isWeighted" type="button" @click="startPackageEdit(product)"><UiIcon name="ruler"/> Фасовка</button>
           <button type="button" :disabled="!requirements.length" @click="$emit('start-link', product)"><UiIcon name="link"/> Связать</button>
         </footer>
         <form v-if="editingId === product.id" class="package-editor" @submit.prevent="savePackage(product.id)">

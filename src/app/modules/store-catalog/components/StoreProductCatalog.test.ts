@@ -15,6 +15,16 @@ const product: StoreProduct = {
 }
 
 describe('nutrition catalog price presentation', () => {
+  it('shows the price basis and disallows manual packaging for weighted goods', async () => {
+    const html = await renderToString(createSSRApp(StoreProductCatalog, { products: [{
+      ...product, name: 'Картофель', isWeighted: true, packageAmount: 2000, packageUnit: 'g', weightStep: 2000, weightMinimum: 2000, currentPrice: 100, unitPrice: 50,
+    }], sources: [], requirements: [] }))
+    expect(html).toContain('100 ₽')
+    expect(html).toContain('за 2000 г')
+    expect(html).toContain('50 ₽ / кг')
+    expect(html).toContain('Весовой')
+    expect(html).not.toContain('> Фасовка</button>')
+  })
   it('shows precise rubles, shop context, product link and ambiguous packaging', async () => {
     const html = await renderToString(createSSRApp(StoreProductCatalog, { products: [product], sources: [], requirements: [] }))
     expect(html).toContain('119,99 ₽')

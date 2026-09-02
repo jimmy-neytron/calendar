@@ -5,8 +5,8 @@
       <label v-if="showDatePicker" class="date-field">Дата<input :value="date" type="date" @input="$emit('change-date', ($event.target as HTMLInputElement).value)" /></label>
     </header>
     <div v-if="purchases.length" class="purchase-overview">
-      <div><span>{{ unresolvedCount ? 'Известная часть суммы' : 'Всего за упаковки' }}</span><strong>{{ unresolvedCount && !total ? 'Нужны цены' : formatMoney(total) }}</strong></div>
-      <p>Рассчитано {{ purchases.length - unresolvedCount }} из {{ purchases.length }} позиций<span v-if="unresolvedCount">Без товара, фасовки или актуальной цены — не входят в сумму.</span><span v-else>Упаковки округлены вверх. Остатки дома не учтены.</span></p>
+      <div><span>{{ unresolvedCount ? 'Известная часть суммы' : 'Плановая стоимость покупки' }}</span><strong>{{ unresolvedCount && !total ? 'Нужны цены' : formatMoney(total) }}</strong></div>
+      <p>Рассчитано {{ purchases.length - unresolvedCount }} из {{ purchases.length }} позиций<span v-if="unresolvedCount">Без товара, фасовки или актуальной цены — не входят в сумму.</span><span v-else>Учтены упаковки и шаг заказа весовых товаров. Итоговый вес уточняет магазин.</span></p>
     </div>
     <div v-if="purchases.length > 3 || query || onlyUnresolved" class="purchase-filters">
       <UiInput v-model="query" placeholder="Найти ингредиент" aria-label="Найти ингредиент закупки" />

@@ -107,6 +107,9 @@ export async function updateProductPackage(productId: string, amount: number, un
     .from('store_products')
     .update({ package_amount: amount, package_unit: unit, package_is_manual: true })
     .eq('id', productId)
+    .eq('is_weighted', false)
+    .select('id')
+    .single()
   if (error) throw error
 }
 
@@ -138,6 +141,10 @@ function mapProduct(row: Record<string, unknown>): StoreProduct {
     priceStoreType: String(row.price_store_type || ''),
     priceCatalogType: String(row.price_catalog_type || ''),
     sourceIds: relations.map((relation) => String(relation.source_id)),
+    isWeighted: row.is_weighted === true,
+    weightStep: row.weight_step == null ? null : Number(row.weight_step),
+    weightMinimum: row.weight_minimum == null ? null : Number(row.weight_minimum),
+    unitPrice: current && row.unit_price != null ? Number(row.unit_price) : null,
   }
 }
 

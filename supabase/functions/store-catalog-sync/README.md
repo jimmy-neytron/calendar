@@ -27,6 +27,11 @@ Supported URL contexts: shopType=express/dostavka, catalogType=2 (delivery, defa
 
 Pages use the website's page size of 36. Fetching stops only at hasMore=false; repetition, API errors, more than 50 pages or a 90-second budget abort before saving. Large sections should be split into subcategories. Saving uses one service-role-only SQL transaction. Missing items lose price confirmation; products/history/ingredient links are never deleted by sync.
 
-Weight-based and unavailable goods have no package price in the estimate. Ambiguous package ranges such as 450–500 g require manual confirmation.
+Weighted goods are supported after the incremental migration in [DEPLOY.md](./DEPLOY.md).
+Their API price is for `weighted.shelfWeight` grams, while `weighted.unitPrice` is per kg.
+Purchases respect `step` and `minStep`; shelf price rounding is preserved. Manual
+packaging overrides are ignored for weighted goods. Missing weight metadata and
+unavailable goods remain excluded from estimates. Ambiguous non-weighted package
+ranges such as 450–500 g still require manual confirmation.
 
 Public-site smoke check on 2026-09-02: Barilla 1000166506, shop 780171, express, catalogType=2 returned 10999 kopecks. A screenshot price of 119.99 must be compared using the same shop, buying mode and time, not hardcoded.

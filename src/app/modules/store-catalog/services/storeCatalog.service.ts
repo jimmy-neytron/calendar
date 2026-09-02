@@ -27,7 +27,7 @@ export function getCurrentStoreProducts(products: StoreProduct[], sources: Store
     const matches = context && context.storeCode === product.priceStoreCode
       && context.storeType === product.priceStoreType && context.catalogType === product.priceCatalogType
     const current = matches && isStorePriceCurrent(product.currentPrice, product.priceVerified, product.priceUpdatedAt, now)
-    return current ? product : { ...product, currentPrice: null, oldPrice: null, priceVerified: false }
+    return current ? product : { ...product, currentPrice: null, oldPrice: null, unitPrice: null, priceVerified: false }
   })
 }
 
@@ -108,9 +108,17 @@ export function calculateDailyPurchases(
   return requirements.map((requirement) => {
     const link = linkByIngredient.get(`${requirement.normalizedName}:${requirement.unit}`) || null
     const product = link ? productById.get(link.productId) || null : null
-    const packageAmount = link?.packageAmountOverride || product?.packageAmount || null
+    // Weighted shelf price and weight are inseparable; manual package overrides
+    // must not reinterpret a 2 kg price as a 500 g price.
+    const packageAmount = product?.isWeighted ? product.packageAmount : link?.packageAmountOverride || product?.packageAmount || null
     const compatible = Boolean(product && packageAmount && product.packageUnit === requirement.unit)
-    const packages = compatible ? Math.ceil(requirement.amount / packageAmount!) : null
+    const weighted = product?.isWeighted === true
+    const step = product?.weightStep || 0
+    const minimum = product?.weightMinimum || 0
+    const weightedValid = compatible && requirement.unit === 'g' && Number.isFinite(step) && step > 0 && Number.isFinite(minimum) && minimum > 0
+    const packages = weighted
+      ? weightedValid ? Math.max(Math.ceil(requirement.amount / step), Math.ceil(minimum / step)) : null
+      : compatible ? Math.ceil(requirement.amount / packageAmount!) : null
     const confirmed = Boolean(packages && product && isStorePriceCurrent(product.currentPrice, product.priceVerified, product.priceUpdatedAt))
     return {
       ...requirement,
@@ -118,7 +126,7 @@ export function calculateDailyPurchases(
       product,
       packageAmount,
       packages,
-      lineTotal: confirmed ? Math.round(packages! * product!.currentPrice! * 100) / 100 : null,
+      lineTotal: confirmed ? Math.round(packages! * product!.currentPrice! * (weighted ? step / packageAmount! : 1) * 100) / 100 : null,
       confirmed,
     }
   })

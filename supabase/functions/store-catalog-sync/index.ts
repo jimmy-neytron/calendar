@@ -52,12 +52,14 @@ Deno.serve(async (request) => {
     const receivedAt = new Date().toISOString()
     const { products } = await fetchMagnitCatalog(source)
     const rows = products.map((product) => {
-      const packaging = product.isWeighted ? { amount: null, unit: null } : extractPackage(product.name)
+      const packaging = product.isWeighted ? { amount: product.shelfWeight, unit: product.shelfWeight ? 'g' : null } : extractPackage(product.name)
       return {
         product_code: product.code, name: product.name, normalized_name: normalizeName(product.name),
         image_url: product.imageUrl, product_url: product.productUrl,
         current_price: product.price, old_price: product.oldPrice,
         package_amount: packaging.amount, package_unit: packaging.unit,
+        is_weighted: product.isWeighted, weight_step: product.weightStep,
+        weight_minimum: product.weightMinimum, unit_price: product.unitPrice,
       }
     })
     // One transaction: prices, provenance, history and links cannot be saved partially.
@@ -65,12 +67,16 @@ Deno.serve(async (request) => {
       p_source_id: source.id, p_store_code: context.storeCode, p_store_type: context.storeType,
       p_catalog_type: context.catalogType, p_received_at: receivedAt, p_products: rows,
       p_manual: isManual,
+      p_weighted_pricing: true,
     })
-    if (saveError) throw saveError
+    if (saveError) throw new Error(saveError.code === 'PGRST202'
+      ? 'Обновите базу: выполните миграцию 20260902220000_store_catalog_weighted_prices.sql, затем повторите синхронизацию.'
+      : saveError.message)
     return json({ ok: true, sourceId: source.id, products: products.length, storeCode: context.storeCode })
 
   } catch (reason) {
-    const message = reason instanceof Error ? reason.message : String(reason)
+    const message = reason instanceof Error ? reason.message
+      : reason && typeof reason === 'object' && 'message' in reason ? String(reason.message) : String(reason)
     await admin.from('store_catalog_sources').update({ status: 'error', last_error: message.slice(0, 1000), next_sync_at: new Date(Date.now() + 6 * 3600000).toISOString(), updated_at: new Date().toISOString() }).eq('id', source.id)
     return json({ ok: false, error: message }, 502)
   }

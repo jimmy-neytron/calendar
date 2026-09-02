@@ -8,7 +8,7 @@
       <p v-else-if="!catalog.products.value.length">Товаров пока нет. Добавьте источник цен в «Закупке».</p>
       <IngredientPurchaseCard v-for="item in purchases" :key="item.normalizedName + ':' + item.unit" :item="item" :products="catalog.products.value" :saving="catalog.saving.value" @link="linkProduct" @set-package="setPackage" />
     </template>
-    <footer><p>Здесь показаны целые упаковки для рецепта, не стоимость съеденной порции. Общую закупку по меню смотрите в «Закупке».</p><UiButton variant="secondary" icon="shopping" @click="$emit('shopping')">К закупке недели</UiButton></footer>
+    <footer><p>Здесь показана закупка для рецепта с учётом упаковок и шага веса, не стоимость съеденной порции. Общую закупку по меню смотрите в «Закупке».</p><UiButton variant="secondary" icon="shopping" @click="$emit('shopping')">К закупке недели</UiButton></footer>
   </section>
 </template>
 

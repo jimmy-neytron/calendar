@@ -39,6 +39,11 @@ export interface StoreProduct {
   priceStoreType: string
   priceCatalogType: string
   sourceIds: string[]
+  /** currentPrice is for packageAmount grams, not automatically per kg. */
+  isWeighted?: boolean
+  weightStep?: number | null
+  weightMinimum?: number | null
+  unitPrice?: number | null
 }
 
 export interface IngredientProductLink {

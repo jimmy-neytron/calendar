@@ -7,6 +7,10 @@ export type CatalogProduct = {
   price: number | null
   oldPrice: number | null
   isWeighted: boolean
+  shelfWeight: number | null
+  weightStep: number | null
+  weightMinimum: number | null
+  unitPrice: number | null
 }
 
 type JsonRecord = Record<string, unknown>
@@ -52,11 +56,14 @@ export function parseMagnitCatalogPage(payload: unknown, context: CatalogContext
     if (!/^\d{4,20}$/.test(code) || name.length < 3 || /^\d+$/.test(name)) {
       throw new Error('Магнит вернул некорректный товар. Цены не обновлены.')
     }
-    const isWeighted = record(item.weighted).isWeighted !== false
+    const weighted = record(item.weighted)
+    const isWeighted = weighted.isWeighted !== false
+    const weight = parseWeight(weighted)
     const available = typeof item.quantity === 'number' && item.quantity > 0 && item.isMissing !== true
     const rawPrice = minorUnits(item.price)
-    // Weight-based prices are not package prices and need a separate model.
-    const price = available && !isWeighted ? rawPrice : null
+    // price is for shelfWeight grams, NOT for one kilogram. Keep the exact
+    // shelf price (including the retailer's rounding) and its purchase step.
+    const price = available && (!isWeighted || weight !== null) ? rawPrice : null
     const oldPrice = minorUnits(record(item.promotion).oldPrice)
     const image = (Array.isArray(item.gallery) ? item.gallery : []).map(record).find((entry) => entry.type === 'IMAGE')
     const url = new URL(`/product/${code}`, 'https://magnit.ru')
@@ -67,9 +74,26 @@ export function parseMagnitCatalogPage(payload: unknown, context: CatalogContext
       code, name, productUrl: url.toString(), imageUrl: safeImageUrl(image?.url), price,
       oldPrice: price != null && oldPrice != null && oldPrice > price ? oldPrice : null,
       isWeighted,
+      shelfWeight: weight?.shelfWeight ?? null,
+      weightStep: weight?.step ?? null,
+      weightMinimum: weight?.minimum ?? null,
+      unitPrice: weight?.unitPrice ?? null,
     }
   })
   return { products, hasMore: pagination.hasMore, offset: pagination.offset, nextOffset: pagination.nextOffset }
+}
+
+function parseWeight(weighted: JsonRecord) {
+  if (weighted.isWeighted !== true) return null
+  const { shelfWeight, step, minStep, unitLabel } = weighted
+  if (typeof shelfWeight !== 'number' || !Number.isSafeInteger(shelfWeight) || shelfWeight <= 0
+    || typeof step !== 'number' || !Number.isSafeInteger(step) || step <= 0
+    || typeof minStep !== 'number' || !Number.isSafeInteger(minStep) || minStep <= 0
+    || !Number.isSafeInteger(step * minStep)
+    || typeof unitLabel !== 'string' || !/^1\s*кг$/i.test(unitLabel.trim())) return null
+  const unitPrice = minorUnits(weighted.unitPrice)
+  if (unitPrice == null) return null
+  return { shelfWeight, step, minimum: step * minStep, unitPrice }
 }
 
 function minorUnits(value: unknown): number | null {

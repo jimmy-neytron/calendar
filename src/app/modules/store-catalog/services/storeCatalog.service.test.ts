@@ -24,6 +24,15 @@ describe('storeCatalog.service', () => {
       ingredientUnit: 'g' as const, productId: 'p1', packageAmountOverride: null,
     }
     expect(calculateDailyPurchases([requirement], [link], [product])[0]).toMatchObject({ packages: 2, lineTotal: 658, confirmed: true })
+    const weighted = { ...product, isWeighted: true, packageAmount: 2000, weightStep: 2000, weightMinimum: 2000, unitPrice: 50, currentPrice: 100 }
+    for (const [amount, packages, total] of [[100, 1, 100], [2000, 1, 100], [2100, 2, 200]]) {
+      expect(calculateDailyPurchases([{ ...requirement, amount }], [{ ...link, packageAmountOverride: 500 }], [weighted])[0])
+        .toMatchObject({ packageAmount: 2000, packages, lineTotal: total, confirmed: true })
+    }
+    expect(calculateDailyPurchases([requirement], [link], [{ ...weighted, weightMinimum: 4000 }])[0]).toMatchObject({ packages: 2, lineTotal: 200 })
+    expect(calculateDailyPurchases([requirement], [link], [{ ...weighted, weightStep: 1000 }])[0]).toMatchObject({ packages: 2, lineTotal: 100 })
+    expect(calculateDailyPurchases([requirement], [link], [{ ...weighted, weightStep: null }])[0]).toMatchObject({ lineTotal: null, confirmed: false })
+    expect(calculateDailyPurchases([{ ...requirement, amount: 100 }], [link], [{ ...weighted, packageAmount: 2480, weightStep: 2480, weightMinimum: 2480, currentPrice: 123.97, unitPrice: 49.99 }])[0]).toMatchObject({ lineTotal: 123.97, confirmed: true })
     for (const changes of [{ priceVerified: false }, { currentPrice: null }, { currentPrice: 0 }, { currentPrice: NaN }, { priceUpdatedAt: '2020-01-01' }, { packageAmount: null }]) {
       expect(calculateDailyPurchases([requirement], [link], [{ ...product, ...changes }])[0]).toMatchObject({ lineTotal: null, confirmed: false })
     }
