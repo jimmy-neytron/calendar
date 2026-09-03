@@ -30,9 +30,8 @@ describe('price validity is independent of auto updates', () => {
   it('does not let an unrelated disabled source hide the latest shop prices', () => {
     expect(getCurrentStoreProducts([product], [source, { ...source, id: 's2', enabled: false, storeCode: '992301' }], now)[0]).toEqual(product)
   })
-  it('still expires prices after 24 hours with auto off', () => {
-    expect(getCurrentStoreProducts([product], [{ ...source, enabled: false }], now + 86400000)[0])
-      .toMatchObject({ currentPrice: null, oldPrice: null, priceVerified: false })
+  it('retains older verified prices with auto off', () => {
+    expect(getCurrentStoreProducts([product], [{ ...source, enabled: false }], now + 30 * 86400000)[0]).toEqual(product)
   })
   it('still rejects a changed or deleted originating source', () => {
     for (const sources of [[], [{ ...source, storeCode: '992301' }], [{ ...source, url: source.url + '&catalogType=3' }]]) {

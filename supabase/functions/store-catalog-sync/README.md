@@ -15,9 +15,9 @@ Schedule an HTTP `POST` every 30 minutes with header `x-cron-secret`. Each run s
 3. Redeploy `telegram-daily-digest` using its existing deployment settings, and deploy the frontend.
 4. Apply the subsequent migration `supabase/migrations/20260902203000_store_catalog_manual_sync.sql` for independent manual sync. After applying it, redeploy `store-catalog-sync` and the frontend. In Nutrition → Menu cost → Sources, click “Обновить сейчас” for each source; auto updates may stay off.
 
-The existing `enabled` field now controls scheduling only. An explicit sourceId from an authenticated admin triggers manual mode (including when the next run is in the future); cron always respects enabled and next_sync_at. The SQL save function accepts a service-role-only `p_manual` flag, defaulting to false for compatibility. Manual sync never enables auto implicitly. Turning auto off does not invalidate an already verified price; it still expires after 24 hours. Auto-enabled sources from another shop/mode must be switched off before changing shops to avoid background overwrites.
+The existing `enabled` field now controls scheduling only. An explicit sourceId from an authenticated admin triggers manual mode (including when the next run is in the future); cron always respects enabled and next_sync_at. The SQL save function accepts a service-role-only `p_manual` flag, defaulting to false for compatibility. Manual sync never enables auto implicitly. Turning auto off does not invalidate an already verified price. Auto-enabled sources from another shop/mode must be switched off before changing shops to avoid background overwrites.
 
-Old imported values/history and ingredient links are retained, but legacy prices are unverified until refreshed. Verified prices expire for calculation after 24 hours. The API response is a snapshot estimate, not a guaranteed checkout price. Conditional promotions, cashback and delivery fees are not subtracted.
+Old imported values/history and ingredient links are retained, but legacy prices are unverified until refreshed. Once verified, a price remains available for calculation until a later synchronization invalidates or replaces it. The API response is a snapshot estimate, not a guaranteed checkout price. Conditional promotions, cashback and delivery fees are not subtracted.
 
 ## Price source and limits
 

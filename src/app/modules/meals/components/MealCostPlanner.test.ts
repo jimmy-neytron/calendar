@@ -132,9 +132,9 @@ describe('direct product removal confirmation', () => {
   }
   it('waits for confirmation and passes the exact selected IDs', async () => {
     const host = await openCatalog()
-    ;[...host.querySelectorAll<HTMLButtonElement>('.catalog-selection button')].find(button => button.textContent?.includes('Выбрать все найденные'))!.click()
+    host.querySelector<HTMLInputElement>('[aria-label="Выбрать товары на текущей странице"]')!.click()
     await nextTick()
-    ;[...host.querySelectorAll<HTMLButtonElement>('.catalog-selection button')].find(button => button.textContent?.includes('Удалить выбранные'))!.click()
+    ;[...host.querySelectorAll<HTMLButtonElement>('.catalog-selection button')].find(button => button.textContent?.includes('Удалить'))!.click()
     await nextTick()
     expect(actions.removeProducts).not.toHaveBeenCalled()
     expect(document.querySelectorAll('.products-delete li')).toHaveLength(2)

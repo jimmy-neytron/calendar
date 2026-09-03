@@ -4,5 +4,5 @@ export function isStorePriceCurrent(price: unknown, verified: unknown, receivedA
   const value = Number(price)
   const timestamp = Date.parse(receivedAt)
   const age = now - timestamp
-  return Number.isFinite(value) && value > 0 && Number.isFinite(timestamp) && age >= -60000 && age <= 24 * 3600000
+  return Number.isFinite(value) && value > 0 && Number.isFinite(timestamp) && age >= -60000
 }

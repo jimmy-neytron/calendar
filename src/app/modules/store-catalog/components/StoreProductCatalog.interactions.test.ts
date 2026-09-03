@@ -20,30 +20,30 @@ function mount(initial: StoreProduct[] = [product]) {
 describe('catalog list and side panel', () => {
   it('selects only the current page and replaces a previous cross-page selection', async () => {
     const { host, onRemove } = mount(Array.from({ length: 25 }, (_, i) => ({ ...product, id: String(i) })))
+    const pageCheckbox = () => host.querySelector<HTMLInputElement>('[aria-label="Выбрать товары на текущей странице"]')!
     const action = (text: string) => [...host.querySelectorAll<HTMLButtonElement>('.catalog-selection button')].find(button => button.textContent?.includes(text))!
-    expect(action('Выбрать на странице').textContent).toContain('(24)')
-    expect(action('Выбрать все найденные').textContent).toContain('(25)')
-    action('Выбрать на странице').click(); await settle()
+    pageCheckbox().click(); await settle()
     expect(host.querySelectorAll('.product-checkbox:checked')).toHaveLength(24)
-    action('Удалить выбранные').click()
+    expect(host.querySelector('.catalog-selection')?.textContent).toContain('24 выбрано')
+    action('Удалить').click()
     expect(onRemove.mock.calls[0][0].map((item: StoreProduct) => item.id)).toEqual(Array.from({ length: 24 }, (_, i) => String(i)))
-    action('Выбрать все найденные').click(); await settle()
+    action('Выбрать все 25').click(); await settle()
     host.querySelector<HTMLButtonElement>('[title="Следующая страница"]')!.click(); await settle()
-    expect(action('Выбрать на странице').textContent).toContain('(1)')
-    action('Выбрать на странице').click(); await settle()
-    expect(host.querySelector('.catalog-selection')?.textContent).toContain('Выбрано: 1')
-    action('Удалить выбранные').click()
+    pageCheckbox().click(); await settle()
+    pageCheckbox().click(); await settle()
+    expect(host.querySelector('.catalog-selection')?.textContent).toContain('1 выбрано')
+    action('Удалить').click()
     expect(onRemove.mock.calls[1][0].map((item: StoreProduct) => item.id)).toEqual(['24'])
-    action('Снять выбор').click(); await settle()
+    action('Отменить').click(); await settle()
     expect(host.querySelectorAll('.product-checkbox:checked')).toHaveLength(0)
-    expect(action('Удалить выбранные').disabled).toBe(true)
+    expect(host.querySelector('.catalog-selection')).toBeNull()
   })
-  it('disables both bulk-selection actions while saving', async () => {
+  it('disables page selection while saving', async () => {
     const { host, saving } = mount()
     saving.value = true; await settle()
-    const buttons = [...host.querySelectorAll<HTMLButtonElement>('.catalog-selection button')].filter(button => button.textContent?.includes('Выбрать'))
-    expect(buttons).toHaveLength(2)
-    for (const button of buttons) { expect(button.disabled).toBe(true); button.click() }
+    const checkbox = host.querySelector<HTMLInputElement>('[aria-label="Выбрать товары на текущей странице"]')!
+    expect(checkbox.disabled).toBe(true)
+    checkbox.click()
     expect(host.querySelectorAll('.product-checkbox:checked')).toHaveLength(0)
   })
   it('requests single-product deletion without opening the drawer', async () => {
@@ -55,14 +55,15 @@ describe('catalog list and side panel', () => {
   it('selects all filtered products across pages, then removes hidden selections when searching', async () => {
     const { host, onRemove } = mount(Array.from({ length: 25 }, (_, i) => ({ ...product, id: String(i), name: `Товар ${i}` })))
     const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('.catalog-selection button')]
-    buttons().find(button => button.textContent?.includes('Выбрать все найденные'))!.click(); await settle()
-    expect(host.querySelector('.catalog-selection')?.textContent).toContain('Выбрано: 25')
-    buttons().find(button => button.textContent?.includes('Удалить выбранные'))!.click()
+    host.querySelector<HTMLInputElement>('[aria-label="Выбрать товары на текущей странице"]')!.click(); await settle()
+    buttons().find(button => button.textContent?.includes('Выбрать все 25'))!.click(); await settle()
+    expect(host.querySelector('.catalog-selection')?.textContent).toContain('25 выбрано')
+    buttons().find(button => button.textContent?.includes('Удалить'))!.click()
     expect(onRemove.mock.calls[0][0]).toHaveLength(25)
     const search = host.querySelector<HTMLInputElement>('input[type="search"]')!
     search.value = 'Товар 24'; search.dispatchEvent(new Event('input')); await settle()
-    expect(host.querySelector('.catalog-selection')?.textContent).toContain('Выбрано: 1')
-    buttons().find(button => button.textContent?.includes('Удалить выбранные'))!.click()
+    expect(host.querySelector('.catalog-selection')?.textContent).toContain('1 выбрано')
+    buttons().find(button => button.textContent?.includes('Удалить'))!.click()
     expect(onRemove.mock.calls[1][0].map((item: StoreProduct) => item.id)).toEqual(['24'])
   })
   it('filters orphaned products separately from linked products', async () => {
@@ -76,7 +77,7 @@ describe('catalog list and side panel', () => {
     const { host, saving, onRemove } = mount()
     host.querySelector<HTMLInputElement>('.product-checkbox')!.click(); await settle()
     expect(document.querySelector('[role="dialog"]')).toBeNull()
-    expect(host.querySelector('.catalog-selection')?.textContent).toContain('Выбрано: 1')
+    expect(host.querySelector('.catalog-selection')?.textContent).toContain('1 выбрано')
     saving.value = true; await settle()
     host.querySelector<HTMLButtonElement>('.product-remove')!.click()
     expect(onRemove).not.toHaveBeenCalled()

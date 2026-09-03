@@ -106,16 +106,17 @@ describe('complete catalog retrieval', () => {
   })
 })
 
-describe('price freshness', () => {
+describe('price validity', () => {
   const now = Date.parse('2026-09-02T12:00:00Z')
-  it('accepts a positive verified price within 24 hours', () => {
+  it('accepts positive verified prices without an age limit', () => {
     expect(isStorePriceCurrent('119.99', true, '2026-09-02T11:00:00Z', now)).toBe(true)
+    expect(isStorePriceCurrent(119.99, true, '2020-01-01T00:00:00Z', now)).toBe(true)
   })
   it.each([
     [null, true, '2026-09-02T11:00:00Z'], [0, true, '2026-09-02T11:00:00Z'],
-    [99.99, false, '2026-09-02T11:00:00Z'], [119.99, true, '2026-09-01T11:59:59Z'],
+    [99.99, false, '2026-09-02T11:00:00Z'],
     [119.99, true, null], [119.99, true, 'bad date'], [119.99, true, '2026-09-03T12:00:00Z'],
-  ])('rejects unknown, old or unverified prices', (price, verified, date) => {
+  ])('rejects unknown, invalid or unverified prices', (price, verified, date) => {
     expect(isStorePriceCurrent(price, verified, date, now)).toBe(false)
   })
 })

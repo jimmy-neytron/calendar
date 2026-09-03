@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatStoreDate, getStoreProductIssues } from './storeProductPresentation'
+import { formatStoreDate, formatStoreUpdateAge, getStoreProductIssues } from './storeProductPresentation'
 import type { StoreProduct } from '../types/storeCatalog.types'
 
 const now = Date.parse('2026-09-02T12:00:00Z')
@@ -8,8 +8,8 @@ describe('catalog issue explanations', () => {
   it('accepts a current verified price and complete packaging', () => {
     expect(getStoreProductIssues(productFixture, now)).toEqual([])
   })
-  it('distinguishes stale, missing and unconfirmed prices', () => {
-    expect(getStoreProductIssues({ ...productFixture, priceUpdatedAt: '2026-08-30T10:00:00Z' }, now)[0].title).toBe('Цена устарела')
+  it('keeps older verified prices and distinguishes missing and unconfirmed prices', () => {
+    expect(getStoreProductIssues({ ...productFixture, priceUpdatedAt: '2026-08-30T10:00:00Z' }, now)).toEqual([])
     expect(getStoreProductIssues({ ...productFixture, currentPrice: null }, now)[0].title).toBe('Нет актуальной цены')
     expect(getStoreProductIssues({ ...productFixture, priceVerified: false }, now)[0].title).toBe('Цена не подтверждена')
     expect(getStoreProductIssues({ ...productFixture, currentPrice: 0 }, now)[0].kind).toBe('price')
@@ -22,5 +22,12 @@ describe('catalog issue explanations', () => {
     expect(getStoreProductIssues({ ...productFixture, isWeighted: true, packageUnit: 'g' }, now)[0].title).toBe('Неполные данные о весе')
     expect(getStoreProductIssues({ ...productFixture, isWeighted: true, packageUnit: 'g', weightStep: 100, weightMinimum: 200 }, now)).toEqual([])
     expect(formatStoreDate('bad-date')).toBe('Нет данных об обновлении')
+  })
+  it('shows how many full days ago the catalog information was updated', () => {
+    expect(formatStoreUpdateAge('2026-09-02T10:00:00Z', now)).toBe('Сегодня')
+    expect(formatStoreUpdateAge('2026-09-01T10:00:00Z', now)).toBe('1 день назад')
+    expect(formatStoreUpdateAge('2026-08-30T10:00:00Z', now)).toBe('3 дня назад')
+    expect(formatStoreUpdateAge('2026-08-23T10:00:00Z', now)).toBe('10 дней назад')
+    expect(formatStoreUpdateAge(null, now)).toBe('Нет данных')
   })
 })
