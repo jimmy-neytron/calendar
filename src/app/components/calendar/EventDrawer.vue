@@ -1,47 +1,6 @@
 <template>
-  <Teleport to="body">
-    <transition name="drawer-overlay">
-      <div
-        v-if="modelValue"
-        class="event-drawer__overlay"
-        aria-hidden="true"
-        @click="$emit('update:modelValue', false)"
-      />
-    </transition>
-
-    <transition name="drawer">
-      <aside
-        v-if="modelValue"
-        class="event-drawer"
-        :style="{ '--event-drawer-accent': eventAccent }"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="editingEvent ? 'Редактировать событие' : 'Новое событие'"
-        @keydown.esc="$emit('update:modelValue', false)"
-      >
-        <header class="event-drawer__hero">
-          <div class="event-drawer__hero-orbit"><i /><i /><i /></div>
-          <div class="event-drawer__hero-content">
-            <span class="event-drawer__hero-icon"><UiIcon :name="categoryIcon" /></span>
-            <div class="event-drawer__hero-copy">
-              <p>{{ editingEvent ? categoryMeta.label : 'Новое событие' }}</p>
-              <h2>{{ form.title || (editingEvent ? 'Без названия' : 'Создадим новый план') }}</h2>
-              <div>
-                <span><UiIcon name="calendar" />{{ formattedEventDate }}</span>
-                <span><UiIcon name="activity" />{{ formattedEventTime }}</span>
-                <span v-if="calendarName"><i :style="{ background: eventAccent }" />{{ calendarName }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="event-drawer__hero-badges">
-            <span v-if="form.importance !== 'normal'">{{ importanceLabel }}</span>
-            <span v-if="form.repeat !== 'none'">Повторяется</span>
-            <span v-if="form.reminder !== 'none'">С напоминанием</span>
-          </div>
-          <UiIconButton class="event-drawer__hero-close" icon="close" label="Закрыть" @click="$emit('update:modelValue', false)" />
-        </header>
-
-        <form class="event-drawer__form" @submit.prevent="submit">
+  <UiModal :model-value="modelValue" :title="editingEvent ? 'Редактировать событие' : 'Новое событие'" width="620px" :close-on-overlay="false" @update:model-value="$emit('update:modelValue', $event)">
+    <form class="event-editor event-drawer__form" @submit.prevent="submit" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit">
           <section v-if="isBudgetLinkedEvent" class="event-drawer__linked-budget card">
             <div>
               <span>₽ Управляется бюджетом</span>
@@ -61,64 +20,30 @@
               Открыть урок
             </UiButton>
           </section>
-
-          <section v-if="!editingEvent" class="event-drawer__templates">
-            <span>Шаблоны</span>
-            <div>
-              <button
-                v-for="template in EVENT_TEMPLATES"
-                :key="template.id"
-                type="button"
-                @click="applyTemplate(template)"
-              >
-                {{ template.title }}
-              </button>
-            </div>
-          </section>
-
           <UiInput
             ref="titleInputRef"
+            autofocus
             v-model="form.title"
             label="Название"
             placeholder="Встреча, врач, тренировка..."
             required
             :disabled="isBudgetLinkedEvent || isCourseLinkedEvent"
             :error="errors.title"
-            @keydown.ctrl.enter="submit"
           />
 
-          <div class="event-drawer__grid">
-            <UiInput v-model="form.date" type="date" label="Дата" required :error="errors.date" />
-            <label class="event-drawer__select">
-              <span>Категория</span>
-              <UiSelect v-model="form.category">
-                <option v-for="category in EVENT_FORM_CATEGORIES" :key="category.value" :value="category.value">
-                  {{ category.label }}
-                </option>
-              </UiSelect>
-            </label>
+
+      <div class="event-drawer__grid">
+        <UiInput v-model="form.date" type="date" label="Дата" required :error="errors.date" />
+        <label class="event-drawer__toggle"><span>Весь день</span><UiToggle v-model="form.allDay" /></label>
+      </div>
+          <div v-if="!form.allDay" class="event-drawer__grid">
+            <UiInput v-model="form.startTime" type="time" label="Начало" />
+            <UiInput v-model="form.endTime" type="time" label="Конец" :error="errors.endTime" />
           </div>
 
-          <label class="event-drawer__select">
-            <span>Календарь</span>
-            <UiSelect v-model="form.calendarId">
-              <option v-for="calendar in calendars" :key="calendar.id" :value="calendar.id">
-                {{ calendar.name }}
-              </option>
-            </UiSelect>
-          </label>
 
-          <div class="event-drawer__grid">
-            <label class="event-drawer__select">
-              <span>Важность</span>
-              <UiSelect v-model="form.importance">
-                <option v-for="importance in IMPORTANCE_OPTIONS" :key="importance.value" :value="importance.value">
-                  {{ importance.label }}
-                </option>
-              </UiSelect>
-            </label>
 
-            <label class="event-drawer__select">
+<label class="event-drawer__select">
               <span>Напоминание</span>
               <UiSelect v-model="form.reminder">
                 <option v-for="reminder in REMINDER_OPTIONS" :key="reminder.value" :value="reminder.value">
@@ -126,15 +51,8 @@
                 </option>
               </UiSelect>
             </label>
-          </div>
-
-          <div class="event-drawer__grid">
-            <label class="event-drawer__toggle">
-              <span>На весь день</span>
-              <UiToggle v-model="form.allDay" />
-            </label>
-
-            <label class="event-drawer__select">
+      <EventFormSection v-model="sectionOpen.repeat" title="Повторение" :summary="repeatSummary">
+<label class="event-drawer__select">
               <span>Повтор</span>
               <UiSelect v-model="form.repeat">
                 <option v-for="option in REPEAT_OPTIONS" :key="option.value" :value="option.value">
@@ -142,8 +60,6 @@
                 </option>
               </UiSelect>
             </label>
-          </div>
-
           <section v-if="form.repeat !== 'none'" class="event-drawer__repeat card">
             <div v-if="form.repeat === 'custom'" class="event-drawer__grid">
               <UiInput v-model.number="form.repeatInterval" type="number" label="Интервал" :error="errors.repeatInterval" />
@@ -191,14 +107,9 @@
             </div>
           </section>
 
-          <div v-if="!form.allDay" class="event-drawer__grid">
-            <UiInput v-model="form.startTime" type="time" label="Начало" />
-            <UiInput v-model="form.endTime" type="time" label="Конец" :error="errors.endTime" />
-          </div>
 
-          <UiInput v-model="form.location" label="Место" placeholder="Офис, дом, школа..." />
-          <UiInput v-model="form.notes" type="textarea" label="Заметки" placeholder="Дополнительная информация" />
-
+</EventFormSection>
+      <EventFormSection v-model="sectionOpen.people" title="Участники и обсуждение" :summary="peopleSummary + (form.comments.length ? ' · Комментарии: ' + form.comments.length : '')">
           <section class="event-drawer__members">
             <span>Участники</span>
             <div>
@@ -263,6 +174,57 @@
             </div>
           </section>
 
+
+      </EventFormSection>
+      <EventFormSection v-model="sectionOpen.details" title="Описание и место" :summary="[form.location, form.notes].filter(Boolean).join(' · ') || 'Добавить подробности'">
+          <UiInput v-model="form.location" label="Место" placeholder="Офис, дом, школа..." />
+          <UiInput v-model="form.notes" type="textarea" label="Заметки" placeholder="Дополнительная информация" />
+
+
+      </EventFormSection>
+      <EventFormSection v-model="sectionOpen.organization" title="Календарь и оформление" :summary="organizationSummary">
+<label class="event-drawer__select">
+            <span>Календарь</span>
+            <UiSelect v-model="form.calendarId">
+              <option v-for="calendar in calendars" :key="calendar.id" :value="calendar.id">
+                {{ calendar.name }}
+              </option>
+            </UiSelect>
+          </label>
+<div class="event-drawer__grid"><label class="event-drawer__select">
+              <span>Категория</span>
+              <UiSelect v-model="form.category">
+                <option v-for="category in EVENT_FORM_CATEGORIES" :key="category.value" :value="category.value">
+                  {{ category.label }}
+                </option>
+              </UiSelect>
+            </label><label class="event-drawer__select">
+              <span>Важность</span>
+              <UiSelect v-model="form.importance">
+                <option v-for="importance in IMPORTANCE_OPTIONS" :key="importance.value" :value="importance.value">
+                  {{ importance.label }}
+                </option>
+              </UiSelect>
+            </label></div>
+</EventFormSection>
+      <EventFormSection v-if="!editingEvent" v-model="sectionOpen.templates" title="Заполнить по шаблону" summary="Готовые варианты событий">
+          <section v-if="!editingEvent" class="event-drawer__templates">
+            <span>Шаблоны</span>
+            <div>
+              <button
+                v-for="template in EVENT_TEMPLATES"
+                :key="template.id"
+                type="button"
+                @click="applyTemplate(template)"
+              >
+                {{ template.title }}
+              </button>
+            </div>
+          </section>
+
+
+</EventFormSection>
+      <EventFormSection v-if="editingEvent" v-model="sectionOpen.actions" title="Другие действия" summary="Копирование, экспорт и удаление">
           <section v-if="editingEvent" class="event-drawer__duplicate card">
             <span>Дублирование</span>
             <div class="event-drawer__duplicate-row">
@@ -284,16 +246,20 @@
             />
           </section>
 
-          <footer class="event-drawer__footer">
-            <UiButton v-if="editingEvent" variant="danger" type="button" @click="remove">Удалить</UiButton>
-            <UiButton v-if="editingEvent" variant="ghost" type="button" @click="exportIcs">Экспорт .ics</UiButton>
-            <UiButton variant="secondary" type="button" @click="$emit('update:modelValue', false)">Отмена</UiButton>
-            <UiButton type="submit">{{ editingEvent ? 'Сохранить' : 'Создать' }}</UiButton>
-          </footer>
-        </form>
-      </aside>
-    </transition>
-  </Teleport>
+
+        <div class="event-editor__actions">
+          <UiButton variant="ghost" type="button" @click="exportIcs">Экспорт .ics</UiButton>
+          <UiButton variant="danger" type="button" @click="remove">Удалить событие</UiButton>
+        </div>
+      </EventFormSection>
+      <p v-if="Object.keys(errors).length" class="event-editor__error" role="alert">{{ Object.values(errors).join('. ') }}</p>
+      <footer class="event-drawer__footer">
+        <span class="event-editor__shortcut">Ctrl / ⌘ + Enter</span>
+        <UiButton variant="secondary" type="button" @click="$emit('update:modelValue', false)">Отмена</UiButton>
+        <UiButton type="submit">{{ editingEvent ? 'Сохранить' : 'Создать событие' }}</UiButton>
+      </footer>
+    </form>
+  </UiModal>
 </template>
 
 <script setup>
@@ -303,8 +269,8 @@ import UiSelect from '../ui/UiSelect.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiChip from '../ui/UiChip.vue'
 import UiToggle from '../ui/UiToggle.vue'
-import UiIconButton from '../ui/UiIconButton.vue'
-import UiIcon from '../ui/UiIcon.vue'
+import UiModal from '../ui/UiModal.vue'
+import EventFormSection from './EventFormSection.vue'
 import {
   DUPLICATE_OPTIONS,
   EVENT_FORM_CATEGORIES,
@@ -316,7 +282,6 @@ import {
   REPEAT_UNITS,
   WEEKDAY_OPTIONS,
 } from '../../utils/constants/calendarConstants.js'
-import { formatDate, formatTimeRange } from '../../utils/formatters/dateFormatter.js'
 import { getCategoryMeta } from '../../utils/formatters/calendarFormatter.js'
 import { validateEvent } from '../../utils/validators/calendarValidator.js'
 import { authStore } from '../../stores/auth.store.js'
@@ -351,24 +316,11 @@ const categoryMeta = computed(() => getCategoryMeta(form.category))
 const isBudgetLinkedEvent = computed(() => props.editingEvent?.linkedEntityType === 'budget-payment')
 const isCourseLinkedEvent = computed(() => props.editingEvent?.linkedEntityType === 'course-lesson')
 const selectedCalendar = computed(() => props.calendars.find((calendar) => calendar.id === form.calendarId))
-const eventAccent = computed(() => selectedCalendar.value?.color || categoryMeta.value.color || 'var(--accent)')
 const calendarName = computed(() => selectedCalendar.value?.name || '')
-const formattedEventDate = computed(() => {
-  try {
-    return formatDate(form.date)
-  } catch {
-    return 'Дата не выбрана'
-  }
-})
-const formattedEventTime = computed(() => formatTimeRange(form.startTime, form.endTime, form.allDay))
-const importanceLabel = computed(() => IMPORTANCE_OPTIONS.find((item) => item.value === form.importance)?.label || '')
-const categoryIcon = computed(() => ({
-  birthday: 'heart',
-  sports: 'sport',
-  work: 'activity',
-  health: 'heart',
-  personal: 'star',
-}[form.category] || 'calendar'))
+const sectionOpen = reactive({ repeat: false, people: false, details: false, organization: false, actions: false, templates: false })
+const repeatSummary = computed(() => REPEAT_OPTIONS.find((option) => option.value === form.repeat)?.label || 'Без повтора')
+const peopleSummary = computed(() => form.memberIds.length ? props.members.filter((member) => form.memberIds.includes(member.id)).map((member) => member.name).join(', ') : 'Все участники')
+const organizationSummary = computed(() => [calendarName.value, categoryMeta.value.label, IMPORTANCE_OPTIONS.find((option) => option.value === form.importance)?.label].filter(Boolean).join(' · '))
 
 watch(
   () => props.modelValue,
@@ -408,6 +360,9 @@ const submit = () => {
 
   if (!validation.valid) {
     Object.assign(errors, validation.errors)
+    if (Object.keys(errors).some((key) => key.startsWith('repeat'))) sectionOpen.repeat = true
+    if (errors.category || errors.importance) sectionOpen.organization = true
+    nextTick(() => document.querySelector('.event-editor__error')?.scrollIntoView?.({ block: 'nearest' }))
     return
   }
 
@@ -459,6 +414,7 @@ function resetForm() {
     form.startTime = props.initialStartTime
     form.endTime = addMinutesToEventTime(props.initialStartTime, 60)
   }
+  Object.keys(sectionOpen).forEach((key) => { sectionOpen[key] = false })
   duplicateMode.value = 'tomorrow'
   duplicateDatesInput.value = ''
   commentText.value = ''
@@ -489,205 +445,6 @@ function addComment() {
 </script>
 
 <style scoped>
-.event-drawer__overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  background: rgba(0, 0, 0, 0.64);
-  backdrop-filter: blur(9px);
-}
-
-.event-drawer {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  bottom: 10px;
-  z-index: 90;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  width: min(720px, calc(100vw - 30px));
-  border: 1px solid var(--border-strong);
-  border-radius: 22px;
-  background: var(--card-solid);
-  box-shadow: -24px 0 80px rgba(0, 0, 0, 0.58);
-  overflow: hidden;
-}
-
-.event-drawer__hero {
-  position: relative;
-  min-height: 205px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 14px;
-  padding: 28px 30px 22px;
-  color: #fff;
-  background:
-    linear-gradient(100deg, color-mix(in srgb, var(--event-drawer-accent) 74%, #050505), rgba(5,5,5,.92) 78%),
-    var(--card-solid);
-  overflow: hidden;
-}
-
-.event-drawer__hero::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 70px;
-  background: linear-gradient(0deg, var(--card-solid), transparent);
-  pointer-events: none;
-}
-
-.event-drawer__hero-orbit {
-  position: absolute;
-  right: 42px;
-  top: 50%;
-  width: 190px;
-  height: 190px;
-  opacity: .22;
-  transform: translateY(-50%);
-}
-
-.event-drawer__hero-orbit i {
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255,255,255,.5);
-  border-radius: 50%;
-}
-
-.event-drawer__hero-orbit i:nth-child(2) { inset: 28px; }
-.event-drawer__hero-orbit i:nth-child(3) { inset: 58px; border-style: dashed; animation: eventOrbit 18s linear infinite; }
-
-.event-drawer__hero-content {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  align-items: center;
-  gap: 15px;
-}
-
-.event-drawer__hero-icon {
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 17px;
-  background: rgba(0,0,0,.24);
-  backdrop-filter: blur(12px);
-  font-size: 25px;
-}
-
-.event-drawer__hero-copy p {
-  margin-bottom: 4px;
-  color: rgba(255,255,255,.65);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.event-drawer__templates > span,
-.event-drawer__duplicate > span {
-  margin-bottom: 4px;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.event-drawer__hero-copy h2 {
-  max-width: 500px;
-  margin: 0;
-  overflow: hidden;
-  font-size: clamp(24px, 4vw, 38px);
-  line-height: 1.04;
-  letter-spacing: -.035em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.event-drawer__hero-copy > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px 13px;
-  margin-top: 9px;
-}
-
-.event-drawer__hero-copy > div span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: rgba(255,255,255,.72);
-  font-size: 10px;
-}
-
-.event-drawer__hero-copy > div span > i {
-  width: 7px;
-  height: 7px;
-  border: 1px solid rgba(255,255,255,.4);
-  border-radius: 50%;
-}
-
-.event-drawer__hero-badges {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.event-drawer__hero-badges span {
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: var(--radius-pill);
-  padding: 5px 9px;
-  color: rgba(255,255,255,.8);
-  background: rgba(0,0,0,.22);
-  backdrop-filter: blur(9px);
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.event-drawer__hero-close {
-  position: absolute;
-  z-index: 4;
-  top: 14px;
-  right: 14px;
-  color: #fff;
-  background: rgba(0,0,0,.35);
-}
-
-.event-drawer__form {
-  display: grid;
-  align-content: start;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 20px 24px 0;
-  overflow-y: auto;
-}
-
-.event-drawer__form > .ui-input,
-.event-drawer__form > .event-drawer__select,
-.event-drawer__form > .event-drawer__grid,
-.event-drawer__form > .event-drawer__templates,
-.event-drawer__form > .event-drawer__repeat,
-.event-drawer__form > .event-drawer__members,
-.event-drawer__form > .event-drawer__collaboration,
-.event-drawer__form > .event-drawer__duplicate,
-.event-drawer__form > .event-drawer__footer {
-  grid-column: 1 / -1;
-}
-
-.event-drawer__templates,
-.event-drawer__duplicate,
-.event-drawer__repeat,
-.event-drawer__collaboration {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-}
-
 .event-drawer__linked-budget {
   display: flex;
   align-items: center;
@@ -863,190 +620,24 @@ function addComment() {
   align-items: end;
 }
 
-.event-drawer__footer {
-  position: sticky;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: 8px;
-  align-items: center;
-  margin: 8px -24px 0;
-  padding: 14px 24px;
-  border-top: 1px solid var(--border-color);
-  background: color-mix(in srgb, var(--card-solid) 92%, transparent);
-  backdrop-filter: blur(18px);
-}
 
-@keyframes eventOrbit { to { transform: rotate(360deg); } }
 
-.drawer-enter-active,
-.drawer-leave-active,
-.drawer-overlay-enter-active,
-.drawer-overlay-leave-active {
-  transition: all 0.24s var(--ease-out);
-}
 
-.drawer-enter-from,
-.drawer-leave-to {
-  transform: translateX(100%);
-}
-
-.drawer-overlay-enter-from,
-.drawer-overlay-leave-to {
-  opacity: 0;
-}
-
-@media (min-width: 600px) and (max-width: 1180px), (min-width: 600px) and (max-height: 900px) {
-  .event-drawer {
-    top: 6px;
-    right: 6px;
-    bottom: 6px;
-    width: min(640px, calc(100vw - 18px));
-    border-radius: 17px;
-  }
-
-  .event-drawer__hero {
-    min-height: 118px;
-    justify-content: center;
-    gap: 7px;
-    padding: 14px 54px 12px 18px;
-  }
-
-  .event-drawer__hero::after { height: 34px; }
-  .event-drawer__hero-orbit { right: 24px; width: 112px; height: 112px; }
-  .event-drawer__hero-orbit i:nth-child(2) { inset: 18px; }
-  .event-drawer__hero-orbit i:nth-child(3) { inset: 36px; }
-
-  .event-drawer__hero-content {
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  .event-drawer__hero-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    font-size: 19px;
-  }
-
-  .event-drawer__hero-copy p { margin-bottom: 2px; font-size: 8px; }
-  .event-drawer__hero-copy h2 { max-width: 470px; font-size: clamp(18px, 2.4vw, 25px); }
-  .event-drawer__hero-copy > div { gap: 4px 9px; margin-top: 5px; }
-  .event-drawer__hero-copy > div span { font-size: 8px; }
-  .event-drawer__hero-badges { gap: 4px; }
-  .event-drawer__hero-badges span { padding: 3px 7px; font-size: 7px; }
-  .event-drawer__hero-close { top: 9px; right: 9px; }
-
-  .event-drawer__form {
-    gap: 8px;
-    padding: 12px 16px 0;
-  }
-
-  .event-drawer__templates,
-  .event-drawer__duplicate,
-  .event-drawer__repeat,
-  .event-drawer__collaboration {
-    gap: 6px;
-    padding: 8px;
-  }
-
-  .event-drawer__linked-budget { gap: 9px; padding: 8px; }
-  .event-drawer__linked-budget p { margin-top: 1px; line-height: 1.35; }
-  .event-drawer__grid { gap: 7px; }
-
-  .event-drawer__select,
-  .event-drawer__members,
-  .event-drawer__weekdays {
-    gap: 3px;
-  }
-
-  .event-drawer__select span,
-  .event-drawer__members > span,
-  .event-drawer__collaboration-head span,
-  .event-drawer__responses > span {
-    font-size: 9px;
-  }
-
-  .event-drawer__templates > span,
-  .event-drawer__duplicate > span {
-    margin-bottom: 1px;
-    font-size: 8px;
-  }
-
-  .event-drawer__templates div,
-  .event-drawer__weekdays div,
-  .event-drawer__members div {
-    gap: 4px;
-  }
-
-  .event-drawer__templates button,
-  .event-drawer__weekdays button,
-  .event-drawer__responses button {
-    min-height: 26px;
-    padding: 0 8px;
-    font-size: 10px;
-  }
-
-  .event-drawer__toggle {
-    min-height: 34px;
-    padding: 5px 8px;
-    font-size: 10px;
-  }
-
-  .event-drawer__comments article p { font-size: 9px; }
-
-  .event-drawer__footer {
-    gap: 6px;
-    margin: 5px -16px 0;
-    padding: 9px 16px;
-  }
-
-  .event-drawer__form :deep(.ui-input) { gap: 3px; }
-  .event-drawer__form :deep(.ui-input__label) { font-size: 9px; }
-
-  .event-drawer__form :deep(.ui-input__control) {
-    min-height: 32px;
-    padding-inline: 9px;
-    font-size: 12px;
-  }
-
-  .event-drawer__form :deep(.ui-input__control--textarea) {
-    min-height: 52px;
-    padding-top: 7px;
-  }
-
-  .event-drawer__form :deep(.ui-select__trigger) {
-    min-height: 32px;
-    padding-block: 5px;
-    font-size: 11px;
-  }
-
-  .event-drawer__form :deep(.ui-button) { min-height: 32px; }
-}
-
-@media (max-width: 560px) {
-  .event-drawer {
-    inset: 0;
-    width: 100vw;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .event-drawer__hero { min-height: 190px; padding: 25px 18px 18px; }
-  .event-drawer__hero-content { grid-template-columns: 48px minmax(0,1fr); }
-  .event-drawer__hero-icon { width: 48px; height: 48px; }
-  .event-drawer__hero-orbit { right: -35px; }
-  .event-drawer__form { grid-template-columns: 1fr; padding: 16px 14px 0; }
-  .event-drawer__grid,
-  .event-drawer__footer,
-  .event-drawer__duplicate-row {
-    grid-template-columns: 1fr;
-  }
-
-  .event-drawer__footer { margin: 6px -14px 0; padding: 12px 14px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .event-drawer__hero-orbit i { animation: none; }
+.event-drawer__form { display: grid; gap: 14px; }
+.event-drawer__form > * { min-width: 0; }
+.event-drawer__repeat, .event-drawer__collaboration, .event-drawer__duplicate, .event-drawer__templates { display: grid; gap: 12px; }
+.event-drawer__collaboration { margin-top: 12px; }
+.event-drawer__toggle { align-self: end; min-height: 42px; }
+.event-drawer__footer { position: sticky; bottom: -16px; z-index: 2; display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 0 -16px -16px; padding: 14px 16px; border-top: 1px solid var(--border-color); background: var(--panel-bg); }
+.event-editor__shortcut { margin-right: auto; color: var(--text-muted); font-size: 11px; }
+.event-editor__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.event-editor__error { color: var(--danger); font-size: 13px; }
+.event-drawer__linked-budget p { font-size: 12px; }
+.event-drawer__select > span, .event-drawer__members > span { font-size: 12px; }
+@media (max-width: 480px) {
+  .event-editor__shortcut { display: none; }
+  .event-drawer__footer > * { flex: 1; }
+  .event-drawer__linked-budget { align-items: stretch; flex-direction: column; }
+  .event-drawer__duplicate-row { grid-template-columns: 1fr; }
 }
 </style>
