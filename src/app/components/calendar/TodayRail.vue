@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <aside class="today-rail panel">
     <header class="today-rail__header">
       <div>
@@ -23,17 +23,14 @@
         <strong>{{ nextEvent ? formatEventTitle(nextEvent) : 'Свободное время' }}</strong>
         <small>{{ nextEvent ? nextEventTime : 'Можно запланировать важное' }}</small>
       </article>
-      <article>
-        <span>Загрузка</span>
-        <strong>{{ busyMinutesLabel }}</strong>
-        <div><i :style="{ width: `${dayLoadPercent}%` }" /></div>
-      </article>
       <article v-if="extraSectionsEnabled">
         <span>Спорт</span>
         <strong>{{ sportProgress.done }}/{{ sportProgress.total }}</strong>
         <small>выполнено</small>
       </article>
     </section>
+
+    <CalendarDayLoad :events="selectedEvents" />
 
     <WeatherRailCard
       :selected-day="weatherDay"
@@ -83,6 +80,7 @@ import { computed } from 'vue'
 import UiButton from '../ui/UiButton.vue'
 import UiIconButton from '../ui/UiIconButton.vue'
 import EventCard from './EventCard.vue'
+import CalendarDayLoad from './CalendarDayLoad.vue'
 import WeatherRailCard from '../weather/WeatherRailCard.vue'
 import { formatDateShort, formatWeekday } from '../../utils/formatters/dateFormatter.js'
 import { formatEventTitle } from '../../utils/formatters/calendarFormatter.js'
@@ -116,9 +114,6 @@ const nextEvent = computed(() => {
   return timedEvents.value.find((event) => props.selectedDateKey > todayKey || event.endTime >= nowTime) || null
 })
 const nextEventTime = computed(() => `${nextEvent.value?.startTime || ''}–${nextEvent.value?.endTime || ''}`)
-const busyMinutes = computed(() => timedEvents.value.reduce((sum, event) => sum + difference(event.startTime, event.endTime), 0))
-const busyMinutesLabel = computed(() => `${Math.floor(busyMinutes.value / 60)} ч ${busyMinutes.value % 60} мин`)
-const dayLoadPercent = computed(() => Math.min(100, Math.round(busyMinutes.value / (12 * 60) * 100)))
 const sportProgress = computed(() => sportStore.getDayProgress(props.selectedDateKey))
 const freeWindows = computed(() => {
   const result = []
@@ -177,8 +172,8 @@ function difference(start, end) {
 }
 
 .today-rail__header h2 { margin: 0; text-transform: capitalize; }
-.today-rail__overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--density-calendar-grid-gap, 6px); }
-.today-rail__overview--compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.today-rail__overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--density-calendar-grid-gap, 6px); }
+.today-rail__overview--compact { grid-template-columns: minmax(0, 1fr); }
 .today-rail__overview article {
   display: grid;
   gap: 3px;
@@ -191,8 +186,6 @@ function difference(start, end) {
 .today-rail__overview span,
 .today-rail__overview small { color: var(--text-muted); font-size: 9px; }
 .today-rail__overview strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.today-rail__overview article > div { height: 4px; overflow: hidden; border-radius: 99px; background: var(--control-bg); }
-.today-rail__overview i { display: block; height: 100%; border-radius: inherit; background: var(--info); }
 .today-rail__section { display: grid; gap: var(--density-calendar-grid-gap, 8px); padding-top: var(--density-panel-gap, 10px); border-top: 1px solid var(--border-color); }
 .today-rail__section h3 { margin: 0; }
 .today-rail__events { display: grid; gap: var(--density-calendar-grid-gap, 8px); }
