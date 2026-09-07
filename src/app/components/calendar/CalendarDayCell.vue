@@ -41,6 +41,7 @@
         draggable="true"
         @dragstart.stop="handleDragStart(event, $event)"
         @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
+        @contextmenu="openContextMenu(event, $event)"
         @click.stop="handleEventClick(event)"
       >
         <span class="calendar-day__event-copy">
@@ -71,6 +72,7 @@ import { computed, ref } from 'vue'
 import { formatEventTitle, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
+import { useEventContextMenu } from '../../composables/calendar/useEventContextMenu'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
 const props = defineProps({
@@ -83,6 +85,7 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'edit-event', 'move-event'])
 const isDragOver = ref(false)
+const openContextMenu = useEventContextMenu()
 const { beginTouchDrag, shouldSuppressEventClick } = useTouchEventDrag()
 
 const visibleEvents = computed(() => [...props.events]

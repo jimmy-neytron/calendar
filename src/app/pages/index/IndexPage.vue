@@ -70,12 +70,14 @@
       @click="isDayRailOpen = false"
     />
 
+    <EventContextMenu v-if="eventMenu" :state="eventMenu" @close="closeEventMenu" @edit="editFromContextMenu" @delete="deleteFromContextMenu" />
     <EventPreview
       v-model="isPreviewOpen"
       :event="previewedEvent"
       :members="members"
       :calendars="calendars"
       @edit="editEvent"
+      @delete="deleteFromPreview"
       @open-linked="openLinkedEntity"
     />
     <EventDrawer
@@ -103,7 +105,10 @@ import CalendarFilters from '../../components/calendar/CalendarFilters.vue'
 import SmartEventInput from '../../components/calendar/SmartEventInput.vue'
 import TodayRail from '../../components/calendar/TodayRail.vue'
 import EventDrawer from '../../components/calendar/EventDrawer.vue'
+import EventContextMenu from '../../components/calendar/EventContextMenu.vue'
+import { provideEventContextMenu } from '../../composables/calendar/useEventContextMenu'
 import EventPreview from '../../components/calendar/EventPreview.vue'
+import { getEventSourceRoute } from '../../components/calendar/eventSource'
 import { useCalendarView } from '../../composables/calendar/useCalendarView.js'
 import { useCalendarEvents } from '../../composables/calendar/useCalendarEvents.js'
 import { useFamilyMembers } from '../../composables/calendar/useFamilyMembers.js'
@@ -203,6 +208,21 @@ const quickCreateAt = (time) => {
   editingEvent.value = null
   quickStartTime.value = time
   openEventDrawer()
+}
+
+const { menu: eventMenu, closeMenu: closeEventMenu } = provideEventContextMenu()
+function editFromContextMenu(event) {
+  closeEventMenu(false)
+  editEvent(event)
+}
+function deleteFromContextMenu(event) {
+  closeEventMenu()
+  handleDeleteEvent(event.parentId || event.id)
+}
+function deleteFromPreview(event) {
+  isPreviewOpen.value = false
+  previewedEvent.value = null
+  handleDeleteEvent(event.parentId || event.id)
 }
 
 function previewEvent(event) {
@@ -319,6 +339,12 @@ async function openLinkedBudget(event) {
 }
 
 async function openLinkedEntity(event) {
+  const sourceRoute = getEventSourceRoute(event)
+  if (sourceRoute) {
+    await router.push(sourceRoute)
+    isPreviewOpen.value = false
+    return
+  }
   if (event?.linkedEntityType === 'budget-payment') {
     await openLinkedBudget(event)
     return

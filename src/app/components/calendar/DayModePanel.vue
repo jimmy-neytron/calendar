@@ -77,6 +77,7 @@
                 draggable="true"
                 @dragstart="handleDragStart(event, $event)"
                 @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
+                @contextmenu="openContextMenu(event, $event)"
                 @click="openEvent(event, $event)"
               >
                 <div class="day-mode__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
@@ -113,6 +114,7 @@ import { formatEventMembers, formatEventTitle, getEventAccent } from '../../util
 import { formatWeatherTooltip } from '../../utils/formatters/weatherFormatter'
 import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
+import { useEventContextMenu } from '../../composables/calendar/useEventContextMenu'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
 const props = defineProps({
@@ -126,6 +128,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['create-event', 'edit-event', 'move-event', 'resize-event'])
+const openContextMenu = useEventContextMenu()
 const { beginTouchDrag, shouldSuppressEventClick } = useTouchEventDrag()
 
 function openEvent(event, mouseEvent) {

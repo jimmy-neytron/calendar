@@ -15,6 +15,7 @@
     role="button"
     tabindex="0"
     :aria-label="`Открыть событие: ${event.title}`"
+    @contextmenu="openContextMenu(event, $event)"
     @click.stop="openEvent"
     @keydown.enter.stop.prevent="openEvent"
     @keydown.space.stop.prevent="openEvent"
@@ -50,6 +51,7 @@ import { formatTimeRange } from '../../utils/formatters/dateFormatter.js'
 import { formatEventTitle, getCategoryMeta, getEventAccent } from '../../utils/formatters/calendarFormatter.js'
 import { calendarCollectionStore } from '../../stores/calendarCollection.store.js'
 import EventMemberAvatars from './EventMemberAvatars.vue'
+import { useEventContextMenu } from '../../composables/calendar/useEventContextMenu'
 import { useTouchEventDrag } from '../../composables/calendar/useTouchEventDrag.js'
 
 const props = defineProps({
@@ -59,6 +61,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['edit', 'move-event'])
+const openContextMenu = useEventContextMenu()
 const { beginTouchDrag, shouldSuppressEventClick } = useTouchEventDrag()
 
 function openEvent() {
