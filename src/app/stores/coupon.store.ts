@@ -8,7 +8,7 @@ const repository = new SyncedCollectionRepository(
   `${APP_CONFIG.storageKey}:coupons`,
   [] as Coupon[],
   'coupons',
-  { toRow: toDatabaseRow, fromRow: fromDatabaseRow },
+  { toRow: toDatabaseRow, fromRow: fromDatabaseRow, toUpdateRow: toDatabaseUpdate },
 )
 
 const items = computed<Coupon[]>(() => repository.items.value
@@ -42,6 +42,12 @@ function toDatabaseRow(item: Coupon) {
     expires_on: item.expiresOn || null, terms: item.terms, color: item.color, is_used: item.isUsed,
     created_at: item.createdAt, updated_at: item.updatedAt,
   }
+}
+
+function toDatabaseUpdate(item: Coupon, updates: Partial<Coupon>) {
+  const row = toDatabaseRow(item)
+  const changedColumns = new Set(Object.keys(updates).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)))
+  return Object.fromEntries(Object.entries(row).filter(([column]) => changedColumns.has(column)))
 }
 
 function fromDatabaseRow(row: Record<string, unknown>): Coupon {

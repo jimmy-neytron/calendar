@@ -21,6 +21,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
     this.isEnabled = options.isEnabled || (() => options.enabled ?? isSyncTableEnabled(table))
     this.api = createCollectionApi(table)
     this.toRow = options.toRow || toDatabaseRow
+    this.toUpdateRow = options.toUpdateRow
     this.fromRow = options.fromRow || fromDatabaseRow
     this.getEntityId = options.getEntityId || ((item) => item.id)
     this.lastError = ref('')
@@ -103,7 +104,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
     const updated = this.updateLocal(id, updates)
     if (updated) {
       this.syncOperation(
-        { type: 'update', entityId: id, payload: this.toRow(updated) },
+        { type: 'update', entityId: id, payload: this.toRow(updated), updatePayload: this.toUpdateRow?.(updated, updates) },
         { rollback: () => previous && this.updateLocal(id, previous) }
       )
     }
@@ -117,7 +118,7 @@ export class SyncedCollectionRepository extends LocalCollectionRepository {
     if (!updated) return { ok: false, message: 'Запись не найдена' }
 
     const result = await this.syncOperation(
-      { type: 'update', entityId: id, payload: this.toRow(updated) },
+      { type: 'update', entityId: id, payload: this.toRow(updated), updatePayload: this.toUpdateRow?.(updated, updates) },
       { wait: true }
     )
     if (result.ok) return { ...result, item: updated }
@@ -311,6 +312,7 @@ function createQueueOperation(table, operation) {
     type: operation.type,
     entityId: operation.entityId || '',
     payload: operation.payload ?? null,
+    updatePayload: operation.updatePayload,
     workspaceId: operation.workspaceId
       || operation.payload?.workspace_id
       || operation.payload?.[0]?.workspace_id
@@ -321,7 +323,7 @@ function createQueueOperation(table, operation) {
 
 async function executeOperation(repository, operation) {
   if (operation.type === 'create') return repository.api.create(operation.payload)
-  if (operation.type === 'update') return repository.api.update(operation.entityId, operation.payload)
+  if (operation.type === 'update') return repository.api.update(operation.entityId, operation.updatePayload ?? operation.payload)
   if (operation.type === 'delete') return repository.api.remove(operation.entityId)
   if (operation.type === 'upsert') return repository.api.upsert(operation.payload)
   return { error: new Error(`Неизвестная операция синхронизации: ${operation.type}`) }

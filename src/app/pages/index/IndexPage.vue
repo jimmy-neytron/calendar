@@ -34,7 +34,7 @@
         @next="goNext"
         @today="goToday"
         @select-date="selectDateAndOpenRail"
-        @edit-event="editEvent"
+        @edit-event="previewEvent"
         @create-event="createEvent"
         @move-event="handleMoveEvent"
         @resize-event="handleResizeEvent"
@@ -59,7 +59,7 @@
       :weather-error="Boolean(weatherError)"
       @close="isDayRailOpen = false"
       @create-event="createEvent"
-      @edit-event="editEvent"
+      @edit-event="previewEvent"
       @quick-create="quickCreateAt"
     />
     <button
@@ -70,6 +70,14 @@
       @click="isDayRailOpen = false"
     />
 
+    <EventPreview
+      v-model="isPreviewOpen"
+      :event="previewedEvent"
+      :members="members"
+      :calendars="calendars"
+      @edit="editEvent"
+      @open-linked="openLinkedEntity"
+    />
     <EventDrawer
       v-model="isEventDrawerOpen"
       :editing-event="editingEvent"
@@ -95,6 +103,7 @@ import CalendarFilters from '../../components/calendar/CalendarFilters.vue'
 import SmartEventInput from '../../components/calendar/SmartEventInput.vue'
 import TodayRail from '../../components/calendar/TodayRail.vue'
 import EventDrawer from '../../components/calendar/EventDrawer.vue'
+import EventPreview from '../../components/calendar/EventPreview.vue'
 import { useCalendarView } from '../../composables/calendar/useCalendarView.js'
 import { useCalendarEvents } from '../../composables/calendar/useCalendarEvents.js'
 import { useFamilyMembers } from '../../composables/calendar/useFamilyMembers.js'
@@ -144,6 +153,8 @@ const { notify } = useNotification()
 const { isOpen: isEventDrawerOpen, open: openEventDrawer, close: closeEventDrawer } = useModal(false)
 
 const editingEvent = ref(null)
+const previewedEvent = ref(null)
+const isPreviewOpen = ref(false)
 const quickStartTime = ref('')
 const smartEventQuery = ref('')
 const handledCreateToken = ref(props.forceCreateToken)
@@ -176,6 +187,7 @@ function toggleDayMonthView() {
 }
 
 const createEvent = (dateKey = '') => {
+  isPreviewOpen.value = false
   if (dateKey) selectDateAndOpenRail(dateKey)
   editingEvent.value = null
   quickStartTime.value = ''
@@ -193,7 +205,13 @@ const quickCreateAt = (time) => {
   openEventDrawer()
 }
 
+function previewEvent(event) {
+  previewedEvent.value = event
+  isPreviewOpen.value = true
+}
+
 const editEvent = (event) => {
+  isPreviewOpen.value = false
   editingEvent.value = event.parentId ? events.value.find((sourceEvent) => sourceEvent.id === event.parentId) || event : event
   openEventDrawer()
 }
@@ -296,6 +314,7 @@ async function openLinkedBudget(event) {
   if (!event?.linkedEntityId) return
   budgetStore.setSelectedMonth(String(event.date).slice(0, 7))
   closeEventDrawer()
+  isPreviewOpen.value = false
   await router.push({ name: 'budget', query: { payment: event.linkedEntityId } })
 }
 

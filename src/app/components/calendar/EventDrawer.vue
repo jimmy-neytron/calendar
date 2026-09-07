@@ -51,6 +51,8 @@
                 </option>
               </UiSelect>
             </label>
+      <button v-if="!editingEvent" type="button" class="event-editor__more" :aria-expanded="showDetails" :aria-controls="detailsId" @click="showDetails = !showDetails">{{ showDetails ? 'Свернуть подробности' : 'Добавить участников, повторение и описание' }}</button>
+      <div v-show="showDetails" :id="detailsId" class="event-editor__details">
       <EventFormSection v-model="sectionOpen.repeat" title="Повторение" :summary="repeatSummary">
 <label class="event-drawer__select">
               <span>Повтор</span>
@@ -252,6 +254,7 @@
           <UiButton variant="danger" type="button" @click="remove">Удалить событие</UiButton>
         </div>
       </EventFormSection>
+      </div>
       <p v-if="Object.keys(errors).length" class="event-editor__error" role="alert">{{ Object.values(errors).join('. ') }}</p>
       <footer class="event-drawer__footer">
         <span class="event-editor__shortcut">Ctrl / ⌘ + Enter</span>
@@ -263,7 +266,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import UiInput from '../ui/UiInput.vue'
 import UiSelect from '../ui/UiSelect.vue'
 import UiButton from '../ui/UiButton.vue'
@@ -300,6 +303,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'create', 'update', 'delete', 'duplicate', 'comment', 'open-linked'])
 
+const showDetails = ref(false)
+const detailsId = useId()
 const titleInputRef = ref(null)
 const errors = reactive({})
 const form = reactive(createEmptyEventForm({ calendarId: props.calendars[0]?.id || '' }))
@@ -360,6 +365,7 @@ const submit = () => {
 
   if (!validation.valid) {
     Object.assign(errors, validation.errors)
+    showDetails.value = true
     if (Object.keys(errors).some((key) => key.startsWith('repeat'))) sectionOpen.repeat = true
     if (errors.category || errors.importance) sectionOpen.organization = true
     nextTick(() => document.querySelector('.event-editor__error')?.scrollIntoView?.({ block: 'nearest' }))
@@ -404,6 +410,7 @@ function applyTemplate(template) {
 }
 
 function resetForm() {
+  showDetails.value = Boolean(props.editingEvent)
   Object.keys(errors).forEach((key) => delete errors[key])
   Object.assign(
     form,
@@ -623,6 +630,9 @@ function addComment() {
 
 
 
+.event-editor__details { display: grid; gap: 12px; }
+.event-editor__more { border: 1px dashed var(--border-color); border-radius: 10px; background: var(--control-bg); color: var(--text-primary); padding: 12px; text-align: left; cursor: pointer; font-size: 13px; }
+.event-editor__more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .event-drawer__form { display: grid; gap: 14px; }
 .event-drawer__form > * { min-width: 0; }
 .event-drawer__repeat, .event-drawer__collaboration, .event-drawer__duplicate, .event-drawer__templates { display: grid; gap: 12px; }

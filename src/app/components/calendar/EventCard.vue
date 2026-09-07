@@ -12,7 +12,12 @@
     draggable="true"
     @dragstart="handleDragStart"
     @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
-    @dblclick="$emit('edit', event)"
+    role="button"
+    tabindex="0"
+    :aria-label="`Открыть событие: ${event.title}`"
+    @click.stop="openEvent"
+    @keydown.enter.stop.prevent="openEvent"
+    @keydown.space.stop.prevent="openEvent"
   >
     <div class="event-card__meta">
       <div class="event-card__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
@@ -54,7 +59,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['edit', 'move-event'])
-const { beginTouchDrag } = useTouchEventDrag()
+const { beginTouchDrag, shouldSuppressEventClick } = useTouchEventDrag()
+
+function openEvent() {
+  if (!shouldSuppressEventClick()) emit('edit', props.event)
+}
 
 const accent = computed(() => getEventAccent(props.event.memberIds, props.members))
 const category = computed(() => getCategoryMeta(props.event.category))

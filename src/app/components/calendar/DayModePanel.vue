@@ -77,7 +77,7 @@
                 draggable="true"
                 @dragstart="handleDragStart(event, $event)"
                 @pointerdown.stop="beginTouchDrag(event, $event, moveEvent)"
-                @dblclick="$emit('edit-event', event)"
+                @click="openEvent(event, $event)"
               >
                 <div class="day-mode__time">{{ formatTimeRange(event.startTime, event.endTime, event.allDay) }}</div>
                 <div class="day-mode__event-body">
@@ -126,7 +126,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['create-event', 'edit-event', 'move-event', 'resize-event'])
-const { beginTouchDrag } = useTouchEventDrag()
+const { beginTouchDrag, shouldSuppressEventClick } = useTouchEventDrag()
+
+function openEvent(event, mouseEvent) {
+  if (mouseEvent.target.closest('button') || shouldSuppressEventClick()) return
+  emit('edit-event', event)
+}
 
 const timedEvents = computed(() => props.events.filter((event) => !event.allDay))
 const allDayEvents = computed(() => props.events.filter((event) => event.allDay))

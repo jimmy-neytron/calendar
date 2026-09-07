@@ -25,6 +25,21 @@ async function mount(editingEvent: Record<string, unknown> | null = null) {
 function submit() { document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) }
 
 describe('компактный редактор событий', () => {
+  it('раскрывает подробности без потери введённого названия', async () => {
+    const { onCreate } = await mount()
+    const input = document.querySelector<HTMLInputElement>('input[autofocus]')!
+    input.value = 'Новый план'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    const button = document.querySelector<HTMLButtonElement>('.event-editor__more')!
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    button.click()
+    await nextTick()
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+    button.click()
+    await nextTick()
+    submit()
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ title: 'Новый план' }))
+  })
   it('создаёт событие по названию с датой и временем выбранного интервала', async () => {
     const { onCreate } = await mount()
     const input = document.querySelector<HTMLInputElement>('input[autofocus]')!
