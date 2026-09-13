@@ -427,7 +427,7 @@ async function saveItem() {
 async function toggleBought(item: PurchaseItem) {
   const nextStatus: PurchaseStatus = item.status === 'bought' ? 'wanted' : 'bought'
   const result = await purchaseWishlistStore.update(item.id, { status: nextStatus })
-  notify(result.ok ? (nextStatus === 'bought' ? 'Отмечено как купленное' : 'Возвращено в список') : result.message, result.ok ? 'success' : 'warning')
+  notify(result.ok ? (nextStatus === 'bought' ? 'Покупка отмечена как купленная' : 'Покупка возвращена в список желаний') : result.message, result.ok ? (nextStatus === 'bought' ? 'success' : 'info') : 'danger')
 }
 
 function openDeleteModal(item: PurchaseItem) {
@@ -441,7 +441,7 @@ async function deleteItem() {
   isDeleting.value = true
   const result = await purchaseWishlistStore.remove(item.id)
   isDeleting.value = false
-  if (!result.ok) return notify(result.message || 'Не удалось удалить покупку', 'warning')
+  if (!result.ok) return notify(result.message || 'Не удалось удалить покупку', 'danger')
   isDeleteOpen.value = false
   deletingItem.value = null
   notify('Покупка удалена', 'info', { duration: 8000, actionLabel: 'Вернуть', action: async () => {

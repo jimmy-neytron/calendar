@@ -26,12 +26,12 @@ defineEmits<{ shopping: [] }>()
 const catalog = useStoreCatalog()
 const { notify } = useNotification()
 const purchases = computed(() => calculateDailyPurchases(getRecipeRequirements(props.recipe), catalog.links.value, catalog.products.value))
-async function run(action: () => Promise<void>) {
-  try { await action(); notify('Изменения сохранены', 'success') }
+async function run(action: () => Promise<void>, message: string, type: 'success' | 'info' = 'success') {
+  try { await action(); notify(message, type) }
   catch (error) { notify(error instanceof Error ? error.message : 'Не удалось сохранить изменения', 'danger') }
 }
-function linkProduct(name: string, unit: StorePackageUnit, id: string) { void run(() => catalog.linkProduct(name, unit, id)) }
-function setPackage(id: string, amount: number, unit: StorePackageUnit) { void run(() => catalog.setPackage(id, amount, unit)) }
+function linkProduct(name: string, unit: StorePackageUnit, id: string) { void run(() => catalog.linkProduct(name, unit, id), id ? 'Товар привязан к ингредиенту' : 'Связь с товаром удалена', id ? 'success' : 'info') }
+function setPackage(id: string, amount: number, unit: StorePackageUnit) { void run(() => catalog.setPackage(id, amount, unit), 'Фасовка сохранена') }
 onMounted(catalog.loadCatalog)
 </script>
 

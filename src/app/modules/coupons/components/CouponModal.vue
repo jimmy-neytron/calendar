@@ -92,12 +92,12 @@ watch(() => [props.modelValue, props.coupon] as const, ([open, coupon]) => {
 
 function emptyForm(): CouponPayload { return { title: '', merchant: '', description: '', discountType: 'percent', discountValue: 10, discountLabel: '', codeType: 'qr', codeValue: '', barcodeFormat: 'code128', secondaryCodeValue: '', secondaryBarcodeFormat: 'code128', expiresOn: '', terms: '', color: '#7c8cf8', isUsed: false } }
 function submit() {
-  if (!form.title.trim()) return void notify('Укажи название купона', 'danger')
-  if (form.codeType !== 'none' && !form.codeValue.trim()) return void notify('Введи значение кода или считай его с фотографии', 'danger')
+  if (!form.title.trim()) return void notify('Укажи название купона', 'warning')
+  if (form.codeType !== 'none' && !form.codeValue.trim()) return void notify('Введи значение кода или считай его с фотографии', 'warning')
   const barcodeError = form.codeType === 'barcode' ? validateBarcode(form.codeValue, form.barcodeFormat) : ''
-  if (barcodeError) return void notify(barcodeError, 'danger')
+  if (barcodeError) return void notify(barcodeError, 'warning')
   const secondaryBarcodeError = form.codeType === 'barcode' && form.secondaryCodeValue.trim() ? validateBarcode(form.secondaryCodeValue, form.secondaryBarcodeFormat) : ''
-  if (secondaryBarcodeError) return void notify(`Нижний штрихкод: ${secondaryBarcodeError}`, 'danger')
+  if (secondaryBarcodeError) return void notify(`Нижний штрихкод: ${secondaryBarcodeError}`, 'warning')
   emit('save', { ...form, title: form.title.trim(), merchant: form.merchant.trim(), codeValue: form.codeValue.trim(), secondaryCodeValue: form.codeType === 'barcode' ? form.secondaryCodeValue.trim() : '', discountValue: Math.max(0, Number(form.discountValue) || 0) })
 }
 function validateBarcode(value: string, format: CouponBarcodeFormat) {

@@ -86,5 +86,5 @@ export function toBudgetPaymentView(payment) {
 }
 
 export function disabledBudgetResult() {
-  return { ok: false, message: 'Бюджет выключен в настройках' }
+  return { ok: false, reason: 'validation', message: 'Бюджет выключен в настройках' }
 }

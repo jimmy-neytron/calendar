@@ -8,6 +8,9 @@
       :key="`${movie.mediaType}:${movie.id}`"
       :movie="movie"
       :saved="movieWatchlistStore.isSaved(movie)"
+      :watched="movieWatchlistStore.isWatched(movie)"
+      :updating="updating"
+      @watched="$emit('watched', $event)"
       :planned="movieWatchlistStore.isPlanned(movie)"
       @toggle="$emit('toggle', $event)"
       @plan="$emit('plan', $event)"
@@ -29,7 +32,7 @@ import MovieCard from './MovieCard.vue'
 
 withDefaults(defineProps<{
   movies: MovieMedia[]
-  loading?: boolean
+  updating?: boolean; loading?: boolean
   emptyTitle?: string
   emptyText?: string
 }>(), {
@@ -37,7 +40,7 @@ withDefaults(defineProps<{
   emptyTitle: 'Здесь пока пусто',
   emptyText: 'Подходящие фильмы появятся здесь.',
 })
-defineEmits<{ toggle: [movie: MovieMedia]; plan: [movie: MovieMedia]; open: [movie: MovieMedia] }>()
+defineEmits<{ watched: [movie: MovieMedia]; toggle: [movie: MovieMedia]; plan: [movie: MovieMedia]; open: [movie: MovieMedia] }>()
 </script>
 
 <style scoped>

@@ -23,7 +23,7 @@
     <template v-else>
       <nav class="movies-tabs" aria-label="Разделы фильмов">
         <button v-for="tab in tabs" :key="tab.value" type="button" :class="{ active: activeTab === tab.value }" @click="selectTab(tab.value)">
-          {{ tab.label }}<small v-if="tab.value === 'watchlist'">{{ watchlist.length }}</small>
+          {{ tab.label }}<small v-if="tab.value === 'watchlist'">{{ watchlist.length }}</small><small v-if="tab.value === 'watched'">{{ watchedMovies.length }}</small>
         </button>
       </nav>
 
@@ -65,7 +65,7 @@
         </div>
         <SectionHeading eyebrow="Результаты поиска" :title="`«${submittedQuery}»`" :count="searchCountLabel" />
         <MovieSearchLoader v-if="searchLoading" :title="searchPage > 1 ? `Загружаем страницу ${searchPage}…` : 'Ищем кино…'" />
-        <MovieGrid v-else :movies="visibleMovies" empty-title="Ничего не нашли" empty-text="Попробуй другое название или ослабь фильтры." @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
+        <MovieGrid :updating="updatingMovie" @watched="toggleWatched" v-else :movies="visibleMovies" empty-title="Ничего не нашли" empty-text="Попробуй другое название или ослабь фильтры." @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
         <nav v-if="!searchLoading && searchTotalPages > 1" class="movie-pagination" aria-label="Страницы результатов">
           <button type="button" :disabled="searchPage === 1" aria-label="Предыдущая страница" @click="changePage(searchPage - 1)"><UiIcon name="left" /></button>
           <template v-for="item in paginationItems" :key="item.key">
@@ -113,17 +113,17 @@
             </footer>
           </div>
         </section>
-        <MediaShelf title="Сейчас популярно" eyebrow="Фильмы" :movies="popularMovies" :loading="loading" @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
-        <MediaShelf title="Сериалы, о которых говорят" eyebrow="Сериалы" :movies="popularTv" :loading="loading" @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
+        <MediaShelf :updating="updatingMovie" @watched="toggleWatched" title="Сейчас популярно" eyebrow="Фильмы" :movies="popularMovies" :loading="loading" @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
+        <MediaShelf :updating="updatingMovie" @watched="toggleWatched" title="Сериалы, о которых говорят" eyebrow="Сериалы" :movies="popularTv" :loading="loading" @toggle="toggleWatchlist" @plan="handlePlanAction" @open="openMovieDetails" />
       </template>
 
       <section v-else class="movies-section">
-        <SectionHeading :eyebrow="sectionEyebrow" :title="sectionTitle" :count="`${visibleMovies.length} ${activeTab === 'watchlist' ? 'в списке' : 'популярных'}`" />
-        <MovieGrid
+        <SectionHeading :eyebrow="sectionEyebrow" :title="sectionTitle" :count="`${visibleMovies.length} ${['watchlist', 'watched'].includes(activeTab) ? 'в списке' : 'популярных'}`" />
+        <MovieGrid :updating="updatingMovie" @watched="toggleWatched"
           :movies="visibleMovies"
-          :loading="loading"
-          :empty-title="activeTab === 'watchlist' ? 'Список пока пуст' : 'Ничего не загрузилось'"
-          :empty-text="activeTab === 'watchlist' ? 'Нажми плюс на карточке — фильм останется здесь.' : 'Попробуй обновить страницу чуть позже.'"
+          :loading="loading && !['watchlist', 'watched'].includes(activeTab)"
+          :empty-title="activeTab === 'watched' ? 'Пока нет просмотренных фильмов' : activeTab === 'watchlist' ? 'Список пока пуст' : 'Ничего не загрузилось'"
+          :empty-text="activeTab === 'watched' ? 'Отметь «Просмотрено» в карточке фильма.' : activeTab === 'watchlist' ? 'Нажми плюс на карточке — фильм останется здесь.' : 'Попробуй обновить страницу чуть позже.'"
           @toggle="toggleWatchlist"
           @plan="handlePlanAction"
           @open="openMovieDetails"
@@ -175,6 +175,9 @@
         :details="movieDetails"
         :loading="detailsLoading"
         :error="detailsError"
+        :watched="selectedMovie ? movieWatchlistStore.isWatched(selectedMovie) : false"
+        :updating="updatingMovie"
+        @watched="toggleWatched"
         :saved="selectedMovie ? movieWatchlistStore.isSaved(selectedMovie) : false"
         :planned="selectedMovie ? movieWatchlistStore.isPlanned(selectedMovie) : false"
         @toggle="toggleWatchlist"
@@ -208,10 +211,10 @@ import { calendarCollectionStore } from '../../stores/calendarCollection.store.j
 import type { MediaType, MovieDetails, MovieGenre, MovieMedia } from '../../types/movie'
 import { DateHelper } from '../../utils/date/dateHelper.js'
 
-type MoviesTab = 'all' | 'movie' | 'tv' | 'watchlist'
+type MoviesTab = 'all' | 'movie' | 'tv' | 'watchlist' | 'watched'
 const tabs: Array<{ value: MoviesTab; label: string }> = [
   { value: 'all', label: 'Обзор' }, { value: 'movie', label: 'Фильмы' },
-  { value: 'tv', label: 'Сериалы' }, { value: 'watchlist', label: 'Хочу посмотреть' },
+  { value: 'tv', label: 'Сериалы' }, { value: 'watchlist', label: 'Хочу посмотреть' }, { value: 'watched', label: 'Просмотренные фильмы' },
 ]
 
 const SectionHeading = defineComponent({
@@ -221,7 +224,7 @@ const SectionHeading = defineComponent({
   ]),
 })
 
-const { notify } = useNotification()
+const { notify, notifyResult } = useNotification()
 const route = useRoute()
 const activeTab = ref<MoviesTab>('all')
 const searchQuery = ref('')
@@ -260,6 +263,8 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined
 let searchRequestId = 0
 
 const watchlist = movieWatchlistStore.watchlist
+const watchedMovies = movieWatchlistStore.watched
+const updatingMovie = ref(false)
 const calendars = calendarCollectionStore.activeCollections
 const isSearching = computed(() => Boolean(submittedQuery.value))
 const featuredMovie = computed(() => trending.value.find((movie) => movie.backdropPath) || trending.value[0])
@@ -269,10 +274,11 @@ const visibleMovies = computed(() => {
   if (activeTab.value === 'movie') return popularMovies.value
   if (activeTab.value === 'tv') return popularTv.value
   if (activeTab.value === 'watchlist') return watchlist.value
+  if (activeTab.value === 'watched') return watchedMovies.value
   return trending.value
 })
-const sectionTitle = computed(() => ({ movie: 'Популярные фильмы', tv: 'Популярные сериалы', watchlist: 'Твой список', all: 'В тренде' })[activeTab.value])
-const sectionEyebrow = computed(() => activeTab.value === 'watchlist' ? 'На потом' : 'Сейчас смотрят')
+const sectionTitle = computed(() => ({ movie: 'Популярные фильмы', tv: 'Популярные сериалы', watchlist: 'Твой список', watched: 'Просмотренные фильмы', all: 'В тренде' })[activeTab.value])
+const sectionEyebrow = computed(() => activeTab.value === 'watched' ? 'Уже посмотрели' : activeTab.value === 'watchlist' ? 'На потом' : 'Сейчас смотрят')
 const yearOptions = computed(() => {
   const currentYear = new Date().getFullYear()
   return Array.from({ length: 80 }, (_, index) => currentYear - index)
@@ -314,7 +320,7 @@ onMounted(async () => {
   await Promise.all([loadCatalog(), loadGenres()])
 })
 
-watch([watchlist, () => route.query.movie], ([items, movieKey]) => {
+watch([movieWatchlistStore.library, () => route.query.movie], ([items, movieKey]) => {
   if (typeof movieKey !== 'string' || handledMovieKey.value === movieKey) return
   const [mediaType, rawId] = movieKey.split(':')
   const movie = items.find((item) => item.mediaType === mediaType && item.id === Number(rawId))
@@ -428,17 +434,38 @@ function selectTab(tab: MoviesTab): void {
   clearSearch()
 }
 
+async function toggleWatched(movie: MovieMedia): Promise<void> {
+  if (updatingMovie.value) return
+  updatingMovie.value = true
+  const watched = !movieWatchlistStore.isWatched(movie)
+  try {
+    const result = await movieWatchlistStore.setWatched(movie, watched)
+    notifyResult(result, watched ? '«' + movie.title + '» добавлен в просмотренные' : '«' + movie.title + '» возвращён в «Хочу посмотреть»', {
+      successType: watched ? 'success' : 'info',
+      errorMessage: 'Не удалось изменить статус просмотра',
+    })
+  } catch {
+    notify('Не удалось изменить статус просмотра. Попробуй ещё раз.', 'danger')
+  } finally { updatingMovie.value = false }
+}
+
 async function toggleWatchlist(movie: MovieMedia): Promise<void> {
-  const result = await movieWatchlistStore.toggle(movie)
-  if (result.blocked) {
-    notify(result.message || 'Сначала убери фильм из календаря', 'warning')
-    return
-  }
-  if (!result.ok) {
-    notify(result.message || 'Не удалось синхронизировать список', 'warning')
-    return
-  }
-  notify(result.saved ? 'Добавлено в «Хочу посмотреть»' : 'Убрано из списка', result.saved ? 'success' : 'info')
+  if (updatingMovie.value) return
+  updatingMovie.value = true
+  const listTitle = movieWatchlistStore.isWatched(movie) ? 'Просмотренные фильмы' : 'Хочу посмотреть'
+  try {
+    const result = await movieWatchlistStore.toggle(movie)
+    if (result.blocked) {
+      notify(result.message || 'Сначала убери фильм из календаря', 'warning')
+      return
+    }
+    notifyResult(result, result.saved ? '«' + movie.title + '» добавлен в «Хочу посмотреть»' : '«' + movie.title + '» удалён из списка «' + listTitle + '»', {
+      successType: result.saved ? 'success' : 'info',
+      errorMessage: 'Не удалось изменить список фильмов',
+    })
+  } catch {
+    notify('Не удалось изменить список фильмов. Попробуй ещё раз.', 'danger')
+  } finally { updatingMovie.value = false }
 }
 
 function retryLastRequest(): void {
@@ -478,13 +505,13 @@ async function handleDetailsPlanAction(movie: MovieMedia): Promise<void> {
 async function handlePlanAction(movie: MovieMedia): Promise<void> {
   if (movieWatchlistStore.isPlanned(movie)) {
     const result = await movieWatchlistStore.unplanMovie(movie)
-    notify(result.ok ? 'Просмотр убран из календаря' : result.message, result.ok ? 'info' : 'warning')
+    notifyResult(result, 'Просмотр «' + movie.title + '» убран из календаря', { successType: 'info', errorMessage: 'Не удалось убрать просмотр из календаря' })
     return
   }
 
   const collectionsReady = await calendarCollectionStore.ensureWorkspaceCollections()
   if (!collectionsReady?.ok) {
-    notify(collectionsReady?.message || 'Не удалось подготовить календарь', 'warning')
+    notify(collectionsReady?.message || 'Не удалось подготовить календарь', 'danger')
     return
   }
   planningMovie.value = movie
@@ -508,7 +535,7 @@ async function confirmPlan(): Promise<void> {
     reminder: planReminder.value,
   })
   planning.value = false
-  notify(result.ok ? 'Фильм добавлен в календарь' : result.message, result.ok ? 'success' : 'warning')
+  notifyResult(result, 'Просмотр «' + planningMovie.value.title + '» запланирован на ' + planDate.value + ' в ' + planTime.value, { errorMessage: 'Не удалось запланировать просмотр' })
   if (result.ok) isPlannerOpen.value = false
 }
 

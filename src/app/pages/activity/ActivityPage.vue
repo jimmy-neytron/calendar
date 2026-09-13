@@ -184,8 +184,8 @@ async function removeActivity(entryIds) {
     if (entryIds && entries.value.length === entryIds.length && page.value > 1) page.value -= 1
     if (!entryIds) page.value = 1
     notify(
-      entryIds ? 'Удалено записей: ' + (deletedCount || entryIds.length) : 'Журнал активности очищен',
-      'success'
+      entryIds ? 'Удалено записей: ' + (deletedCount ?? entryIds.length) : 'Журнал активности очищен',
+      'info'
     )
   } catch (error) {
     notify(

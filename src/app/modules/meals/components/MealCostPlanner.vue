@@ -101,20 +101,20 @@ const periodDescription = computed(() => period.value === 'week'
   ? 'Продукты из меню и твои дополнения — в одном списке. Отмечай то, что уже в корзине.'
   : 'Показаны ингредиенты только для блюд и ручных покупок выбранного дня.')
 
-async function action(run: () => Promise<unknown>, success: string) {
-  try { await run(); notify(success, 'success'); return true }
+async function action(run: () => Promise<unknown>, message: string, type: 'success' | 'info' = 'success') {
+  try { await run(); notify(message, type); return true }
   catch (reason) { notify(reason instanceof Error ? reason.message : 'Не удалось выполнить действие', 'danger'); return false }
 }
 function linkProduct(name: string, unit: StorePackageUnit, productId: string) {
-  void action(() => catalog.linkProduct(name, unit, productId), productId ? 'Товар привязан к ингредиенту' : 'Связь с товаром удалена')
+  void action(() => catalog.linkProduct(name, unit, productId), productId ? 'Товар привязан к ингредиенту' : 'Связь с товаром удалена', productId ? 'success' : 'info')
 }
 function setPackage(productId: string, amount: number, unit: StorePackageUnit) { void action(() => catalog.setPackage(productId, amount, unit), 'Фасовка сохранена') }
-function toggleSource(id: string, enabled: boolean) { void action(() => catalog.toggleSource(id, enabled), enabled ? 'Автообновление включено' : 'Автообновление выключено') }
+function toggleSource(id: string, enabled: boolean) { void action(() => catalog.toggleSource(id, enabled), enabled ? 'Автообновление включено' : 'Автообновление выключено', enabled ? 'success' : 'info') }
 function syncSource(id: string) { void action(() => catalog.syncSource(id), 'Цены обновлены') }
 async function confirmProductRemoval() {
   const ids = productsToDelete.value.map(product => product.id)
   if (!ids.length) return
-  if (await action(() => catalog.removeProducts(ids), `Удалено товаров: ${ids.length}`)) productsToDelete.value = []
+  if (await action(() => catalog.removeProducts(ids), `Удалено товаров: ${ids.length}`, 'info')) productsToDelete.value = []
 }
 async function saveSource(draft: StoreSourceDraft) {
   const source = editingSource.value
@@ -143,7 +143,7 @@ async function confirmSourceRemoval(deleteProducts: boolean) {
   const message = pending.clearProducts ? 'Категория очищена. Для повторной загрузки нажмите «Обновить сейчас».'
     : deleteProducts ? 'Источник и его товары удалены. Общие товары других источников сохранены.'
       : 'Источник удалён. Товары и привязки сохранены.'
-  if (await action(run, message)) sourceRemoval.value = null
+  if (await action(run, message, 'info')) sourceRemoval.value = null
 }
 function openLinkDialog(product: StoreProduct) { selectedProduct.value = product; selectedRequirementKey.value = ''; linkDialogOpen.value = true }
 async function saveDialogLink() {

@@ -231,9 +231,10 @@ async function createSmartEvent(eventData) {
   if (route.name !== 'calendar') await router.push({ name: 'calendar' })
 }
 
-function runNotificationAction(notification) {
-  notification.action?.()
+async function runNotificationAction(notification) {
   dismiss(notification.id)
+  try { await notification.action?.() }
+  catch { notify('Не удалось выполнить действие из уведомления. Попробуй ещё раз.', 'danger') }
 }
 
 function handleGlobalKeydown(event) {

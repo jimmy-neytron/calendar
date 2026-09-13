@@ -182,7 +182,7 @@ function openPlanner(idea) {
 
 async function confirmPlan() {
   const result = await ideaStore.planIdea(planningIdea.value.id, planDate.value, planTime.value)
-  notify(result.ok ? 'Идея добавлена в календарь' : result.message, result.ok ? 'success' : 'warning')
+  notify(result.ok ? 'Идея добавлена в календарь' : result.message || 'Не удалось запланировать идею', result.ok ? 'success' : 'danger')
   if (result.ok) {
     isPlannerOpen.value = false
     randomIdea.value = null
@@ -190,8 +190,8 @@ async function confirmPlan() {
 }
 
 async function removeFromCalendar(idea) {
-  await ideaStore.unplanIdea(idea.id)
-  notify('Событие удалено из календаря', 'info')
+  const result = await ideaStore.unplanIdea(idea.id)
+  notify(result.ok ? 'Идея убрана из календаря' : result.message || 'Не удалось убрать идею из календаря', result.ok ? 'info' : 'danger')
 }
 
 function typeMeta(type) {

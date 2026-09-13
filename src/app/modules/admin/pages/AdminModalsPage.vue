@@ -579,7 +579,7 @@ async function deleteCurrentModal() {
     if (nextModals.length) selectModal(nextModals[0])
     else resetModalForm()
     closeEditor()
-    notify('Модальное окно удалено', 'success')
+    notify('Модальное окно удалено', 'info')
   } catch (error) {
     const message = error.message || 'Не удалось удалить модалку'
     notify(message, 'danger', { duration: 8000 })

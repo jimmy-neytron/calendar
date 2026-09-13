@@ -138,10 +138,10 @@ function formatNumber(value) { return Number.isInteger(value) ? value : Math.rou
 function getCompletedDates(challenge) { return (challenge?.goalType || 'consistency') === 'consistency' ? [...new Set(challenge?.completedDates || [])] : Object.keys(challenge?.dailyValues || {}).filter((key) => Number(challenge.dailyValues[key]) > 0).sort() }
 function handleTodayAction() { handleDayAction(todayKey) }
 function handleDayAction(key) { if (!activeChallenge.value.active) return notify('Сначала возобнови цель', 'warning'); activeGoalType.value === 'consistency' ? toggleDay(key) : openResult(key) }
-function toggleDay(key) { const result = challengeStore.toggleDate(activeChallenge.value.id, key); notify(result.ok ? (result.completed ? 'День отмечен' : 'Отметка снята') : result.message, result.ok ? 'success' : 'warning') }
+function toggleDay(key) { const result = challengeStore.toggleDate(activeChallenge.value.id, key); notify(result.ok ? (result.completed ? 'День отмечен выполненным' : 'Отметка выполнения дня снята') : result.message, result.ok ? (result.completed ? 'success' : 'info') : 'warning') }
 function openResult(key) { resultDate.value = key; isResultOpen.value = true }
 function saveResult(payload) { const existed = Number(activeChallenge.value.dailyValues?.[payload.date]) > 0; const result = challengeStore.recordResult(activeChallenge.value.id, payload.date, payload.value); if (result.ok) { isResultOpen.value = false; notify(existed ? 'Результат обновлён' : 'Результат записан', 'success') } else notify(result.message, 'warning') }
-function removeResult(date) { const result = challengeStore.removeResult(activeChallenge.value.id, date); if (result.ok) { isResultOpen.value = false; notify('Результат удалён', 'info') } else notify(result.message, 'warning') }
+function removeResult(date) { const result = challengeStore.removeResult(activeChallenge.value.id, date); if (result.ok) { isResultOpen.value = false; notify('Результат удалён', 'info') } else notify(result.message, 'danger') }
 function toggleActive() { const result = challengeStore.toggleActive(activeChallenge.value.id); notify(result.ok ? (result.challenge.active ? 'Цель возобновлена' : 'Цель приостановлена') : result.message, result.ok ? 'info' : 'warning') }
 function openCreate() { editingChallenge.value = null; isEditorOpen.value = true }
 function selectTab(tab) { activeView.value = tab; router.replace({ query: tab === 'records' ? { view: 'records' } : {} }) }

@@ -229,7 +229,7 @@ watch(activeWorkspace, (workspace) => {
 }, { immediate: true })
 
 async function switchWorkspace(workspaceId) {
-  if (await workspaceStore.switchWorkspace(workspaceId)) notify('Пространство переключено', 'success')
+  if (await workspaceStore.switchWorkspace(workspaceId)) notify('Пространство переключено', 'info')
 }
 
 async function saveWorkspace() {
@@ -261,7 +261,7 @@ async function removeMember(userId) {
   const member = activeWorkspaceMembers.value.find((item) => item.id === userId)
   const result = await workspaceStore.removeMember(activeWorkspace.value.id, userId)
   if (result.ok) addActivity('member:remove', `удалил(а) участника ${member?.name || ''} из пространства`, { userId })
-  notify(result.ok ? 'Участник удалён' : result.message, result.ok ? 'success' : 'danger')
+  notify(result.ok ? 'Участник удалён из пространства' : result.message, result.ok ? 'info' : 'danger')
 }
 
 async function createInvite() {
@@ -274,8 +274,11 @@ async function createInvite() {
 }
 
 async function copyInvite() {
-  await navigator.clipboard?.writeText(lastInviteCode.value)
-  notify('Код скопирован', 'success')
+  if (!navigator.clipboard) { notify('Буфер обмена недоступен в этом браузере. Скопируй текст вручную.', 'warning'); return }
+  try {
+    await navigator.clipboard.writeText(lastInviteCode.value)
+    notify('Код приглашения скопирован', 'success')
+  } catch { notify('Не удалось скопировать текст. Скопируй его вручную.', 'danger') }
 }
 
 async function acceptInvite() {
@@ -299,7 +302,7 @@ function removeCalendar(id) {
   const calendar = calendars.value.find((item) => item.id === id)
   const removed = calendarCollectionStore.removeCollection(id)
   if (removed) addActivity('workspace:calendar', `удалил(а) календарь «${calendar?.name || ''}»`, { calendarId: id })
-  notify(removed ? 'Календарь удалён' : 'Нельзя удалить последний календарь', removed ? 'success' : 'warning')
+  notify(removed ? 'Календарь удалён' : 'Нельзя удалить последний календарь', removed ? 'info' : 'warning')
 }
 
 function openDeleteWorkspace() {
@@ -341,7 +344,7 @@ async function confirmDeleteWorkspace() {
   }
   isDeleteWorkspaceOpen.value = false
   deleteConfirmation.value = ''
-  notify('Пространство удалено', 'success')
+  notify('Пространство удалено', 'info')
 }
 
 function roleLabel(role) {

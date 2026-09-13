@@ -155,7 +155,7 @@ const {
   enableDayMode,
 } = useCalendarView(defaultMode.value)
 
-const { events, sortedEvents, eventsByDate, upcomingReminders, addEvent, updateEvent, deleteEvent, moveEvent, resizeEvent, duplicateEvent, addComment } = useCalendarEvents()
+const { events, sortedEvents, eventsByDate, upcomingReminders, addEvent, updateEvent, deleteEventAndWait, moveEvent, resizeEvent, duplicateEvent, addComment } = useCalendarEvents()
 const { members } = useFamilyMembers()
 const { notify } = useNotification()
 const { isOpen: isEventDrawerOpen, open: openEventDrawer, close: closeEventDrawer } = useModal(false)
@@ -271,9 +271,13 @@ const handleUpdateEvent = (id, data) => {
   closeEventDrawer()
 }
 
-const handleDeleteEvent = (id) => {
-  deleteEvent(id)
-  notify('Событие удалено', 'danger')
+const handleDeleteEvent = async (id) => {
+  const result = await deleteEventAndWait(id)
+  if (!result.ok) {
+    notify(result.message || 'Не удалось удалить событие', 'danger')
+    return
+  }
+  notify('Событие удалено', 'info')
   closeEventDrawer()
 }
 

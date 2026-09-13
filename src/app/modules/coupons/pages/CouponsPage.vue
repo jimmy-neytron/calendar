@@ -94,7 +94,13 @@ function openCode(coupon: Coupon) { selectedCoupon.value = coupon; isCodeOpen.va
 function openEditorFromCode(coupon: Coupon) { isCodeOpen.value = false; openEditor(coupon) }
 function confirmDelete(coupon: Coupon) { deletingCoupon.value = coupon; isDeleteOpen.value = true }
 async function saveCoupon(payload: CouponPayload) { const result = editingCoupon.value ? await couponStore.update(editingCoupon.value.id, payload) : await couponStore.create(payload); if (!result.ok) return notify(result.message, 'danger'); isEditorOpen.value = false; notify(editingCoupon.value ? 'Купон обновлён' : 'Купон добавлен', 'success') }
-async function toggleUsed(coupon: Coupon) { const result = await couponStore.update(coupon.id, { isUsed: !coupon.isUsed }); if (!result.ok) return notify(result.message, 'danger'); selectedCoupon.value = { ...coupon, isUsed: !coupon.isUsed, updatedAt: new Date().toISOString() }; notify(coupon.isUsed ? 'Купон снова активен' : 'Купон использован', 'success') }
+async function toggleUsed(coupon: Coupon) {
+  const isUsed = !coupon.isUsed
+  const result = await couponStore.update(coupon.id, { isUsed })
+  if (!result.ok) return notify(result.message || 'Не удалось изменить статус купона', 'danger')
+  selectedCoupon.value = { ...coupon, isUsed, updatedAt: new Date().toISOString() }
+  notify(isUsed ? 'Купон отмечен использованным' : 'Отметка использования купона снята', isUsed ? 'success' : 'info')
+}
 async function deleteCoupon() { const coupon = deletingCoupon.value; if (!coupon) return; const result = await couponStore.remove(coupon.id); if (!result.ok) return notify(result.message, 'danger'); isDeleteOpen.value = false; deletingCoupon.value = null; notify('Купон удалён', 'info', { duration: 8000, actionLabel: 'Вернуть', action: async () => { const restored = await couponStore.restore(coupon); notify(restored.ok ? 'Купон восстановлен' : restored.message, restored.ok ? 'success' : 'danger') } }) }
 function couponStatus(coupon: Coupon): CouponStatus { return getCouponStatus(coupon) }
 </script>

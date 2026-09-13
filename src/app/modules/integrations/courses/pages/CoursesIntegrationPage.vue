@@ -305,9 +305,9 @@ async function disconnect(deletePlans) {
     isDisconnectModalOpen.value = false
     if (deletePlans) {
       await calendarStore.loadWorkspace(workspaceId.value)
-      notify(`Courses отключён. Удалено занятий: ${deletedEventCount}`, 'success')
+      notify(`Courses отключён. Удалено занятий: ${deletedEventCount}`, 'info')
     } else {
-      notify('Courses отключён. Созданные события сохранены.', 'success')
+      notify('Courses отключён. Созданные события сохранены.', 'info')
     }
   } catch (error) {
     errorMessage.value = error.message || 'Не удалось отключить Courses'
@@ -335,7 +335,7 @@ async function deletePlan() {
     const result = await coursesIntegrationApi.deletePlan(planToDelete.value.id)
     plans.value = plans.value.filter((plan) => plan.id !== planToDelete.value.id)
     await calendarStore.loadWorkspace(workspaceId.value)
-    notify(`Удалено занятий: ${result?.deletedEventCount || 0}`, 'success')
+    notify(`Удалено занятий: ${result?.deletedEventCount || 0}`, 'info')
     closeDeletePlan()
   } catch (error) {
     errorMessage.value = error.message || 'Не удалось удалить план курса'
@@ -384,7 +384,7 @@ async function handleCreated(result) {
     loadPlans(),
     calendarStore.loadWorkspace(workspaceId.value),
   ])
-  notify(`Добавлено занятий: ${result?.eventCount || 0}`, 'success')
+  notify(result?.eventCount ? `Добавлено занятий: ${result.eventCount}` : 'Новых занятий для добавления нет', result?.eventCount ? 'success' : 'info')
 }
 
 function sessionCount(plan) {

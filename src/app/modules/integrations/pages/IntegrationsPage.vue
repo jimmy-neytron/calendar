@@ -335,7 +335,7 @@ async function toggleDigest(enabled) {
       return
     }
     integration.value = data
-    notify(enabled ? 'Сводка включена' : 'Сводка выключена', 'success')
+    notify(enabled ? 'Сводка включена' : 'Сводка выключена', enabled ? 'success' : 'info')
   } catch (error) {
     notify(error.message || 'Не удалось сохранить настройку', 'danger')
   } finally {
@@ -355,7 +355,7 @@ async function disconnect() {
     integration.value = data
     linkCode.value = ''
     linkCodeExpiresAt.value = ''
-    notify('Telegram отключен', 'success')
+    notify('Telegram отключён', 'info')
   } catch (error) {
     notify(error.message || 'Не удалось отключить Telegram', 'danger')
   } finally {
@@ -373,9 +373,11 @@ function openTelegram() {
 }
 
 async function copyStartCommand() {
-  if (!linkCode.value) return
-  await navigator.clipboard?.writeText(`/start ${linkCode.value}`)
-  notify('Команда скопирована', 'success')
+  if (!navigator.clipboard) { notify('Буфер обмена недоступен в этом браузере. Скопируй текст вручную.', 'warning'); return }
+  try {
+    await navigator.clipboard.writeText(`/start ${linkCode.value}`)
+    notify('Команда подключения скопирована', 'success')
+  } catch { notify('Не удалось скопировать текст. Скопируй его вручную.', 'danger') }
 }
 
 function formatDate(value) {

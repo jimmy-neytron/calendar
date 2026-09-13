@@ -414,7 +414,7 @@ function savePersonDraft() {
   } catch {
     if (!draftStorageWarningShown) {
       draftStorageWarningShown = true
-      notify('Не удалось сохранить черновик в браузере', 'warning')
+      notify('Не удалось сохранить черновик в браузере', 'danger')
     }
   }
 }
@@ -458,16 +458,16 @@ function selectRelatedPerson(id) {
   selectedId.value = id
 }
 
-async function persistDocument(next, message = '') {
+async function persistDocument(next, message = '', type = 'success') {
   window.clearTimeout(positionTimer)
   const document = normalizeDocument(next)
   localTree.value = document
   try {
     await save(cloneDocument(document))
-    if (message) notify(message, 'success')
+    if (message) notify(message, type)
     return true
   } catch (error) {
-    notify(error?.message || 'Не удалось сохранить семейное дерево', 'warning')
+    notify(error?.message || 'Не удалось сохранить семейное дерево', 'danger')
     return false
   }
 }
@@ -534,7 +534,7 @@ async function removeSelected() {
   delete next.positions[id]
   selectedId.value = ''
   detailsOpen.value = false
-  await persistDocument(next, 'Человек удалён')
+  await persistDocument(next, 'Человек и его связи удалены из дерева', 'info')
 }
 
 function savePositions(positions) {
@@ -551,7 +551,7 @@ function savePositions(positions) {
       await save(cloneDocument(snapshot))
     } catch (error) {
       if (revision === positionSaveRevision) {
-        notify(error?.message || 'Не удалось сохранить расположение карточек', 'warning')
+        notify(error?.message || 'Не удалось сохранить расположение карточек', 'danger')
       }
     }
   }, 850)
@@ -577,7 +577,7 @@ async function handlePhotoUpload(event) {
   try {
     form.photo = await compressPhoto(file)
   } catch {
-    notify('Не удалось обработать фотографию', 'warning')
+    notify('Не удалось обработать фотографию', 'danger')
   }
 }
 
@@ -618,7 +618,7 @@ async function importJson(event) {
     }
     await persistDocument(parsed, 'Дерево импортировано')
   } catch (error) {
-    notify(error?.message || 'Не удалось импортировать дерево', 'warning')
+    notify(error?.message || 'Не удалось импортировать дерево', 'danger')
   }
 }
 

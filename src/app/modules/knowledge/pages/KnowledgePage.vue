@@ -97,7 +97,7 @@ function connectSuggestion(targetId) {
   const wikiLink = `[[${target.title}]]`
   if (activeNote.value.content.includes(wikiLink)) { notify('Материалы уже связаны', 'info'); return }
   const result = knowledgeStore.updateNote(activeNote.value.id, { ...activeNote.value, content: `${activeNote.value.content.trim()}\n\n${wikiLink}` })
-  notify(result.ok ? `Связь с «${target.title}» добавлена` : result.message, result.ok ? 'success' : 'warning')
+  notify(result.ok ? `Связь с «${target.title}» добавлена` : result.message, result.ok ? 'success' : 'danger')
 }
 
 function saveNote(data) {
@@ -113,7 +113,7 @@ function saveNote(data) {
 function togglePinned() {
   if (!activeNote.value) return
   const result = knowledgeStore.togglePinned(activeNote.value.id)
-  notify(result.ok ? (result.note.pinned ? 'Добавлено в избранное' : 'Удалено из избранного') : result.message, result.ok ? 'info' : 'warning')
+  notify(result.ok ? (result.note.pinned ? 'Материал добавлен в избранное' : 'Материал убран из избранного') : result.message, result.ok ? (result.note.pinned ? 'success' : 'info') : 'danger')
 }
 
 function requestDelete(note) { if (note) { deletingNote.value = note; isDeleteOpen.value = true } }

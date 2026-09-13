@@ -329,7 +329,7 @@ async function saveItem() {
 
 async function toggleFavorite(item: PersonalParameterItem) {
   const result = await personalParametersStore.update(item.id, { favorite: !item.favorite })
-  if (!result.ok) notify(result.message || 'Не удалось обновить карточку', 'warning')
+  if (!result.ok) notify(result.message || 'Не удалось обновить карточку', 'danger')
 }
 
 function openDeleteModal(item: PersonalParameterItem) {
@@ -342,7 +342,7 @@ async function confirmDelete() {
   isDeleting.value = true
   const result = await personalParametersStore.remove(deletingItem.value.id)
   isDeleting.value = false
-  if (!result.ok) return notify(result.message || 'Не удалось удалить карточку', 'warning')
+  if (!result.ok) return notify(result.message || 'Не удалось удалить карточку', 'danger')
   isDeleteOpen.value = false
   notify('Карточка удалена', 'info')
 }
@@ -353,7 +353,7 @@ async function copyItem(item: PersonalParameterItem) {
     await navigator.clipboard.writeText(text)
     notify('Параметры скопированы', 'success')
   } catch {
-    notify('Не удалось скопировать параметры', 'warning')
+    notify('Не удалось скопировать параметры', 'danger')
   }
 }
 

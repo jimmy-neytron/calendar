@@ -38,6 +38,8 @@ export interface MovieDetails extends MovieMedia {
 }
 
 export interface WatchlistMovie extends MovieMedia {
+  watchedAt?: string
+  kinopoiskUrl?: string
   workspaceId: string
   addedAt: string
   plannedEventId: string

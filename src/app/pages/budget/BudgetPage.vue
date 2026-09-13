@@ -166,7 +166,7 @@ import { formatRubles as formatMoney } from '../../utils/formatters/currencyForm
 import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
 const route = useRoute()
-const { notify } = useNotification()
+const { notifyResult } = useNotification()
 const budget = budgetStore.currentBudget
 const selectedMonth = budgetStore.selectedMonth
 const budgetSettings = budgetStore.budgetSettings
@@ -253,7 +253,7 @@ async function saveSetup(payload) {
   isSavingSetup.value = true
   const result = await budgetStore.saveGlobalSetup(payload)
   isSavingSetup.value = false
-  notify(result.ok ? 'Шаблон бюджета сохранён' : result.message, result.ok ? 'success' : 'warning')
+  notifyResult(result, 'Шаблон бюджета сохранён', { errorMessage: 'Не удалось сохранить шаблон бюджета' })
   if (result.ok) isSetupModalOpen.value = false
 }
 
@@ -262,7 +262,7 @@ async function saveMonth(payload) {
   isSavingMonth.value = true
   const result = await budgetStore.saveMonthPlan(payload)
   isSavingMonth.value = false
-  notify(result.ok ? 'План месяца сохранён' : result.message, result.ok ? 'success' : 'warning')
+  notifyResult(result, 'План месяца сохранён', { errorMessage: 'Не удалось сохранить план месяца' })
   if (result.ok) isMonthModalOpen.value = false
 }
 
@@ -271,13 +271,13 @@ async function saveActuals(entries) {
   isSavingActuals.value = true
   const result = await budgetStore.saveActuals(entries)
   isSavingActuals.value = false
-  notify(result.ok ? 'Фактические траты сохранены' : result.message, result.ok ? 'success' : 'warning')
+  notifyResult(result, 'Фактические траты сохранены', { errorMessage: 'Не удалось сохранить фактические траты' })
   if (result.ok) isActualsModalOpen.value = false
 }
 
 async function togglePayment(payment) {
   const result = await budgetStore.togglePaymentPaid(payment.categoryId, payment.id)
-  if (!result.ok) notify(result.message, 'warning')
+  if (!result.ok) notifyResult(result, '', { errorMessage: 'Не удалось изменить статус платежа' })
 }
 
 function shortDate(value) {
@@ -298,7 +298,7 @@ watch(selectedMonth, async () => {
   isChangingMonth.value = true
   const result = await budgetStore.ensureSelectedMonthFromTemplate()
   isChangingMonth.value = false
-  if (!result.ok) notify(result.message, 'warning')
+  if (!result.ok) notifyResult(result, '', { errorMessage: 'Не удалось подготовить бюджет месяца' })
 })
 
 watch(calendarStore.events, (events) => {

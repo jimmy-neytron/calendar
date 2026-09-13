@@ -85,7 +85,7 @@ describe('source removal confirmation wiring', () => {
     document.querySelector<HTMLButtonElement>('.source-delete__confirm')!.click()
     await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull())
     expect(actions.removeSource).toHaveBeenCalledExactlyOnceWith('s1', deleteProducts)
-    expect(actions.notify).toHaveBeenCalledWith(expect.stringContaining(deleteProducts ? 'Источник и его товары удалены' : 'Товары и привязки сохранены'), 'success')
+    expect(actions.notify).toHaveBeenCalledWith(expect.stringContaining(deleteProducts ? 'Источник и его товары удалены' : 'Товары и привязки сохранены'), 'info')
   })
   it('keeps the confirmation and selection when deletion fails', async () => {
     actions.removeSource.mockRejectedValue(new Error('Сеть недоступна'))
@@ -142,6 +142,7 @@ describe('direct product removal confirmation', () => {
     document.querySelector<HTMLButtonElement>('.products-delete__confirm')!.click()
     await vi.waitFor(() => expect(document.querySelector('.products-delete')).toBeNull())
     expect(actions.removeProducts).toHaveBeenCalledExactlyOnceWith(['p1', 'p2'])
+    expect(actions.notify).toHaveBeenCalledWith('Удалено товаров: 2', 'info')
   })
   it('cancels a single deletion without modifying the catalog', async () => {
     const host = await openCatalog()

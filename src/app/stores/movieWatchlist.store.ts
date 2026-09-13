@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { normalizeKinopoiskUrl } from '../services/moviePlayback.service'
 import { APP_CONFIG } from '../config/app.config.js'
 import { SyncedCollectionRepository } from '../repositories/SyncedCollectionRepository.js'
 import type { MovieMedia, WatchlistMovie } from '../types/movie'
@@ -22,9 +23,30 @@ const savedMovies = repository.items
 const { addActivity } = useActivityLog()
 let isSyncingCalendar = false
 
-const watchlist = computed(() => savedMovies.value
+const library = computed(() => savedMovies.value
   .filter((movie) => movie.workspaceId === workspaceStore.activeWorkspaceId.value)
   .sort((first, second) => second.addedAt.localeCompare(first.addedAt)))
+const watchlist = computed(() => library.value.filter((movie) => !movie.watchedAt))
+const watched = computed(() => library.value.filter((movie) => movie.watchedAt)
+  .sort((a, b) => (b.watchedAt || '').localeCompare(a.watchedAt || '')))
+
+function isWatched(movie: Pick<MovieMedia, 'id' | 'mediaType'>): boolean {
+  return Boolean(getSaved(movie)?.watchedAt)
+}
+
+async function setWatched(movie: MovieMedia, value: boolean) {
+  const saved = getSaved(movie)
+  if (!saved) return add(movie, value)
+  return updateSavedMovie(saved, { watchedAt: value ? new Date().toISOString() : '' })
+}
+
+async function saveKinopoiskUrl(movie: MovieMedia, value: string) {
+  const kinopoiskUrl = normalizeKinopoiskUrl(value)
+  if (!kinopoiskUrl) return { ok: false, message: 'Вставь ссылку на фильм или сериал с kinopoisk.ru' }
+  const saved = getSaved(movie)
+  if (!saved) return { ok: false, message: 'Сначала добавь фильм в один из списков' }
+  return updateSavedMovie(saved, { kinopoiskUrl })
+}
 
 function getKey(movie: Pick<MovieMedia, 'id' | 'mediaType'>): string {
   return `${movie.mediaType}:${movie.id}`
@@ -42,7 +64,7 @@ function getSaved(movie: Pick<MovieMedia, 'id' | 'mediaType'>): WatchlistMovie |
   return savedMovies.value.find((item) => item.workspaceId === workspaceId && getKey(item) === getKey(movie))
 }
 
-async function add(movie: MovieMedia) {
+async function add(movie: MovieMedia, watched = false) {
   const workspaceId = workspaceStore.activeWorkspaceId.value
   if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
   if (isSaved(movie)) return { ok: true, movie: getSaved(movie) }
@@ -51,10 +73,12 @@ async function add(movie: MovieMedia) {
     workspaceId,
     addedAt: new Date().toISOString(),
     plannedEventId: '',
+    watchedAt: watched ? new Date().toISOString() : '',
+    kinopoiskUrl: '',
   }
   const result = await repository.createAndWait(savedMovie)
   if (!result.ok) return { ok: false, message: getDatabaseMessage({ message: result.message }) }
-  addActivity('movie:save', `добавил(а) «${savedMovie.title}» в список «Хочу посмотреть»`, {
+  addActivity('movie:save', `добавил(а) «${savedMovie.title}» в список «${watched ? 'Просмотренные фильмы' : 'Хочу посмотреть'}»`, {
     tmdbId: savedMovie.id,
     mediaType: savedMovie.mediaType,
   })
@@ -74,7 +98,7 @@ async function remove(movie: Pick<MovieMedia, 'id' | 'mediaType'>) {
 
   const result = await repository.deleteAndWait(getRecordId(workspaceId, movie))
   if (!result.ok) return { ok: false, message: getDatabaseMessage({ message: result.message }) }
-  addActivity('movie:remove', `убрал(а) «${saved.title}» из списка «Хочу посмотреть»`, {
+  addActivity('movie:remove', `убрал(а) «${saved.title}» из списка «${saved.watchedAt ? 'Просмотренные фильмы' : 'Хочу посмотреть'}»`, {
     tmdbId: saved.id,
     mediaType: saved.mediaType,
   })
@@ -306,6 +330,8 @@ function toDatabaseRow(movie: WatchlistMovie) {
     popularity: movie.popularity,
     genre_ids: movie.genreIds,
     planned_event_id: movie.plannedEventId || null,
+    watched_at: movie.watchedAt || null,
+    kinopoisk_url: movie.kinopoiskUrl || '',
     added_at: movie.addedAt,
     updated_at: new Date().toISOString(),
   }
@@ -328,6 +354,8 @@ function fromDatabaseRow(row: Record<string, unknown>): WatchlistMovie {
     workspaceId: String(row.workspace_id || ''),
     addedAt: String(row.added_at || new Date().toISOString()),
     plannedEventId: String(row.planned_event_id || ''),
+    watchedAt: String(row.watched_at || ''),
+    kinopoiskUrl: normalizeKinopoiskUrl(String(row.kinopoisk_url || '')),
   }
 }
 
@@ -343,6 +371,12 @@ function addMinutes(time: string, minutes: number): string {
 }
 
 export const movieWatchlistStore = {
+  library,
+  watched,
+  isWatched,
+  setWatched,
+  getSaved,
+  saveKinopoiskUrl,
   watchlist,
   isSaved,
   isPlanned,

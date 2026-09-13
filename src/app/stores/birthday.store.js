@@ -21,8 +21,8 @@ const upcomingBirthdays = computed(() => birthdays.value.filter((birthday) => bi
 
 async function addBirthday(data) {
   const name = String(data.name || '').trim()
-  if (!name) return { ok: false, message: 'Укажи имя' }
-  if (!DateHelper.isValidKey(data.birthDate)) return { ok: false, message: 'Укажи дату рождения' }
+  if (!name) return { ok: false, reason: 'validation', message: 'Укажи имя' }
+  if (!DateHelper.isValidKey(data.birthDate)) return { ok: false, reason: 'validation', message: 'Укажи дату рождения' }
 
   const birthday = {
     id: generateId(),
@@ -62,7 +62,7 @@ async function updateBirthday(id, updates) {
     reminderDays: Number(updates.reminderDays ?? current.reminderDays),
     updatedAt: new Date().toISOString(),
   }
-  if (!next.name || !DateHelper.isValidKey(next.birthDate)) return { ok: false, message: 'Проверь имя и дату' }
+  if (!next.name || !DateHelper.isValidKey(next.birthDate)) return { ok: false, reason: 'validation', message: 'Проверь имя и дату' }
 
   const synced = await syncCalendarEvents(next)
   if (!synced.ok) return synced

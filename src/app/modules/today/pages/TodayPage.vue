@@ -73,14 +73,15 @@ function openSectionItem(section: TodaySection, item: TodayCardItem) { router.pu
 function handleItemAction(item: TodayCardItem) {
   if (item.action === 'toggle-event') {
     const event = calendarStore.todayEvents.value.find((candidate) => candidate.id === item.id)
-    const result = event && calendarStore.updateEvent(event.id, { completedAt: event.completedAt ? null : new Date().toISOString() })
-    notify(result?.ok ? (event?.completedAt ? 'Выполнение снято' : 'Событие выполнено') : 'Не удалось обновить событие', result?.ok ? 'success' : 'warning')
+    const wasCompleted = Boolean(event?.completedAt)
+    const result = event && calendarStore.updateEvent(event.id, { completedAt: wasCompleted ? null : new Date().toISOString() })
+    notify(result?.ok ? (wasCompleted ? 'Отметка выполнения события снята' : 'Событие отмечено выполненным') : 'Не удалось обновить событие', result?.ok ? (wasCompleted ? 'info' : 'success') : 'danger')
   } else if (item.action === 'toggle-challenge') {
     const result = challengeStore.toggleDate(item.id)
-    notify(result.ok ? (result.completed ? 'Цель отмечена' : 'Отметка снята') : result.message, result.ok ? 'success' : 'warning')
+    notify(result.ok ? (result.completed ? 'Выполнение цели за сегодня отмечено' : 'Отметка выполнения цели за сегодня снята') : result.message, result.ok ? (result.completed ? 'success' : 'info') : 'warning')
   } else if (item.action === 'toggle-exercise') {
-    sportStore.toggleExercise(item.id, sportStore.todayKey.value)
-    notify(item.done ? 'Выполнение снято' : 'Упражнение выполнено', 'success')
+    const result = sportStore.toggleExercise(item.id, sportStore.todayKey.value)
+    notify(result.ok ? (result.completed ? 'Упражнение отмечено выполненным' : 'Отметка выполнения упражнения снята') : result.message, result.ok ? (result.completed ? 'success' : 'info') : 'warning')
   }
 }
 </script>

@@ -3,7 +3,7 @@
     class="app-toast"
     :class="`app-toast--${normalizedType}`"
     :style="{ '--toast-duration': `${notification.duration}ms` }"
-    role="status"
+    :role="normalizedType === 'danger' ? 'alert' : 'status'"
   >
     <div class="app-toast__glow" />
     <div class="app-toast__icon">

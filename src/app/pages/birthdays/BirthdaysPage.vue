@@ -167,7 +167,7 @@ import { DateHelper } from '../../utils/date/dateHelper.js'
 import { usePaginatedView } from '../../composables/collections/usePaginatedView.js'
 import { pluralizeRu as pluralize } from '../../utils/formatters/pluralizeRu.js'
 
-const { notify } = useNotification()
+const { notifyResult } = useNotification()
 const route = useRoute()
 const birthdays = birthdayStore.birthdays
 const upcoming = birthdayStore.upcomingBirthdays
@@ -193,11 +193,11 @@ const {
 
 async function createBirthday() {
   const result = await birthdayStore.addBirthday(form)
-  if (!result.ok) return notify(result.message, 'warning')
+  if (!result.ok) return notifyResult(result, '', { errorMessage: 'Не удалось добавить день рождения' })
   form.name = ''
   form.note = ''
   isCreateOpen.value = false
-  notify('День рождения добавлен в календарь', 'success')
+  notifyResult(result, 'День рождения добавлен в календарь')
 }
 
 function openCreate() {
@@ -243,7 +243,7 @@ watch([birthdays, () => route.query.birthday], ([items, birthdayId]) => {
 
 async function saveEdit() {
   const result = await birthdayStore.updateBirthday(editingId.value, editForm)
-  notify(result.ok ? 'День рождения обновлён' : result.message, result.ok ? 'success' : 'warning')
+  notifyResult(result, 'День рождения обновлён', { errorMessage: 'Не удалось обновить день рождения' })
   if (result.ok) isEditOpen.value = false
 }
 

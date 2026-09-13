@@ -10,6 +10,9 @@
         :key="`${movie.mediaType}:${movie.id}`"
         :movie="movie"
         :saved="movieWatchlistStore.isSaved(movie)"
+      :watched="movieWatchlistStore.isWatched(movie)"
+      :updating="updating"
+      @watched="$emit('watched', $event)"
         :planned="movieWatchlistStore.isPlanned(movie)"
         @toggle="$emit('toggle', $event)"
         @plan="$emit('plan', $event)"
@@ -32,8 +35,8 @@ import type { MovieMedia } from '../../types/movie'
 import UiIcon from '../ui/UiIcon.vue'
 import MovieCard from './MovieCard.vue'
 
-const props = defineProps<{ title: string; eyebrow: string; movies: MovieMedia[]; loading?: boolean }>()
-defineEmits<{ toggle: [movie: MovieMedia]; plan: [movie: MovieMedia]; open: [movie: MovieMedia] }>()
+const props = defineProps<{ title: string; eyebrow: string; movies: MovieMedia[]; updating?: boolean; loading?: boolean }>()
+defineEmits<{ watched: [movie: MovieMedia]; toggle: [movie: MovieMedia]; plan: [movie: MovieMedia]; open: [movie: MovieMedia] }>()
 
 const fallbackItems = computed(() => props.eyebrow === 'Сериалы'
   ? [

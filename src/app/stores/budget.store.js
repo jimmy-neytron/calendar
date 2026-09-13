@@ -151,7 +151,7 @@ async function updateSettings(updates) {
 async function saveGlobalSetup(data) {
   if (!readBudgetSetting()) return disabledBudgetResult()
   const workspaceId = workspaceStore.activeWorkspaceId.value
-  if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
+  if (!workspaceId) return { ok: false, reason: 'validation', message: 'Пространство не выбрано' }
 
   const income = toAmount(data.defaultIncome)
   const rules = Array.isArray(data.rules) ? data.rules : []
@@ -160,9 +160,9 @@ async function saveGlobalSetup(data) {
   const wasSetupComplete = isSetupComplete.value
 
   const duplicateRule = findDuplicateName(rules)
-  if (duplicateRule) return { ok: false, message: `Обязательный расход «${duplicateRule}» указан дважды` }
+  if (duplicateRule) return { ok: false, reason: 'validation', message: `Обязательный расход «${duplicateRule}» указан дважды` }
   const duplicateCategory = findDuplicateName(templates)
-  if (duplicateCategory) return { ok: false, message: `Категория «${duplicateCategory}» указана дважды` }
+  if (duplicateCategory) return { ok: false, reason: 'validation', message: `Категория «${duplicateCategory}» указана дважды` }
 
   const settings = budgetSettings.value
   const settingsPayload = {
@@ -211,7 +211,7 @@ async function saveMonthPlan(data) {
 
   for (const [index, item] of requestedCategories.entries()) {
     const name = String(item.name || '').trim()
-    if (!name) return { ok: false, message: 'Укажи название категории' }
+    if (!name) return { ok: false, reason: 'validation', message: 'Укажи название категории' }
     if (item.id && categoryRepository.findById(item.id)) {
       const existing = categoryRepository.findById(item.id)
       const result = await categoryRepository.updateAndWait(item.id, {
@@ -254,9 +254,9 @@ async function saveActuals(entries) {
 async function addCategory(name, amount = 0, options = {}) {
   if (!readBudgetSetting()) return disabledBudgetResult()
   const title = String(name || '').trim()
-  if (!title) return { ok: false, message: 'Укажи название раздела' }
+  if (!title) return { ok: false, reason: 'validation', message: 'Укажи название раздела' }
   if (categories.value.some((category) => category.name.toLowerCase() === title.toLowerCase())) {
-    return { ok: false, message: 'Такой раздел уже существует' }
+    return { ok: false, reason: 'validation', message: 'Такой раздел уже существует' }
   }
   const month = await ensureCurrentMonth()
   if (!month.ok) return month
@@ -315,7 +315,7 @@ async function removeCategory(id) {
 async function addRecurringRule(data) {
   if (!readBudgetSetting()) return disabledBudgetResult()
   const title = String(data.title || '').trim()
-  if (!title) return { ok: false, message: 'Укажи название обязательного платежа' }
+  if (!title) return { ok: false, reason: 'validation', message: 'Укажи название обязательного платежа' }
   const dueDay = Math.max(1, Math.min(31, Number(data.dueDay || 1)))
   const now = new Date().toISOString()
   const rule = {
@@ -502,7 +502,7 @@ async function addPayment(categoryId, data) {
   const category = categoryId ? categoryRepository.findById(categoryId) : null
   const title = String(data.title || '').trim()
   const dueDate = String(data.date || '')
-  if (!title) return { ok: false, message: 'Укажи название платежа' }
+  if (!title) return { ok: false, reason: 'validation', message: 'Укажи название платежа' }
   if (!dueDate.startsWith(`${selectedMonth.value}-`)) {
     return { ok: false, message: 'Дата платежа должна быть в выбранном месяце бюджета' }
   }
@@ -736,7 +736,7 @@ async function reconcileCategoryTemplates(items, workspaceId, now) {
 
   for (const [index, item] of items.entries()) {
     const name = String(item.name || '').trim()
-    if (!name) return { ok: false, message: 'Укажи название категории' }
+    if (!name) return { ok: false, reason: 'validation', message: 'Укажи название категории' }
     const existing = item.id
       ? categoryTemplateRepository.findById(item.id)
       : existingTemplates.find((template) => template.name.toLowerCase() === name.toLowerCase())
@@ -775,7 +775,7 @@ async function reconcileRecurringRules(items, workspaceId, now) {
 
   for (const item of items) {
     const title = String(item.title || '').trim()
-    if (!title) return { ok: false, message: 'Укажи название обязательного расхода' }
+    if (!title) return { ok: false, reason: 'validation', message: 'Укажи название обязательного расхода' }
     const existing = item.id
       ? ruleRepository.findById(item.id)
       : existingRules.find((rule) => rule.title.toLowerCase() === title.toLowerCase())
@@ -801,7 +801,7 @@ async function reconcileRecurringRules(items, workspaceId, now) {
 }
 
 async function ensureSelectedMonthFromTemplate({ overwriteDefaults = false } = {}) {
-  if (!isSetupComplete.value) return { ok: false, message: 'Сначала настрой бюджет' }
+  if (!isSetupComplete.value) return { ok: false, reason: 'validation', message: 'Сначала настрой бюджет' }
   const monthResult = await ensureCurrentMonth()
   if (!monthResult.ok) return monthResult
 
@@ -940,7 +940,7 @@ async function ensureCurrentMonth() {
   if (currentMonthRecord.value) return { ok: true, item: currentMonthRecord.value }
   if (monthCreatePromise) return monthCreatePromise
   const workspaceId = workspaceStore.activeWorkspaceId.value
-  if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
+  if (!workspaceId) return { ok: false, reason: 'validation', message: 'Пространство не выбрано' }
   monthCreatePromise = (async () => {
     const now = new Date().toISOString()
     const month = createBudgetMonthRecord({
@@ -966,7 +966,7 @@ async function ensureBudgetMonthForDate(dateKey) {
   if (existingMonth) return { ok: true, item: existingMonth }
 
   const workspaceId = workspaceStore.activeWorkspaceId.value
-  if (!workspaceId) return { ok: false, message: 'Пространство не выбрано' }
+  if (!workspaceId) return { ok: false, reason: 'validation', message: 'Пространство не выбрано' }
   const now = new Date().toISOString()
   const month = createBudgetMonthRecord({
     id: generateId(),
