@@ -226,6 +226,7 @@ export const calendarStore = {
   upcomingReminders,
   addEvent,
   addEventAndWait,
+  updateFlexibleEventAndWait,
   updateEvent,
   deleteEvent,
   deleteEventAndWait,
@@ -267,6 +268,7 @@ function normalizeEvent(data) {
     category: data.category || 'other',
     location: data.location || '',
     notes: data.notes || '',
+    ...(data.flexibleRule ? { flexibleRule: data.flexibleRule } : {}),
     allDay: Boolean(data.allDay),
     repeat: data.repeat || 'none',
     repeatUntil: data.repeatUntil || '',
@@ -423,4 +425,20 @@ function reportLinkedEventChange(action, event) {
   window.dispatchEvent(new CustomEvent(CALENDAR_LINK_CHANGE_EVENT, {
     detail: { action, event },
   }))
+}
+
+
+async function updateFlexibleEventAndWait(id, data) {
+  const target = eventRepository.findById(id)
+  if (!target || target.workspaceId !== workspaceStore.activeWorkspaceId.value || !target.flexibleRule || target.linkedEntityType || target.repeat !== 'none') {
+    return { ok: false, errors: { event: 'Гибкое событие недоступно' } }
+  }
+  const next = normalizeEvent({ ...target, date: data.date, startTime: data.startTime, endTime: data.endTime, flexibleRule: data.flexibleRule, updatedAt: new Date().toISOString() })
+  const validation = validateEvent(next)
+  if (!validation.valid) return { ok: false, errors: validation.errors }
+  const result = await eventRepository.updateAndWait(id, next)
+  if (!result.ok) return { ok: false, errors: { backend: result.message } }
+  notificationStore.notifyEventChange('update', next, target)
+  addActivity('event:update', `обновил(а) гибкое событие «${next.title}»`, { eventId: id, date: next.date })
+  return { ok: true, event: next }
 }

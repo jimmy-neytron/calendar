@@ -15,6 +15,8 @@
         @submit="handleSmartEventCreate"
       />
 
+      <FlexibleSchedulePanel :selected-date="selectedDateKey" :calendars="calendars" />
+
       <CalendarBoard
         :heading="heading"
         :mode="mode"
@@ -100,6 +102,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import FlexibleSchedulePanel from '../../components/calendar/FlexibleSchedulePanel.vue'
 import CalendarBoard from '../../components/calendar/CalendarBoard.vue'
 import CalendarFilters from '../../components/calendar/CalendarFilters.vue'
 import SmartEventInput from '../../components/calendar/SmartEventInput.vue'

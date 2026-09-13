@@ -75,6 +75,10 @@ class MockSyncedCollectionRepository {
     return updatedItem
   }
 
+  async updateAndWait(id, updates) {
+    return { ok: true, item: this.update(id, updates) }
+  }
+
   delete(id) {
     this.items.value = this.items.value.filter((item) => item.id !== id)
   }
@@ -239,6 +243,18 @@ describe('calendarStore: события календаря', () => {
     mockState.extraSectionsEnabled = true
   })
 
+  it('сохраняет условия гибкости и не добавляет поле обычным событиям', async () => {
+    const { calendarStore } = await importCalendarStore()
+    const ordinary = createBaseEvent(calendarStore)
+    expect(ordinary).not.toHaveProperty('flexibleRule')
+    const rule = { groupId: 'group', weekStart: '2026-06-29', weekdays: [1, 2, 3, 4, 5], startTime: '10:00', endTime: '18:00', duration: 60, buffer: 15 }
+    const flexible = createBaseEvent(calendarStore, { flexibleRule: rule })
+    expect(flexible.flexibleRule).toEqual(rule)
+    const result = await calendarStore.updateFlexibleEventAndWait(flexible.id, { ...flexible, startTime: '12:00', endTime: '13:00', flexibleRule: { ...rule, locked: true } })
+    expect(result.ok).toBe(true)
+    expect(result.event.flexibleRule.locked).toBe(true)
+    expect((await calendarStore.updateFlexibleEventAndWait(ordinary.id, ordinary)).ok).toBe(false)
+  })
   it('создаёт событие, нормализует поля и отправляет уведомление', async () => {
     const { calendarStore, repository } = await importCalendarStore()
 

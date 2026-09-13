@@ -35,6 +35,7 @@
         <b v-if="linkedSource" class="event-card__source">{{ linkedSource }}</b>
         <template v-if="linkedSource"> · </template>
         {{ category.label }}
+        <template v-if="event.flexibleRule"> · {{ event.flexibleRule.locked ? 'Закреплено' : 'Гибкое' }}</template>
         <template v-if="importanceLabel">
           · <b class="event-card__priority">{{ importanceLabel }}</b>
         </template>
